@@ -1,0 +1,13 @@
+AlignAfterOpenBracket: BlockIndent
+AllowShortBlocksOnASingleLine: Empty
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine: All
+AllowShortLoopsOnASingleLine: false
+AlwaysBreakAfterReturnType: None
+ColumnLimit: 100
+IndentWidth: 4
+PointerAlignment: Left
+AccessModifierOffset: -4
+NamespaceIndentation: All
