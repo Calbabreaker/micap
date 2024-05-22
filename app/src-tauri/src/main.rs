@@ -10,10 +10,12 @@ fn main() {
     tauri::Builder::default()
         .setup(|app| {
             let webview = app.get_webview_window("main").unwrap();
-            webview.eval(&format!(
-                "location.search='?websocket_port={}'",
-                mycap_server::WEBSOCKET_PORT.to_string()
-            ));
+            webview
+                .eval(&format!(
+                    "location.search='?websocket_port={}'",
+                    mycap_server::WEBSOCKET_PORT.to_string()
+                ))
+                .unwrap();
 
             Ok(())
         })

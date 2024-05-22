@@ -1,8 +1,20 @@
-use futures_util::StreamExt;
-use warp::{filters::ws::WebSocket, Filter};
+mod serial;
+mod udp_protocol;
+
+use std::sync::Arc;
+
+use futures_util::{lock::Mutex, stream::SplitSink, StreamExt};
+use warp::{
+    filters::ws::{Message, WebSocket},
+    Filter,
+};
 
 pub const WEBSOCKET_PORT: u16 = 8298;
-pub const UDP_PORT: u16 = 5828;
+
+#[derive(Default)]
+struct ServerState {
+    websocket_tx: Option<SplitSink<WebSocket, Message>>,
+}
 
 pub fn setup_log() {
     env_logger::builder()
@@ -12,74 +24,41 @@ pub fn setup_log() {
 }
 
 pub async fn start_server() {
-    tokio::spawn(start_udp_server());
+    let state = Arc::new(Mutex::new(ServerState::default()));
 
-    let websocket = warp::ws().map(|ws: warp::ws::Ws| ws.on_upgrade(on_connect));
+    tokio::spawn(udp_protocol::bind_udp_socket(state.clone()));
+
+    let websocket = warp::ws()
+        .and(warp::any().map(move || state.clone()))
+        .map(|ws: warp::ws::Ws, state| ws.on_upgrade(|socket| on_connect(socket, state)));
 
     warp::serve(websocket)
         .run(([127, 0, 0, 1], WEBSOCKET_PORT))
         .await;
 }
 
-async fn on_connect(ws: WebSocket) {
-    let (mut tx, mut rx) = ws.split();
-    log::info!("Client connected");
-    while let Some(message) = rx.next().await.and_then(|result| {
+async fn on_connect(ws: WebSocket, state: Arc<Mutex<ServerState>>) {
+    let (ws_tx, mut ws_rx) = ws.split();
+    {
+        state.lock().await.websocket_tx = Some(ws_tx);
+    }
+
+    log::info!("Websocket client connected");
+    while let Some(message) = ws_rx.next().await.and_then(|result| {
         result
             .inspect_err(|e| log::error!("websocket error: {e}"))
             .ok()
     }) {
         if let Ok(message) = message.to_str() {
+            let mut args = message.split(":");
             log::info!("{:?}", message);
-            if message.starts_with("SERIAL:") {
-                write_serial(message.replace("SERIAL:", "").as_bytes())
-                    .inspect_err(|e| log::error!("Failed to write to serial port: {e}"))
-                    .ok();
+            if args.next() == Some("SERIAL") {
+                if let Some(command) = args.next() {
+                    serial::write_serial(command.as_bytes())
+                        .inspect_err(|e| log::error!("Failed to write to serial port: {e}"))
+                        .ok();
+                }
             }
         }
-    }
-}
-
-fn write_serial(data: &[u8]) -> serialport::Result<()> {
-    let ports = serialport::available_ports()?;
-    log::info!("Got ports: {ports:?}");
-    let mut port = serialport::new("/dev/ttyUSB0", 9600)
-        .timeout(std::time::Duration::from_millis(10))
-        .open()?;
-    port.write_all(data)?;
-    Ok(())
-}
-
-async fn start_udp_server() -> tokio::io::Result<()> {
-    let socket = tokio::net::UdpSocket::bind(("255.255.255.255", UDP_PORT)).await?;
-    log::info!("Started UDP on {}", socket.local_addr()?);
-    loop {
-        // Receives a single datagram message on the socket. If `buf` is too small to hold
-        // the message, it will be cut off.
-        let mut buf = [0; 24];
-        let (amt, src) = socket.recv_from(&mut buf).await?;
-
-        println!("Received from {src}: {:?}", String::from_utf8_lossy(&buf));
-
-        // let mut imu_values = [0f32; 6];
-        // f32_from_raw_bytes(&mut imu_values, &buf);
-
-        // println!(
-        //     "GYRO: {:?}, \t ACCEL: {:?}",
-        //     &imu_values[0..3],
-        //     &imu_values[3..6]
-        // );
-    }
-}
-
-fn f32_from_raw_bytes(out: &mut [f32], raw: &[u8]) {
-    for (i, value) in out.iter_mut().enumerate() {
-        let offset = i * 4;
-        *value = f32::from_le_bytes([
-            raw[offset],
-            raw[offset + 1],
-            raw[offset + 2],
-            raw[offset + 3],
-        ]);
     }
 }

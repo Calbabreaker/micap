@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+    .btn {
+        @apply shadow rounded border border-gray-300 px-3 py-2 text-sm bg-white hover:text-sky-600 cursor-pointer;
+    }
+
+    .btn-primary {
+        @apply bg-sky-600 border-sky-500 text-white hover:text-white disabled:text-white hover:bg-sky-700;
+    }
+}
+
+body {
+    @apply bg-neutral-900;
+}

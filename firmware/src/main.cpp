@@ -1,7 +1,8 @@
+#include "consts.h"
+#include "led_manager.h"
 #include "log.h"
 #include "math.h"
 #include "net/connection_manager.h"
-#include "net/wifi_manager.h"
 #include "serial_commands.h"
 
 #include <BMI160Gen.h>
@@ -9,6 +10,7 @@
 
 SerialCommands serial_commands;
 ConnectionManager connection_manager;
+LedManager internal_led(INTERNAL_LED_PIN);
 
 float gyro_range;
 float accel_range;
@@ -21,13 +23,14 @@ float from_raw(int raw, float range) {
 
 void setup() {
     Serial.begin(9600);
+    internal_led.setup();
+    internal_led.on();
 
     connection_manager.setup();
 
     LOG("Initializing IMU device...\n");
     Wire.begin();
     BMI160.begin(BMI160GenClass::I2C_MODE, Wire, 0x68);
-    LOG("BMI160.begin finished");
 
     LOG("DEVICE ID: %x\n", BMI160.getDeviceID());
     gyro_range = (float)BMI160.getGyroRange();

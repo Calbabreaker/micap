@@ -1,16 +1,17 @@
 #include <Arduino.h>
 
 #include "ESP8266WiFi.h"
+#include "log.h"
 #include "serial_commands.h"
 
 // Go to the start of the next string using strlen (which relies on the null byte)
 char* next_arg(char* start, size_t* length_left) {
-    size_t length = strlen(start);
-    if (length + 1 >= *length_left) {
+    size_t length = strlen(start) + 1;
+    if (length >= *length_left) {
         return 0;
     }
 
-    *length_left -= length + 1;
+    *length_left -= length;
     return start + length;
 }
 
@@ -27,6 +28,7 @@ void SerialCommands::parse_incomming_command() {
 
     // Set the end null byte
     m_buffer[bytes_read] = '\0';
+    LOG("Got %s command with %zu chars\n", m_buffer, bytes_read);
 
     char* arg_ptr = next_arg(m_buffer, &bytes_read);
     if (!arg_ptr) {
@@ -39,6 +41,7 @@ void SerialCommands::parse_incomming_command() {
             return;
         }
 
+        LOG("Connecting to %s with %s\n", arg_ptr, password_ptr);
         WiFi.begin(arg_ptr, password_ptr);
     }
 }

@@ -7,7 +7,8 @@
 void WiFiManager::setup() {
     WiFi.hostname("Mycap tracker");
     WiFi.mode(WIFI_STA);
-    LOG("Loaded creds with SSID: %s", WiFi.SSID().c_str());
+    WiFi.persistent(true);
+    LOG("Loaded creds with SSID: %s\n", WiFi.SSID().c_str());
     WiFi.begin();
 }
 

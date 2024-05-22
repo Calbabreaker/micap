@@ -1,8 +1,14 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import WifiCard from "../components/wifi_card.svelte";
 
-    let message = "";
+    interface Client {
+        mac: string;
+    }
+
     let ws: WebSocket;
+
+    let clients: Client[] = [];
 
     onMount(async () => {
         const urlParams = new URLSearchParams(window.location.search);
@@ -12,22 +18,28 @@
         );
 
         ws.addEventListener("message", (msg) => {
-            console.log(msg.type);
+            if (typeof msg.data === "string") {
+                handle_message(msg.data);
+            }
         });
-
-        setInterval(() => ws.send("test"), 1000);
     });
+
+    function handle_message(message: string) {
+        console.log(message);
+        const args = message.split(":");
+        if (args[0] == "DEVICE-CONNECT") {
+            clients.push({ mac: args[1] });
+        }
+    }
 </script>
 
-<h1>Welcome to SvelteKit</h1>
-<p>
-    {message}
-    <input bind:value={message} />
-    <button
-        on:click={() => {
-            if (ws) {
-                ws.send(message);
-            }
-        }}>Submit</button
-    >
-</p>
+<h1 class="text-white text-lg">Welcome to SvelteKit</h1>
+<div>
+    <div>
+        <p>Clients:</p>
+        {#each clients as client}
+            {client.mac}
+        {/each}
+    </div>
+    <WifiCard {ws} />
+</div>

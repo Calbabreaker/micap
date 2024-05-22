@@ -37,5 +37,5 @@ private:
     WiFiManager m_wifi;
     uint8_t m_buffer[64];
 
-    uint64_t m_last_sent_handshake;
+    uint64_t m_last_sent_handshake = 0;
 };
