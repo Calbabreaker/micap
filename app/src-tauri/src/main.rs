@@ -4,6 +4,7 @@
 use tauri::Manager;
 
 fn main() {
+    mycap_server::setup_log();
     tauri::async_runtime::spawn(mycap_server::start_server());
 
     tauri::Builder::default()

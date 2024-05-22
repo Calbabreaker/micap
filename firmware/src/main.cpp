@@ -1,26 +1,28 @@
-#include "consts.h"
 #include "log.h"
-#include "wifi_manager.h"
+#include "math.h"
+#include "net/connection_manager.h"
+#include "net/wifi_manager.h"
+#include "serial_commands.h"
 
 #include <BMI160Gen.h>
 #include <ESP8266WiFi.h>
 
+SerialCommands serial_commands;
+ConnectionManager connection_manager;
+
 float gyro_range;
 float accel_range;
 
-// We will be using 3D Vectors here
-void convert_from_raw(int raw[], float out[], float range) {
-    for (size_t i = 0; i < 3; i++) {
-        // (LSB/°/s or LSB/m/s^2)
-        float sensitivity = 0x8000 / range;
-        out[i] = (float)raw[i] / sensitivity;
-    }
+float from_raw(int raw, float range) {
+    // (LSB/°/s or LSB/m/s^2)
+    float sensitivity = 0x8000 / range;
+    return (float)raw / sensitivity;
 }
 
 void setup() {
     Serial.begin(9600);
 
-    WiFiManager::setup();
+    connection_manager.setup();
 
     LOG("Initializing IMU device...\n");
     Wire.begin();
@@ -33,32 +35,19 @@ void setup() {
 }
 
 void loop() {
+    serial_commands.parse_incomming_command();
+    connection_manager.update();
 
-    WiFiManager::monitor();
-    // int packetSize = udp.parsePacket();
-    // if (packetSize) {
-    //     char buffer[255];
-    //     int len = udp.read(buffer, 255);
-    //     if (len > 0) {
-    //         buffer[len] = 0;
-    //     }
-    //     Serial.printf("UDP packet contents: %s\n", buffer);
-    // }
-    //
-    int raw_data[3];
-    float imu_data[6];
+    if (connection_manager.is_connected()) {
+        int raw_data[3];
+        BMI160.readAccelerometer(raw_data[0], raw_data[1], raw_data[2]);
 
-    BMI160.readGyro(raw_data[0], raw_data[1], raw_data[2]);
-    convert_from_raw(raw_data, imu_data, gyro_range);
-
-    BMI160.readAccelerometer(raw_data[0], raw_data[1], raw_data[2]);
-    convert_from_raw(raw_data, &imu_data[3], accel_range);
-
-    // send the packet
-    udp.beginPacket("10.136.41.71", UDP_PORT);
-    // udp.beginPacket("192.168.20.23", UDP_PORT);
-    udp.write((uint8_t*)imu_data, sizeof(imu_data));
-    udp.endPacket();
+        Vector3 accel(
+            from_raw(raw_data[0], accel_range), from_raw(raw_data[1], accel_range),
+            from_raw(raw_data[2], accel_range)
+        );
+        connection_manager.send_acceleration(accel);
+    }
 
     delay(100);
 }
