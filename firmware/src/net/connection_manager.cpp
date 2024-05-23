@@ -45,17 +45,10 @@ void ConnectionManager::receive_packets() {
     LOG("Received %d bytes from %s\n", len, m_udp.remoteIP().toString().c_str());
 
     switch (m_buffer[0]) {
-    case PACKET_ACK:
-        check_ack_packet();
-        break;
-    }
-}
-
-void ConnectionManager::check_ack_packet() {
-    switch (m_buffer[1]) {
     case PACKET_HANDSHAKE:
-        // Have header stuff to ensure random data is not being sent
-        if (strcmp((const char*)m_buffer + 2, "MYCAP") != 0) {
+        // Check mycap header mark
+        // MYCAP-SERVER indicates server response
+        if (strcmp((const char*)m_buffer + 1, "MYCAP-SERVER") != 0) {
             break;
         }
 
@@ -63,7 +56,6 @@ void ConnectionManager::check_ack_packet() {
             LOG("Successfully handshaked with %s\n", m_udp.remoteIP().toString().c_str());
             m_connected = true;
             m_server_ip = m_udp.remoteIP();
-            internal_led.on();
         } else {
             // Ignore later handshake packets
             LOG("Received handshake ack while already connected\n");
@@ -73,14 +65,14 @@ void ConnectionManager::check_ack_packet() {
 }
 
 void ConnectionManager::send_handshake() {
-    uint8_t* mac = WiFi.macAddress(m_buffer);
 
     LOG("Sending handshake packet...\n");
 
     begin_packet();
     m_udp.write(PACKET_HANDSHAKE);
-    m_udp.write("MYCAP", 5); // have header stuff to ensure random data is not being sent
-    m_udp.write(mac, 6);     // mac adresss as unique id
+    write_str("MYCAP-DEVICE"); // mark as mycap handshake
+    uint8_t* mac = WiFi.macAddress(m_buffer);
+    m_udp.write(mac, 6); // mac adresss as unique id
     end_packet();
 }
 
@@ -89,6 +81,10 @@ void ConnectionManager::send_acceleration(Vector3 acceleration) {
     m_udp.write(PACKET_ACCELERATION);
     m_udp.write(acceleration.as_bytes(), sizeof(float) * 3);
     end_packet();
+}
+
+void ConnectionManager::write_str(const char* str) {
+    m_udp.write(str, strlen(str));
 }
 
 void ConnectionManager::begin_packet() {

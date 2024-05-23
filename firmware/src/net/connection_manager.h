@@ -7,8 +7,7 @@
 
 const uint8_t PACKET_HEARTBEAT = 0x00;
 const uint8_t PACKET_HANDSHAKE = 0x01;
-const uint8_t PACKET_ACCELERATION = 0x03;
-const uint8_t PACKET_ACK = 0xff;
+const uint8_t PACKET_ACCELERATION = 0x02;
 
 class ConnectionManager {
 public:
@@ -27,6 +26,7 @@ public:
 
 private:
     void begin_packet();
+    void write_str(const char* str);
     void end_packet();
 
 private:
