@@ -21,13 +21,19 @@ void ConnectionManager::update() {
         return;
     }
 
+    uint64_t now = millis();
     if (!m_connected) {
         // Send handshake every 2000 ms
-        uint64_t now = millis();
-        if (now > m_last_sent_handshake + 2000) {
+        if (now > m_last_sent_handshake_time + 2000) {
             internal_led.blink(25);
-            m_last_sent_handshake = now;
+            m_last_sent_handshake_time = now;
             send_handshake();
+        }
+    } else {
+        // If we haven't got a packet from the server for 5000ms, we can assume we got disconnected
+        if (now > m_last_received_time + 5000) {
+            LOG("Timed out and disconnected from server\n");
+            m_connected = false;
         }
     }
 
@@ -41,8 +47,8 @@ void ConnectionManager::receive_packets() {
     }
 
     int len = m_udp.read(m_buffer, sizeof(m_buffer));
-
     LOG("Received %d bytes from %s\n", len, m_udp.remoteIP().toString().c_str());
+    m_last_received_time = millis();
 
     switch (m_buffer[0]) {
     case PACKET_HANDSHAKE:
@@ -61,11 +67,14 @@ void ConnectionManager::receive_packets() {
             LOG("Received handshake ack while already connected\n");
         }
         break;
+    case PACKET_HEARTBEAT:
+        // Ping back heartbeat
+        send_hearbeat();
+        break;
     }
 }
 
 void ConnectionManager::send_handshake() {
-
     LOG("Sending handshake packet...\n");
 
     begin_packet();
@@ -73,6 +82,12 @@ void ConnectionManager::send_handshake() {
     write_str("MYCAP-DEVICE"); // mark as mycap handshake
     uint8_t* mac = WiFi.macAddress(m_buffer);
     m_udp.write(mac, 6); // mac adresss as unique id
+    end_packet();
+}
+
+void ConnectionManager::send_hearbeat() {
+    begin_packet();
+    m_udp.write(PACKET_HEARTBEAT);
     end_packet();
 }
 

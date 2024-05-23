@@ -28,7 +28,7 @@ pub fn setup_log() {
 pub async fn start_server() {
     let state = Arc::new(Mutex::new(ServerState::default()));
 
-    tokio::spawn(udp_server::start_server());
+    tokio::spawn(udp_server::start_server().inspect_err(|e| log::error!("UDP server error: {e}")));
 
     let websocket = warp::ws().map(|ws: warp::ws::Ws| ws.on_upgrade(on_connect));
 

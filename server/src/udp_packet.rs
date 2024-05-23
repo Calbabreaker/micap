@@ -7,13 +7,15 @@ pub const PACKET_ACCELERATION: u8 = 0x02;
 pub enum UdpPacket {
     Handshake(UdpPacketHandshake),
     Acceleration(UdpPacketAcceleration),
+    Hearbeat,
 }
 
 impl UdpPacket {
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
-        let packet_type = *bytes.get(0)?;
+        let packet_type = *bytes.first()?;
         let packet_data = bytes.get(1..)?;
         Some(match packet_type {
+            PACKET_HEARTBEAT => Self::Hearbeat,
             PACKET_HANDSHAKE => Self::Handshake(UdpPacketHandshake::from_bytes(packet_data)?),
             PACKET_ACCELERATION => {
                 Self::Acceleration(UdpPacketAcceleration::from_bytes(packet_data)?)

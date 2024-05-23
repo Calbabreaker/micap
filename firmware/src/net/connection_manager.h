@@ -19,6 +19,7 @@ public:
 
     void send_acceleration(Vector3 acceleration);
     void send_handshake();
+    void send_hearbeat();
 
     inline bool is_connected() {
         return m_connected;
@@ -37,5 +38,6 @@ private:
     WiFiManager m_wifi;
     uint8_t m_buffer[64];
 
-    uint64_t m_last_sent_handshake = 0;
+    uint64_t m_last_sent_handshake_time = 0;
+    uint64_t m_last_received_time = 0;
 };
