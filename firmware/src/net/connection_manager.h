@@ -30,11 +30,13 @@ private:
     void write_str(const char* str);
     void end_packet();
 
+    void set_server_ip();
+
 private:
     WiFiUDP m_udp;
     bool m_connected = false;
     // Start with the broadcast ip and then set the actual server ip for future (re)connections
-    IPAddress m_server_ip = IPAddress(255, 255, 255, 255);
+    IPAddress m_server_ip;
     WiFiManager m_wifi;
     uint8_t m_buffer[64];
 

@@ -6,7 +6,12 @@
 
     function setWifi(e: SubmitEvent) {
         e.preventDefault();
-        ws.send(`SERIAL:WIFI\0${ssid}\0${password}`);
+        ws.send(
+            JSON.stringify({
+                type: "Serial",
+                command: `WIFI\0${ssid}\0${password}`,
+            }),
+        );
     }
 </script>
 

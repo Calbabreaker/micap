@@ -5,7 +5,7 @@
 #include "serial_commands.h"
 
 // Go to the start of the next string using strlen (which relies on the null byte)
-char* next_arg(char* start, size_t* length_left) {
+const char* next_arg(const char* start, size_t* length_left) {
     size_t length = strlen(start) + 1;
     if (length >= *length_left) {
         return 0;
@@ -28,17 +28,18 @@ void SerialCommands::parse_incomming_command() {
 
     // Set the end null byte
     m_buffer[bytes_read] = '\0';
-    LOG("Got %s command with %zu chars\n", m_buffer, bytes_read);
+    LOG("Got command %s with %zu chars\n", m_buffer, bytes_read);
 
-    char* arg_ptr = next_arg(m_buffer, &bytes_read);
+    const char* arg_ptr = next_arg(m_buffer, &bytes_read);
     if (!arg_ptr) {
         return;
     }
 
     if (strcmp(m_buffer, "WIFI") == 0) {
-        char* password_ptr = next_arg(arg_ptr, &bytes_read);
+        const char* password_ptr = next_arg(arg_ptr, &bytes_read);
+        // Set password to empty string if non provided
         if (!password_ptr) {
-            return;
+            password_ptr = "";
         }
 
         LOG("Connecting to %s with %s\n", arg_ptr, password_ptr);

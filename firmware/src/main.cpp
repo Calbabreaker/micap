@@ -1,4 +1,4 @@
-#include "consts.h"
+#include "config.h"
 #include "led_manager.h"
 #include "log.h"
 #include "math.h"

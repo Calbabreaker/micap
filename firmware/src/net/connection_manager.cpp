@@ -1,5 +1,5 @@
 #include "connection_manager.h"
-#include "consts.h"
+#include "config.h"
 #include "globals.h"
 #include "log.h"
 
@@ -13,6 +13,8 @@ void ConnectionManager::update() {
     bool just_reconnected = m_wifi.monitor();
 
     if (just_reconnected) {
+        set_server_ip();
+        LOG("Broadcasting to %s\n", m_server_ip.toString().c_str());
         m_udp.begin(UDP_PORT);
     }
 
@@ -26,7 +28,6 @@ void ConnectionManager::update() {
         // Send handshake every 2000 ms
         if (now > m_last_sent_handshake_time + 2000) {
             internal_led.blink(25);
-            m_last_sent_handshake_time = now;
             send_handshake();
         }
     } else {
@@ -64,7 +65,7 @@ void ConnectionManager::receive_packets() {
             m_server_ip = m_udp.remoteIP();
         } else {
             // Ignore later handshake packets
-            LOG("Received handshake ack while already connected\n");
+            LOG("Received handshake while already connected\n");
         }
         break;
     case PACKET_HEARTBEAT:
@@ -83,6 +84,7 @@ void ConnectionManager::send_handshake() {
     uint8_t* mac = WiFi.macAddress(m_buffer);
     m_udp.write(mac, 6); // mac adresss as unique id
     end_packet();
+    m_last_sent_handshake_time = millis();
 }
 
 void ConnectionManager::send_hearbeat() {
@@ -108,4 +110,14 @@ void ConnectionManager::begin_packet() {
 
 void ConnectionManager::end_packet() {
     m_udp.endPacket();
+}
+
+void ConnectionManager::set_server_ip() {
+#ifdef SERVER_IP
+    // Use the hardcoded ip
+    m_server_ip = SERVER_IP;
+#else
+    // Or use the broadcast ip
+    m_server_ip = ~((uint32_t)WiFi.subnetMask()) | (uint32_t)WiFi.localIP();
+#endif
 }

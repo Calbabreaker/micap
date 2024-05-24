@@ -1,4 +1,7 @@
-use std::{collections::HashMap, net::SocketAddr};
+use std::{
+    collections::HashMap,
+    net::{Ipv4Addr, SocketAddr},
+};
 use tokio::net::UdpSocket;
 use tokio::time::{Duration, Instant};
 
@@ -7,6 +10,8 @@ use crate::udp_packet::{UdpPacket, UdpPacketHandshake, PACKET_HEARTBEAT};
 pub const DEVICE_TIMEOUT: Duration = Duration::from_millis(5000);
 pub const UPKEEP_INTERVAL: Duration = Duration::from_millis(1000);
 pub const SOCKET_TIMEOUT: Duration = Duration::from_millis(500);
+
+const MULTICAST_ADDR: Ipv4Addr = Ipv4Addr::new(239, 1, 1, 1);
 
 #[derive(Default)]
 pub struct Tracker {
@@ -61,6 +66,10 @@ impl UdpServer {
     }
 
     async fn run(&mut self) -> tokio::io::Result<()> {
+        self.socket
+            .join_multicast_v4(MULTICAST_ADDR, Ipv4Addr::UNSPECIFIED)?;
+        assert!(MULTICAST_ADDR.is_multicast());
+
         loop {
             // Have receiving data timeout so that the upkeep check can happen continously
             if let Ok(Ok((amount, src))) =
@@ -78,14 +87,15 @@ impl UdpServer {
 
     async fn upkeep(&mut self) -> tokio::io::Result<()> {
         for device in &mut self.devices {
-            if !device.timed_out {
-                if device.last_packet_received_time.elapsed() > DEVICE_TIMEOUT {
+            if device.last_packet_received_time.elapsed() > DEVICE_TIMEOUT {
+                if !device.timed_out {
                     device.timed_out = true;
                     log::info!("Device at {} timed out", device.address);
-                } else {
-                    device.timed_out = false;
                 }
+            } else {
+                device.timed_out = false;
             }
+
             self.socket
                 .send_to(&[PACKET_HEARTBEAT], device.address)
                 .await?;

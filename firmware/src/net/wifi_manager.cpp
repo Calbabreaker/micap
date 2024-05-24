@@ -15,7 +15,7 @@ void WiFiManager::setup() {
 bool WiFiManager::monitor() {
     if (WiFi.isConnected()) {
         if (!m_connected) {
-            LOG("Connected to WiFi\n");
+            LOG("Connected to WiFi on %s\n", WiFi.localIP().toString().c_str());
             m_connected = true;
             return true;
         }
