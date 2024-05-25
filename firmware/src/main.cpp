@@ -5,7 +5,7 @@
 #include "net/connection_manager.h"
 #include "serial_commands.h"
 
-#include <BMI160Gen.h>
+#include <BMI160.h>
 #include <ESP8266WiFi.h>
 
 SerialCommands serial_commands;
@@ -30,7 +30,8 @@ void setup() {
 
     LOG("Initializing IMU device...\n");
     Wire.begin();
-    BMI160.begin(BMI160GenClass::I2C_MODE, Wire, 0x68);
+    BMI160Class device;
+    device.initialize();
 
     LOG("DEVICE ID: %x\n", BMI160.getDeviceID());
     gyro_range = (float)BMI160.getGyroRange();

@@ -11,17 +11,9 @@ pub const DEVICE_TIMEOUT: Duration = Duration::from_millis(5000);
 pub const UPKEEP_INTERVAL: Duration = Duration::from_millis(1000);
 pub const SOCKET_TIMEOUT: Duration = Duration::from_millis(500);
 
-const MULTICAST_ADDR: Ipv4Addr = Ipv4Addr::new(239, 1, 1, 1);
-
-#[derive(Default)]
-pub struct Tracker {
-    id: u32,
-}
-
 pub struct UdpDevice {
     index: usize,
     last_packet_received_time: Instant,
-    trackers: HashMap<u32, Tracker>,
     timed_out: bool,
     address: SocketAddr,
 }
@@ -32,7 +24,6 @@ impl UdpDevice {
             index,
             address,
             last_packet_received_time: Instant::now(),
-            trackers: Default::default(),
             timed_out: false,
         }
     }
@@ -66,10 +57,6 @@ impl UdpServer {
     }
 
     async fn run(&mut self) -> tokio::io::Result<()> {
-        self.socket
-            .join_multicast_v4(MULTICAST_ADDR, Ipv4Addr::UNSPECIFIED)?;
-        assert!(MULTICAST_ADDR.is_multicast());
-
         loop {
             // Have receiving data timeout so that the upkeep check can happen continously
             if let Ok(Ok((amount, src))) =
@@ -160,6 +147,7 @@ impl UdpServer {
 
         let index = self.devices.len();
         self.mac_to_device_index.insert(handshake.mac_string, index);
+        self.address_to_device_index.insert(src, index);
         self.devices.push(UdpDevice::new(index, src));
         log::info!("New device connected from {src}");
         Ok(())

@@ -2,7 +2,8 @@ use crate::math::Vector3;
 
 pub const PACKET_HEARTBEAT: u8 = 0x00;
 pub const PACKET_HANDSHAKE: u8 = 0x01;
-pub const PACKET_ACCELERATION: u8 = 0x02;
+pub const PACKET_TRACKER_INFO: u8 = 0x02;
+pub const PACKET_ACCELERATION: u8 = 0x10;
 
 pub enum UdpPacket {
     Handshake(UdpPacketHandshake),
