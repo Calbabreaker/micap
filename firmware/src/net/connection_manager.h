@@ -9,6 +9,7 @@ const uint8_t PACKET_HEARTBEAT = 0x00;
 const uint8_t PACKET_HANDSHAKE = 0x01;
 const uint8_t PACKET_TRACKER_INFO = 0x02;
 const uint8_t PACKET_ACCELERATION = 0x10;
+const uint8_t PACKET_ORIENTATION = 0x11;
 
 class ConnectionManager {
 public:
@@ -36,7 +37,6 @@ private:
 private:
     WiFiUDP m_udp;
     bool m_connected = false;
-    // Start with the broadcast ip and then set the actual server ip for future (re)connections
     IPAddress m_server_ip;
     WiFiManager m_wifi;
     uint8_t m_buffer[64];

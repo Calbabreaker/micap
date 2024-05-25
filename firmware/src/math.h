@@ -4,7 +4,8 @@
 
 class Vector3 {
 public:
-    inline Vector3(float x, float y, float z) : x(x), y(y), z(z){};
+    Vector3() = default;
+    Vector3(float x, float y, float z) : x(x), y(y), z(z){};
 
     inline uint8_t* as_bytes() {
         return (uint8_t*)this;

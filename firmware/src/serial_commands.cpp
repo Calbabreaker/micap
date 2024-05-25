@@ -28,7 +28,7 @@ void SerialCommands::parse_incomming_command() {
 
     // Set the end null byte
     m_buffer[bytes_read] = '\0';
-    LOG("Got command %s with %zu chars\n", m_buffer, bytes_read);
+    LOG_TRACE("Got command %s with %zu chars\n", m_buffer, bytes_read);
 
     const char* arg_ptr = next_arg(m_buffer, &bytes_read);
     if (!arg_ptr) {
@@ -42,7 +42,7 @@ void SerialCommands::parse_incomming_command() {
             password_ptr = "";
         }
 
-        LOG("Connecting to %s with %s\n", arg_ptr, password_ptr);
+        LOG_INFO("Connecting to %s with %s\n", arg_ptr, password_ptr);
         WiFi.begin(arg_ptr, password_ptr);
     }
 }

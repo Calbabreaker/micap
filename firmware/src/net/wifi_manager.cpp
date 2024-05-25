@@ -8,20 +8,20 @@ void WiFiManager::setup() {
     WiFi.hostname("Mycap tracker");
     WiFi.mode(WIFI_STA);
     WiFi.persistent(true);
-    LOG("Loaded creds with SSID: %s\n", WiFi.SSID().c_str());
+    LOG_INFO("Loaded WiFi creds with SSID: %s", WiFi.SSID().c_str());
     WiFi.begin();
 }
 
 bool WiFiManager::monitor() {
     if (WiFi.isConnected()) {
         if (!m_connected) {
-            LOG("Connected to WiFi on %s\n", WiFi.localIP().toString().c_str());
+            LOG_INFO("Connected to WiFi on %s", WiFi.localIP().toString().c_str());
             m_connected = true;
             return true;
         }
     } else {
         if (m_connected) {
-            LOG("Lost WiFi connection\n");
+            LOG_WARN("Lost WiFi connection");
             m_connected = false;
         }
     }

@@ -1,11 +1,17 @@
 #pragma once
 
+#include <Arduino.h>
+
 #define ENABLE_LOG 1
 
 #if ENABLE_LOG == 1
-#define LOG(...) Serial.printf(__VA_ARGS__)
-// for libraries
-#define DEBUG
+#define LOG_INFO(msg, ...) Serial.printf("[info] " msg "\n", ##__VA_ARGS__)
+#define LOG_ERROR(msg, ...) Serial.printf("[error] " msg "\n", ##__VA_ARGS__)
+#define LOG_WARN(msg, ...) Serial.printf("[warn] " msg "\n", ##__VA_ARGS__)
+#define LOG_TRACE(msg, ...) Serial.printf("[trace] " msg "\n", ##__VA_ARGS__)
 #else
-#define LOG(...)
+#define LOG_INFO(msg, ...)
+#define LOG_ERROR(msg, ...)
+#define LOG_WARN(msg, ...)
+#define LOG_TRACE(msg, ...)
 #endif

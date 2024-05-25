@@ -1,5 +1,5 @@
 #include "led_manager.h"
-#include "consts.h"
+#include "config.h"
 
 #include <Arduino.h>
 

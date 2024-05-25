@@ -1,3 +1,5 @@
+use std::io::Read;
+
 use crate::math::Vector3;
 
 pub const PACKET_HEARTBEAT: u8 = 0x00;

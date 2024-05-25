@@ -4,13 +4,14 @@
 #include "math.h"
 #include "net/connection_manager.h"
 #include "serial_commands.h"
+#include "trackers/tracker_manager.h"
 
-#include <BMI160.h>
 #include <ESP8266WiFi.h>
 
-SerialCommands serial_commands;
-ConnectionManager connection_manager;
-LedManager internal_led(INTERNAL_LED_PIN);
+SerialCommands g_serial_commands;
+ConnectionManager g_connection_manager;
+LedManager g_internal_led(INTERNAL_LED_PIN);
+TrackerManager g_tracker_manager;
 
 float gyro_range;
 float accel_range;
@@ -23,34 +24,17 @@ float from_raw(int raw, float range) {
 
 void setup() {
     Serial.begin(9600);
-    internal_led.setup();
-    internal_led.on();
-
-    connection_manager.setup();
-
-    LOG("Initializing IMU device...\n");
-    Wire.begin();
-    BMI160Class device;
-    device.initialize();
-
-    LOG("DEVICE ID: %x\n", BMI160.getDeviceID());
-    gyro_range = (float)BMI160.getGyroRange();
-    accel_range = (float)BMI160.getAccelerometerRange() * 9.8;
+    g_internal_led.setup();
+    g_tracker_manager.setup();
+    g_connection_manager.setup();
 }
 
 void loop() {
-    serial_commands.parse_incomming_command();
-    connection_manager.update();
+    g_serial_commands.parse_incomming_command();
+    g_connection_manager.update();
 
-    if (connection_manager.is_connected()) {
-        int raw_data[3];
-        BMI160.readAccelerometer(raw_data[0], raw_data[1], raw_data[2]);
-
-        Vector3 accel(
-            from_raw(raw_data[0], accel_range), from_raw(raw_data[1], accel_range),
-            from_raw(raw_data[2], accel_range)
-        );
-        connection_manager.send_acceleration(accel);
+    if (g_connection_manager.is_connected()) {
+        g_tracker_manager.update();
     }
 
     delay(100);

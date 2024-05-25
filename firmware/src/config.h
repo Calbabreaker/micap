@@ -1,12 +1,11 @@
 #pragma once
 
 #include <IPAddress.h>
-#include <cstdint>
 #include <pins_arduino.h>
 
 #define UDP_PORT 5828
 
-// Uncomment if using a hardcoded ip
+// Uncomment to define hardcoded ip
 // #define SERVER_IP IPAddress(192, 168, 0, 0)
 
 #ifdef LED_BUILTIN

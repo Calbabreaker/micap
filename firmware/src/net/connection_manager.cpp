@@ -14,7 +14,7 @@ void ConnectionManager::update() {
 
     if (just_reconnected) {
         set_server_ip();
-        LOG("Broadcasting to %s\n", m_server_ip.toString().c_str());
+        LOG_INFO("Broadcasting to %s", m_server_ip.toString().c_str());
         m_udp.begin(UDP_PORT);
     }
 
@@ -27,13 +27,13 @@ void ConnectionManager::update() {
     if (!m_connected) {
         // Send handshake every 2000 ms
         if (now > m_last_sent_handshake_time + 2000) {
-            internal_led.blink(25);
+            g_internal_led.blink(25);
             send_handshake();
         }
     } else {
         // If we haven't got a packet from the server for 5000ms, we can assume we got disconnected
         if (now > m_last_received_time + 5000) {
-            LOG("Timed out and disconnected from server\n");
+            LOG_WARN("Timed out and disconnected from server");
             m_connected = false;
         }
     }
@@ -48,7 +48,7 @@ void ConnectionManager::receive_packets() {
     }
 
     int len = m_udp.read(m_buffer, sizeof(m_buffer));
-    LOG("Received %d bytes from %s\n", len, m_udp.remoteIP().toString().c_str());
+    LOG_TRACE("Received %d bytes from %s", len, m_udp.remoteIP().toString().c_str());
     m_last_received_time = millis();
 
     switch (m_buffer[0]) {
@@ -60,12 +60,12 @@ void ConnectionManager::receive_packets() {
         }
 
         if (!m_connected) {
-            LOG("Successfully handshaked with %s\n", m_udp.remoteIP().toString().c_str());
+            LOG_INFO("Successfully handshaked with %s", m_udp.remoteIP().toString().c_str());
             m_connected = true;
             m_server_ip = m_udp.remoteIP();
         } else {
             // Ignore later handshake packets
-            LOG("Received handshake while already connected\n");
+            LOG_WARN("Received handshake while already connected");
         }
         break;
     case PACKET_HEARTBEAT:
@@ -76,7 +76,7 @@ void ConnectionManager::receive_packets() {
 }
 
 void ConnectionManager::send_handshake() {
-    LOG("Sending handshake packet...\n");
+    LOG_TRACE("Sending handshake packet...");
 
     begin_packet();
     m_udp.write(PACKET_HANDSHAKE);
