@@ -1,7 +1,6 @@
 #include "config.h"
 #include "led_manager.h"
 #include "log.h"
-#include "math.h"
 #include "net/connection_manager.h"
 #include "serial_commands.h"
 #include "trackers/tracker_manager.h"
@@ -13,20 +12,15 @@ ConnectionManager g_connection_manager;
 LedManager g_internal_led(INTERNAL_LED_PIN);
 TrackerManager g_tracker_manager;
 
-float gyro_range;
-float accel_range;
-
-float from_raw(int raw, float range) {
-    // (LSB/°/s or LSB/m/s^2)
-    float sensitivity = 0x8000 / range;
-    return (float)raw / sensitivity;
-}
+uint64_t last_loop_time;
 
 void setup() {
     Serial.begin(9600);
     g_internal_led.setup();
     g_tracker_manager.setup();
     g_connection_manager.setup();
+
+    last_loop_time = millis();
 }
 
 void loop() {
@@ -37,5 +31,13 @@ void loop() {
         g_tracker_manager.update();
     }
 
-    delay(100);
+    uint64_t delta = millis() - last_loop_time;
+    int64_t sleep_time = TARGET_LOOP_DELTA_MS - (int64_t)delta;
+    if (sleep_time > 0) {
+        delay(sleep_time);
+    } else {
+        LOG_WARN("Loop took %lu ms which is longer than target %d ms", delta, TARGET_LOOP_DELTA_MS);
+    }
+
+    last_loop_time = millis();
 }
