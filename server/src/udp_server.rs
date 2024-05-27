@@ -130,7 +130,7 @@ impl UdpServer {
                     device.set_tracker_status(packet.tracker_id, packet.tracker_status);
 
                     // Send back the tracker status so the device knows the server knows it
-                    self.socket.send_to(&self.buffer[0..2], src).await?;
+                    self.socket.send_to(&self.buffer[0..3], src).await?;
                 }
             }
             _ => {

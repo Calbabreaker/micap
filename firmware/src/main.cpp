@@ -1,4 +1,5 @@
 #include "config.h"
+#include "globals.h"
 #include "led_manager.h"
 #include "log.h"
 #include "net/connection_manager.h"

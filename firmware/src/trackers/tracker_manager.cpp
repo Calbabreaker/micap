@@ -14,6 +14,9 @@ Tracker* make_tracker(TrackerKind kind, uint8_t id, uint8_t address) {
     switch (kind) {
     case TrackerKind::BMI160:
         return new TrackerBMI160(id, address);
+    default:
+        LOG_ERROR("Unknown tracker kind %d", (uint8_t)kind);
+        return nullptr;
     }
 }
 
@@ -24,20 +27,20 @@ void TrackerManager::register_tracker(TrackerKind kind, uint8_t address, bool re
         return;
     }
 
-    LOG_INFO("Tracker %d found with address 0x%02x", id, address);
     Tracker* tracker = make_tracker(kind, id, address);
 
     if (i2c_device_connected(address)) {
         if (required) {
-            LOG_ERROR("Required tracker %d with address 0x%02x was not found", id, address);
+            LOG_ERROR("Required tracker %d with address 0x%02x not found", id, address);
             tracker->status = TrackerStatus::Error;
         } else {
-            LOG_WARN("Optional tracker %d with address 0x%02x was not found", id, address);
+            LOG_WARN("Optional tracker %d with address 0x%02x not found", id, address);
             tracker->status = TrackerStatus::Off;
         }
     }
 
     if (tracker->status == TrackerStatus::Ok) {
+        LOG_INFO("Tracker %d found with address 0x%02x", id, address);
         tracker->setup();
         m_ok_tracker_count += 1;
     }
@@ -70,7 +73,7 @@ void TrackerManager::update() {
 }
 
 void TrackerManager::poll_tracker_status() {
-    LOG_INFO("Polling i2c bus for new trackers");
+    LOG_TRACE("Polling i2c bus for new trackers");
     for (Tracker* tracker : m_trackers) {
         // If the tracker isn't ok, try to see if it is connected and setup again
         if (tracker->status != TrackerStatus::Ok && i2c_device_connected(tracker->get_address())) {

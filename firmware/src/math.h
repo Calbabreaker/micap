@@ -16,6 +16,7 @@ public:
 
 class Quaternion {
 public:
+    Quaternion() = default;
     Quaternion(float x, float y, float z, float w) : x(x), y(y), z(z), w(w){};
 
     inline uint8_t* as_bytes() { return (uint8_t*)this; }

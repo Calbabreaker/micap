@@ -4,7 +4,6 @@
 #include "log.h"
 
 #include <ESP8266WiFi.h>
-#include <vector>
 
 void ConnectionManager::setup() {
     m_wifi.setup();
@@ -20,8 +19,8 @@ void ConnectionManager::update() {
 
         // Set the tracker statuses to off so they can be resent
         std::fill(
-            m_tracker_statuses_on_server, m_tracker_statuses_on_server + MAX_TRACKER_COUNT,
-            TrackerStatus::Off
+            m_tracker_statuses_on_server.begin(),
+            m_tracker_statuses_on_server.begin() + MAX_TRACKER_COUNT, TrackerStatus::Off
         );
     }
 
@@ -38,7 +37,7 @@ void ConnectionManager::update() {
         }
     } else {
         // Try and send tracker statuses every 2000 ms
-        if (millis() > m_last_tracker_status_sent_time + 200) {
+        if (millis() > m_last_tracker_status_sent_time + 2000) {
             update_tracker_statuses();
         }
 
@@ -82,7 +81,7 @@ void ConnectionManager::receive_packets() {
     case PACKET_TRACKER_STATUS: {
         uint8_t id = m_buffer[1];
         if (id < m_tracker_statuses_on_server.size()) {
-            m_tracker_statuses_on_server[id] = m_buffer[2];
+            m_tracker_statuses_on_server[id] = (TrackerStatus)m_buffer[2];
         }
         break;
     }
@@ -144,7 +143,7 @@ void ConnectionManager::send_tracker_status(uint8_t tracker_id, TrackerStatus tr
     begin_packet();
     m_udp.write(PACKET_TRACKER_STATUS);
     m_udp.write(tracker_id);
-    m_udp.write(tracker_state);
+    m_udp.write((uint8_t)tracker_state);
     end_packet();
 }
 
