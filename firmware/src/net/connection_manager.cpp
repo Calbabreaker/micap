@@ -4,6 +4,7 @@
 #include "log.h"
 
 #include <ESP8266WiFi.h>
+#include <vector>
 
 void ConnectionManager::setup() {
     m_wifi.setup();
@@ -16,6 +17,12 @@ void ConnectionManager::update() {
         set_server_ip();
         LOG_INFO("Broadcasting to %s", m_server_ip.toString().c_str());
         m_udp.begin(UDP_PORT);
+
+        // Set the tracker statuses to off so they can be resent
+        std::fill(
+            m_tracker_statuses_on_server, m_tracker_statuses_on_server + MAX_TRACKER_COUNT,
+            TrackerStatus::Off
+        );
     }
 
     if (!m_wifi.is_connected()) {
@@ -23,16 +30,20 @@ void ConnectionManager::update() {
         return;
     }
 
-    uint64_t now = millis();
     if (!m_connected) {
         // Send handshake every 2000 ms
-        if (now > m_last_sent_handshake_time + 2000) {
+        if (millis() > m_last_sent_handshake_time + 2000) {
             g_internal_led.blink(25);
             send_handshake();
         }
     } else {
+        // Try and send tracker statuses every 2000 ms
+        if (millis() > m_last_tracker_status_sent_time + 200) {
+            update_tracker_statuses();
+        }
+
         // If we haven't got a packet from the server for 5000ms, we can assume we got disconnected
-        if (now > m_last_received_time + 5000) {
+        if (millis() > m_last_received_time + 5000) {
             LOG_WARN("Timed out and disconnected from server");
             m_connected = false;
         }
@@ -68,11 +79,31 @@ void ConnectionManager::receive_packets() {
             LOG_WARN("Received handshake while already connected");
         }
         break;
+    case PACKET_TRACKER_STATUS: {
+        uint8_t id = m_buffer[1];
+        if (id < m_tracker_statuses_on_server.size()) {
+            m_tracker_statuses_on_server[id] = m_buffer[2];
+        }
+        break;
+    }
     case PACKET_HEARTBEAT:
         // Ping back heartbeat
         send_hearbeat();
         break;
+    default:
+        LOG_WARN("Received invalid packet id %d", m_buffer[0]);
+        break;
     }
+}
+
+void ConnectionManager::update_tracker_statuses() {
+    for (Tracker* tracker : g_tracker_manager.get_trackers()) {
+        if (tracker->status != m_tracker_statuses_on_server[tracker->get_id()]) {
+            send_tracker_status(tracker->get_id(), tracker->status);
+        }
+    }
+
+    m_last_tracker_status_sent_time = millis();
 }
 
 void ConnectionManager::send_handshake() {
@@ -93,10 +124,27 @@ void ConnectionManager::send_hearbeat() {
     end_packet();
 }
 
-void ConnectionManager::send_acceleration(Vector3 acceleration) {
+void ConnectionManager::send_tracker_data() {
     begin_packet();
-    m_udp.write(PACKET_ACCELERATION);
-    m_udp.write(acceleration.as_bytes(), sizeof(float) * 3);
+
+    // Packs orientation and acceleration data for each tracker in a single packet
+    m_udp.write(PACKET_TRACKER_DATA);
+    m_udp.write(g_tracker_manager.get_ok_tracker_count()); // Number of trackers in this packet
+
+    for (Tracker* tracker : g_tracker_manager.get_trackers()) {
+        m_udp.write(tracker->get_id());
+        m_udp.write(tracker->acceleration.as_bytes(), sizeof(float) * 3);
+        m_udp.write(tracker->orientation.as_bytes(), sizeof(float) * 4);
+    }
+
+    end_packet();
+}
+
+void ConnectionManager::send_tracker_status(uint8_t tracker_id, TrackerStatus tracker_state) {
+    begin_packet();
+    m_udp.write(PACKET_TRACKER_STATUS);
+    m_udp.write(tracker_id);
+    m_udp.write(tracker_state);
     end_packet();
 }
 

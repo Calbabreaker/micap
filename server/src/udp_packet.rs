@@ -1,27 +1,33 @@
-use std::io::Read;
-
-use crate::math::Vector3;
+use crate::math::{Quaternion, Vector3};
 
 pub const PACKET_HEARTBEAT: u8 = 0x00;
 pub const PACKET_HANDSHAKE: u8 = 0x01;
-pub const PACKET_TRACKER_INFO: u8 = 0x02;
-pub const PACKET_ACCELERATION: u8 = 0x10;
+pub const PACKET_TRACKER_STATUS: u8 = 0x02;
+pub const PACKET_TRACKER_DATA: u8 = 0x03;
+
+#[derive(Default)]
+pub enum TrackerStatus {
+    Ok,
+    Error,
+    #[default]
+    Off,
+}
 
 pub enum UdpPacket {
     Handshake(UdpPacketHandshake),
-    Acceleration(UdpPacketAcceleration),
-    Hearbeat,
+    TrackerData(UdpPacketTrackerData),
+    TrackerStatus(UdpPacketTrackerStatus),
+    Heartbeat,
 }
 
 impl UdpPacket {
-    pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
-        let packet_type = *bytes.first()?;
-        let packet_data = bytes.get(1..)?;
-        Some(match packet_type {
-            PACKET_HEARTBEAT => Self::Hearbeat,
-            PACKET_HANDSHAKE => Self::Handshake(UdpPacketHandshake::from_bytes(packet_data)?),
-            PACKET_ACCELERATION => {
-                Self::Acceleration(UdpPacketAcceleration::from_bytes(packet_data)?)
+    pub fn from_bytes(bytes: &mut std::slice::Iter<u8>) -> Option<Self> {
+        Some(match *bytes.next()? {
+            PACKET_HEARTBEAT => Self::Heartbeat,
+            PACKET_HANDSHAKE => Self::Handshake(UdpPacketHandshake::from_bytes(bytes)?),
+            PACKET_TRACKER_DATA => Self::TrackerData(UdpPacketTrackerData::from_bytes(bytes)?),
+            PACKET_TRACKER_STATUS => {
+                Self::TrackerStatus(UdpPacketTrackerStatus::from_bytes(bytes)?)
             }
             _ => return None,
         })
@@ -33,15 +39,19 @@ pub struct UdpPacketHandshake {
 }
 
 impl UdpPacketHandshake {
-    pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
-        if bytes.get(0..12)? != b"MYCAP-DEVICE" {
+    fn from_bytes(bytes: &mut std::slice::Iter<u8>) -> Option<Self> {
+        if !next_equals(bytes, b"MYCAP-DEVICE") {
             return None;
         }
 
-        let mac = bytes.get(12..18)?;
         let mac_string = format!(
             "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
-            mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]
+            bytes.next()?,
+            bytes.next()?,
+            bytes.next()?,
+            bytes.next()?,
+            bytes.next()?,
+            bytes.next()?,
         );
 
         Some(Self { mac_string })
@@ -51,22 +61,82 @@ impl UdpPacketHandshake {
     pub const RESPONSE: &'static [u8] = "\u{1}MYCAP-SERVER".as_bytes();
 }
 
-pub struct UdpPacketAcceleration {
-    pub acceleration: Vector3,
+pub struct UdpPacketTrackerStatus {
+    pub tracker_id: u8,
+    pub tracker_status: TrackerStatus,
 }
 
-impl UdpPacketAcceleration {
-    pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
+impl UdpPacketTrackerStatus {
+    fn from_bytes(bytes: &mut std::slice::Iter<u8>) -> Option<Self> {
         Some(Self {
-            acceleration: Vector3::new(
-                f32_safe_from_raw(bytes.get(0..4)?),
-                f32_safe_from_raw(bytes.get(4..8)?),
-                f32_safe_from_raw(bytes.get(8..12)?),
+            tracker_id: *bytes.next()?,
+            tracker_status: match bytes.next()? {
+                0 => TrackerStatus::Ok,
+                1 => TrackerStatus::Error,
+                2 => TrackerStatus::Off,
+                _ => return None,
+            },
+        })
+    }
+}
+
+#[derive(Debug)]
+pub struct TrackerData {
+    pub id: u8,
+    pub orientation: Quaternion,
+    pub accleration: Vector3,
+}
+
+pub struct UdpPacketTrackerData {
+    pub num_trackers: usize,
+    pub current_tracker_index: usize,
+}
+
+impl UdpPacketTrackerData {
+    fn from_bytes(bytes: &mut std::slice::Iter<u8>) -> Option<Self> {
+        Some(Self {
+            num_trackers: *bytes.next()? as usize,
+            current_tracker_index: 0,
+        })
+    }
+
+    pub fn next(&mut self, bytes: &mut std::slice::Iter<u8>) -> Option<TrackerData> {
+        if self.current_tracker_index >= self.num_trackers {
+            return None;
+        }
+
+        Some(TrackerData {
+            id: *bytes.next()?,
+            orientation: Quaternion::new(
+                f32_safe_from_raw(bytes)?,
+                f32_safe_from_raw(bytes)?,
+                f32_safe_from_raw(bytes)?,
+                f32_safe_from_raw(bytes)?,
+            ),
+            accleration: Vector3::new(
+                f32_safe_from_raw(bytes)?,
+                f32_safe_from_raw(bytes)?,
+                f32_safe_from_raw(bytes)?,
             ),
         })
     }
 }
 
-pub fn f32_safe_from_raw(bytes: &[u8]) -> f32 {
-    f32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])
+fn f32_safe_from_raw(bytes: &mut std::slice::Iter<u8>) -> Option<f32> {
+    Some(f32::from_le_bytes([
+        *bytes.next()?,
+        *bytes.next()?,
+        *bytes.next()?,
+        *bytes.next()?,
+    ]))
+}
+
+fn next_equals(bytes: &mut std::slice::Iter<u8>, slice: &[u8]) -> bool {
+    for expected in slice {
+        if bytes.next() != Some(expected) {
+            return false;
+        }
+    }
+
+    true
 }

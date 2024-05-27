@@ -79,22 +79,22 @@ void TrackerBMI160::setup() {
 
     if (result != BMI160_OK) {
         LOG_ERROR("Failed to initialize BMI160 with address 0x%02x", m_address);
-        return;
+        this->status = TrackerStatus::Error;
     }
-
-    // TODO: add calibration
-
-    m_working = true;
 }
 
 void TrackerBMI160::update() {
     struct bmi160_sensor_data raw_accel;
-    int8_t result = bmi160_get_sensor_data(BMI160_ACCEL_SEL, &raw_accel, NULL, &m_device);
+    struct bmi160_sensor_data raw_gyro;
+    int8_t result =
+        bmi160_get_sensor_data(BMI160_BOTH_ACCEL_AND_GYRO, &raw_accel, &raw_gyro, &m_device);
 
-    m_accleration = Vector3(raw_accel.x, raw_accel.y, raw_accel.z);
+    this->acceleration = Vector3(raw_accel.x, raw_accel.y, raw_accel.z);
+    // Definitely not correct
+    this->orientation = Quaternion(raw_gyro.x, raw_gyro.y, raw_gyro.z, 1.0);
 
     if (result != BMI160_OK) {
         LOG_ERROR("BMI160 tracker error %d", result);
-        m_working = false;
+        this->status = TrackerStatus::Error;
     }
 }

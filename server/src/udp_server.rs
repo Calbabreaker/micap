@@ -1,21 +1,25 @@
-use std::{
-    collections::HashMap,
-    net::{Ipv4Addr, SocketAddr},
-};
+use std::{collections::HashMap, net::SocketAddr};
 use tokio::net::UdpSocket;
 use tokio::time::{Duration, Instant};
 
-use crate::udp_packet::{UdpPacket, UdpPacketHandshake, PACKET_HEARTBEAT};
+use crate::udp_packet::{TrackerStatus, UdpPacket, UdpPacketHandshake, PACKET_HEARTBEAT};
 
 pub const DEVICE_TIMEOUT: Duration = Duration::from_millis(5000);
 pub const UPKEEP_INTERVAL: Duration = Duration::from_millis(1000);
 pub const SOCKET_TIMEOUT: Duration = Duration::from_millis(500);
+
+#[derive(Default)]
+pub struct UdpTracker {
+    id: u8,
+    status: TrackerStatus,
+}
 
 pub struct UdpDevice {
     index: usize,
     last_packet_received_time: Instant,
     timed_out: bool,
     address: SocketAddr,
+    trackers: Vec<UdpTracker>,
 }
 
 impl UdpDevice {
@@ -25,7 +29,19 @@ impl UdpDevice {
             address,
             last_packet_received_time: Instant::now(),
             timed_out: false,
+            trackers: Vec::new(),
         }
+    }
+
+    fn set_tracker_status(&mut self, id: u8, status: TrackerStatus) {
+        if id as usize >= self.trackers.len() {
+            self.trackers
+                .resize_with((id + 1) as usize, Default::default);
+        }
+
+        let tracker = &mut self.trackers[id as usize];
+        tracker.id = id;
+        tracker.status = status;
     }
 }
 
@@ -98,14 +114,25 @@ impl UdpServer {
             device.last_packet_received_time = Instant::now();
         }
 
-        match UdpPacket::from_bytes(&self.buffer) {
+        let mut bytes = self.buffer.iter();
+        match UdpPacket::from_bytes(&mut bytes) {
             Some(UdpPacket::Handshake(handshake)) => {
                 self.handle_handshake(handshake, src).await?;
             }
-            Some(UdpPacket::Acceleration(accel)) => {
-                log::info!("ACCEL: {:?}", &accel.acceleration);
+            Some(UdpPacket::TrackerData(mut packet)) => {
+                while let Some(data) = packet.next(&mut bytes) {
+                    log::trace!("{:?}", data);
+                }
             }
-            Some(UdpPacket::Hearbeat) => {}
+            Some(UdpPacket::Heartbeat) => {}
+            Some(UdpPacket::TrackerStatus(packet)) => {
+                if let Some(device) = self.device_by_addr(&src) {
+                    device.set_tracker_status(packet.tracker_id, packet.tracker_status);
+
+                    // Send back the tracker status so the device knows the server knows it
+                    self.socket.send_to(&self.buffer[0..2], src).await?;
+                }
+            }
             _ => {
                 log::warn!(
                     "Received invalid packet: {}",

@@ -4,7 +4,12 @@
 
 enum class TrackerKind : uint8_t {
     BMI160, // only bmi160 supported for now
-    Bad,    // error setting up tracker
+};
+
+enum class TrackerStatus : uint8_t {
+    Ok,
+    Error, // Shown as error on the UI
+    Off,   // Won't be shown on the UI
 };
 
 class Tracker {
@@ -16,16 +21,17 @@ public:
     virtual void setup(){};
     virtual void update(){};
 
-    inline bool is_working() {
-        return m_working;
-    }
+    inline uint8_t get_id() { return m_id; }
+    inline uint8_t get_address() { return m_address; }
 
-    void send_data();
+public:
+    TrackerStatus status = TrackerStatus::Ok;
+    // Values to be sent to server on each update loop
+    Vector3 acceleration;
+    Quaternion orientation;
 
 protected:
     TrackerKind m_kind;
     uint8_t m_id;
     uint8_t m_address;
-    Vector3 m_accleration;
-    bool m_working = false;
 };

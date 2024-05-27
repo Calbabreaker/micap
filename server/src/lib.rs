@@ -5,7 +5,7 @@ mod serial;
 mod udp_packet;
 mod udp_server;
 
-use std::{net::SocketAddr, str::FromStr, sync::Arc};
+use std::{net::SocketAddr, sync::Arc};
 
 use futures_util::{lock::Mutex, StreamExt, TryFutureExt};
 use warp::{filters::ws::WebSocket, Filter};
@@ -42,12 +42,6 @@ pub async fn start_server() {
         .await;
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[serde(tag = "type")]
-pub enum WebsocketMessage {
-    Serial { command: String },
-}
-
 async fn on_connect(ws: WebSocket) {
     let (ws_tx, mut ws_rx) = ws.split();
 
@@ -66,6 +60,12 @@ async fn on_connect(ws: WebSocket) {
             }
         }
     }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "type")]
+pub enum WebsocketMessage {
+    Serial { command: String },
 }
 
 fn handle_websocket_message(message: WebsocketMessage) {
