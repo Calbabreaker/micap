@@ -5,7 +5,7 @@ pub const PACKET_HANDSHAKE: u8 = 0x01;
 pub const PACKET_TRACKER_STATUS: u8 = 0x02;
 pub const PACKET_TRACKER_DATA: u8 = 0x03;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub enum TrackerStatus {
     Ok,
     Error,
@@ -61,6 +61,7 @@ impl UdpPacketHandshake {
     pub const RESPONSE: &'static [u8] = "\u{1}MYCAP-SERVER".as_bytes();
 }
 
+#[derive(Debug)]
 pub struct UdpPacketTrackerStatus {
     pub tracker_id: u8,
     pub tracker_status: TrackerStatus,

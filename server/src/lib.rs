@@ -25,6 +25,7 @@ pub fn setup_log() {
     env_logger::builder()
         .format_timestamp(None)
         .filter_level(log::LevelFilter::Info)
+        .filter_module("mycap", log::LevelFilter::Trace)
         .init();
 }
 

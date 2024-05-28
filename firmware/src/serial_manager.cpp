@@ -2,7 +2,7 @@
 
 #include "ESP8266WiFi.h"
 #include "log.h"
-#include "serial_commands.h"
+#include "serial_manager.h"
 
 // Go to the start of the next string using strlen (which relies on the null byte)
 const char* next_arg(const char* start, size_t* length_left) {
@@ -16,7 +16,7 @@ const char* next_arg(const char* start, size_t* length_left) {
 }
 
 // The commands are in the format of command name seperated by null byte for each argument
-void SerialCommands::parse_incomming_command() {
+void SerialManager::parse_incomming_command() {
     if (!Serial.available()) {
         return;
     }

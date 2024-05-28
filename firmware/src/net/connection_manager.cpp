@@ -1,7 +1,8 @@
 #include "connection_manager.h"
-#include "config.h"
+#include "defines.h"
 #include "globals.h"
 #include "log.h"
+#include "trackers/tracker.h"
 
 #include <ESP8266WiFi.h>
 
@@ -16,12 +17,6 @@ void ConnectionManager::update() {
         set_server_ip();
         LOG_INFO("Broadcasting to %s", m_server_ip.toString().c_str());
         m_udp.begin(UDP_PORT);
-
-        // Set the tracker statuses to off so they can be resent
-        std::fill(
-            m_tracker_statuses_on_server.begin(),
-            m_tracker_statuses_on_server.begin() + MAX_TRACKER_COUNT, TrackerStatus::Off
-        );
     }
 
     if (!m_wifi.is_connected()) {
@@ -73,6 +68,12 @@ void ConnectionManager::receive_packets() {
             LOG_INFO("Successfully handshaked with %s", m_udp.remoteIP().toString().c_str());
             m_connected = true;
             m_server_ip = m_udp.remoteIP();
+
+            // Set the tracker statuses to off so they can be resent
+            std::fill(
+                m_tracker_statuses_on_server.begin(),
+                m_tracker_statuses_on_server.begin() + MAX_TRACKER_COUNT, TrackerStatus::Off
+            );
         } else {
             // Ignore later handshake packets
             LOG_WARN("Received handshake while already connected");
@@ -123,17 +124,33 @@ void ConnectionManager::send_hearbeat() {
     end_packet();
 }
 
+// Packs orientation and acceleration data for each tracker in a single packet
 void ConnectionManager::send_tracker_data() {
-    begin_packet();
+    uint8_t tracker_count = 0;
+    for (Tracker* tracker : g_tracker_manager.get_trackers()) {
+        if (should_send_tracker_data(tracker)) {
+            // Update the tracker here so it only happens once the server knows the tracker status
+            tracker->update();
 
-    // Packs orientation and acceleration data for each tracker in a single packet
+            // Tracker update could have resulted in an error
+            if (tracker->status == TrackerStatus::Ok) {
+                tracker_count += 1;
+            }
+        }
+    }
+
+    begin_packet();
     m_udp.write(PACKET_TRACKER_DATA);
-    m_udp.write(g_tracker_manager.get_ok_tracker_count()); // Number of trackers in this packet
+
+    // Send number of trackers in this packet so server knows how much to read
+    m_udp.write(tracker_count);
 
     for (Tracker* tracker : g_tracker_manager.get_trackers()) {
-        m_udp.write(tracker->get_id());
-        m_udp.write(tracker->acceleration.as_bytes(), sizeof(float) * 3);
-        m_udp.write(tracker->orientation.as_bytes(), sizeof(float) * 4);
+        if (should_send_tracker_data(tracker)) {
+            m_udp.write(tracker->get_id());
+            m_udp.write(tracker->acceleration.as_bytes(), sizeof(float) * 3);
+            m_udp.write(tracker->orientation.as_bytes(), sizeof(float) * 4);
+        }
     }
 
     end_packet();
@@ -145,6 +162,11 @@ void ConnectionManager::send_tracker_status(uint8_t tracker_id, TrackerStatus tr
     m_udp.write(tracker_id);
     m_udp.write((uint8_t)tracker_state);
     end_packet();
+}
+
+bool ConnectionManager::should_send_tracker_data(Tracker* tracker) {
+    return tracker->status == TrackerStatus::Ok &&
+           m_tracker_statuses_on_server[tracker->get_id()] == TrackerStatus::Ok;
 }
 
 void ConnectionManager::write_str(const char* str) {

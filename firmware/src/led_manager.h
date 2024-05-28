@@ -1,6 +1,14 @@
 #pragma once
 
 #include <cstdint>
+#include <pins_arduino.h>
+
+#ifdef LED_BUILTIN
+#define INTERNAL_LED_PIN LED_BUILTIN
+#define LED_ENABLED
+#else
+#define INTERNAL_LED_PIN 0
+#endif
 
 class LedManager {
 public:

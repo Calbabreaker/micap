@@ -29,7 +29,7 @@ void TrackerManager::register_tracker(TrackerKind kind, uint8_t address, bool re
 
     Tracker* tracker = make_tracker(kind, id, address);
 
-    if (i2c_device_connected(address)) {
+    if (!i2c_device_connected(address)) {
         if (required) {
             LOG_ERROR("Required tracker %d with address 0x%02x not found", id, address);
             tracker->status = TrackerStatus::Error;
@@ -42,7 +42,6 @@ void TrackerManager::register_tracker(TrackerKind kind, uint8_t address, bool re
     if (tracker->status == TrackerStatus::Ok) {
         LOG_INFO("Tracker %d found with address 0x%02x", id, address);
         tracker->setup();
-        m_ok_tracker_count += 1;
     }
 
     m_trackers[id] = tracker;
@@ -52,27 +51,16 @@ void TrackerManager::register_tracker(TrackerKind kind, uint8_t address, bool re
 void TrackerManager::setup() {
     Wire.begin();
 
-    m_ok_tracker_count = 0;
     register_tracker(TrackerKind::BMI160, 0x68, true);
     register_tracker(TrackerKind::BMI160, 0x69, false);
 }
 
-void TrackerManager::update() {
-    // Do polling every 3000 ms
-    if (millis() > m_last_status_poll_time + 3000) {
-        poll_tracker_status();
-    }
-
-    m_ok_tracker_count = 0;
-    for (Tracker* tracker : m_trackers) {
-        if (tracker->status == TrackerStatus::Ok) {
-            tracker->update();
-            m_ok_tracker_count += 1;
-        }
-    }
-}
-
 void TrackerManager::poll_tracker_status() {
+    // Do polling every 5000 ms
+    if (millis() < m_last_status_poll_time + 5000) {
+        return;
+    }
+
     LOG_TRACE("Polling i2c bus for new trackers");
     for (Tracker* tracker : m_trackers) {
         // If the tracker isn't ok, try to see if it is connected and setup again

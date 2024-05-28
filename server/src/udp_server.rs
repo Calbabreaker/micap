@@ -78,7 +78,7 @@ impl UdpServer {
             if let Ok(Ok((amount, src))) =
                 tokio::time::timeout(SOCKET_TIMEOUT, self.socket.recv_from(&mut self.buffer)).await
             {
-                log::info!("Received {amount} bytes from {src}");
+                log::trace!("Received {amount} bytes from {src}");
                 self.handle_packet(src).await?;
             }
 
@@ -126,6 +126,7 @@ impl UdpServer {
             }
             Some(UdpPacket::Heartbeat) => {}
             Some(UdpPacket::TrackerStatus(packet)) => {
+                log::trace!("Got {:?}", packet);
                 if let Some(device) = self.device_by_addr(&src) {
                     device.set_tracker_status(packet.tracker_id, packet.tracker_status);
 

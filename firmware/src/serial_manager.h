@@ -1,6 +1,6 @@
 #pragma once
 
-class SerialCommands {
+class SerialManager {
 public:
     void parse_incomming_command();
 

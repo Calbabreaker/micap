@@ -2,7 +2,7 @@
 
 #include <WiFiUdp.h>
 
-#include "config.h"
+#include "defines.h"
 #include "net/wifi_manager.h"
 #include "trackers/tracker.h"
 
@@ -30,6 +30,7 @@ private:
 
     void receive_packets();
     void update_tracker_statuses();
+    bool should_send_tracker_data(Tracker* tracker);
 
     void set_server_ip();
 

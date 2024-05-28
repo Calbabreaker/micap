@@ -1,14 +1,14 @@
-#include "config.h"
+#include "defines.h"
 #include "globals.h"
 #include "led_manager.h"
 #include "log.h"
 #include "net/connection_manager.h"
-#include "serial_commands.h"
+#include "serial_manager.h"
 #include "trackers/tracker_manager.h"
 
 #include <ESP8266WiFi.h>
 
-SerialCommands g_serial_commands;
+SerialManager g_serial_manager;
 ConnectionManager g_connection_manager;
 LedManager g_internal_led(INTERNAL_LED_PIN);
 TrackerManager g_tracker_manager;
@@ -25,11 +25,11 @@ void setup() {
 }
 
 void loop() {
-    g_serial_commands.parse_incomming_command();
+    g_serial_manager.parse_incomming_command();
     g_connection_manager.update();
 
     if (g_connection_manager.is_connected()) {
-        g_tracker_manager.update();
+        g_connection_manager.send_tracker_data();
     }
 
     uint64_t delta = millis() - last_loop_time;
@@ -37,7 +37,10 @@ void loop() {
     if (sleep_time > 0) {
         delay(sleep_time);
     } else {
-        LOG_WARN("Loop took %lu ms which is longer than target %d ms", delta, TARGET_LOOP_DELTA_MS);
+        LOG_WARN(
+            "Loop took %lu ms which is longer than target " STRINGIFY_V(TARGET_LOOP_DELTA_MS) " ms",
+            delta
+        );
     }
 
     last_loop_time = millis();
