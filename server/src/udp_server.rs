@@ -4,9 +4,9 @@ use tokio::time::{Duration, Instant};
 
 use crate::udp_packet::{TrackerStatus, UdpPacket, UdpPacketHandshake, PACKET_HEARTBEAT};
 
-pub const DEVICE_TIMEOUT: Duration = Duration::from_millis(5000);
-pub const UPKEEP_INTERVAL: Duration = Duration::from_millis(1000);
-pub const SOCKET_TIMEOUT: Duration = Duration::from_millis(500);
+const DEVICE_TIMEOUT: Duration = Duration::from_millis(5000);
+const UPKEEP_INTERVAL: Duration = Duration::from_millis(1000);
+const SOCKET_TIMEOUT: Duration = Duration::from_millis(500);
 
 #[derive(Default)]
 pub struct UdpTracker {

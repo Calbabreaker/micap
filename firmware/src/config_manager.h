@@ -3,24 +3,18 @@
 #include <array>
 #include <cstdint>
 
-#include "defines.h"
-
 struct WifiEntry {
-    char ssid[32];
-    char password[64];
-};
-
-struct Config {
-    std::array<WifiEntry, MAX_WIFI_ENTRIES> wifi_entries;
-    uint8_t current_wifi_entry;
+    uint32_t last_server_ip;
+    char password[65]; // Can only be a maximum of 64 characters (plus null byte)
 };
 
 class ConfigManager {
 public:
-    // Set the password for the SSID or adds a new entry if it doesn't exist
-    void set_wifi_entry(const char* ssid, const char* passphrase);
-    WifiEntry& get_wifi_entry();
+    void setup();
+
+    void save_wifi_entry(const char* ssid, uint32_t last_sever_ip, const char* password);
+    WifiEntry get_wifi_entry(const char* ssid);
 
 private:
-    Config m_config;
+    char m_path_buf[64];
 };
