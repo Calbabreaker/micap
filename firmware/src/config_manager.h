@@ -1,19 +1,25 @@
 #pragma once
 
-#include <vector>
+#include <array>
+#include <cstdint>
+
+#include "defines.h"
 
 struct WifiEntry {
-    const char* ssid;
-    const char* passphrase;
+    char ssid[32];
+    char password[64];
 };
 
 struct Config {
-    std::vector<WifiEntry> wifi_entries;
+    std::array<WifiEntry, MAX_WIFI_ENTRIES> wifi_entries;
+    uint8_t current_wifi_entry;
 };
 
 class ConfigManager {
 public:
-    void save();
+    // Set the password for the SSID or adds a new entry if it doesn't exist
+    void set_wifi_entry(const char* ssid, const char* passphrase);
+    WifiEntry& get_wifi_entry();
 
 private:
     Config m_config;

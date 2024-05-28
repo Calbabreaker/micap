@@ -23,7 +23,7 @@ Tracker* make_tracker(TrackerKind kind, uint8_t id, uint8_t address) {
 void TrackerManager::register_tracker(TrackerKind kind, uint8_t address, bool required) {
     uint8_t id = m_next_tracker_id;
     if (id >= m_trackers.size()) {
-        LOG_ERROR("Number of trackers exceeded MAX_TRACKER_COUNT, please increase in config.h");
+        LOG_ERROR("Number of trackers exceeded MAX_TRACKER_COUNT, please increase in defines.h");
         return;
     }
 
