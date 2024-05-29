@@ -1,9 +1,9 @@
 #include "config_manager.h"
 #include "log.h"
-#include <cstdio>
-#include <cstring>
+#include <Arduino.h>
 
 #include <LittleFS.h>
+#include <cstring>
 
 #define WIFI_DIR "/wifi"
 
@@ -15,31 +15,41 @@ void ConfigManager::setup() {
 
     FSInfo fs_info;
     LittleFS.info(fs_info);
-    LOG_INFO("Used %zu so far", fs_info.usedBytes);
-}
+    LOG_INFO("Used %zu bytes in LittleFS", fs_info.usedBytes);
 
-void ConfigManager::save_wifi_entry(
-    const char* ssid, uint32_t last_server_ip, const char* password
-) {
-    snprintf(m_path_buf, sizeof(m_path_buf), WIFI_DIR "/%s", ssid);
-
-    File file = LittleFS.open(m_path_buf, "w");
-    file.write((uint8_t*)&last_server_ip, sizeof(uint32_t));
-
-    if (password != nullptr && strlen(password) <= 64) {
-        // Only write up to the length of the password
-        file.write((uint8_t*)password, strlen(password) + 1);
+    if (!LittleFS.exists(WIFI_DIR)) {
+        LittleFS.mkdir(WIFI_DIR);
     }
+}
 
+void ConfigManager::save_wifi_creds(const char* ssid, const char* password) {
+    set_ssid_path(ssid);
+
+    LOG_INFO("Saving wifi creds");
+    File file = LittleFS.open(m_path_buf, "rw");
+
+    // Only write up to the length of the password (plus null byte) or the maxmium possible
+    size_t bytes = min((int)strlen(password) + 1, MAX_PASSWORD_LENGTH);
+    file.write((uint8_t*)password, bytes);
     file.close();
 }
 
-WifiEntry ConfigManager::get_wifi_entry(const char* ssid) {
-    snprintf(m_path_buf, sizeof(m_path_buf), WIFI_DIR "/%s", ssid);
+std::array<char, MAX_PASSWORD_LENGTH> ConfigManager::get_wifi_password(const char* ssid) {
+    set_ssid_path(ssid);
 
-    WifiEntry entry;
+    std::array<char, MAX_PASSWORD_LENGTH> password;
     File file = LittleFS.open(m_path_buf, "r");
-    file.read((uint8_t*)&entry, sizeof(WifiEntry));
+    file.read((uint8_t*)&password, password.size());
     file.close();
-    return entry;
+    return password;
+}
+
+bool ConfigManager::wifi_creds_exists(const char* ssid) {
+    set_ssid_path(ssid);
+    return LittleFS.exists(m_path_buf);
+}
+
+void ConfigManager::set_ssid_path(const char* ssid) {
+    memset(m_path_buf, 0, sizeof(m_path_buf)); // Makes sure the null byte is set
+    snprintf(m_path_buf, sizeof(m_path_buf), WIFI_DIR "/%s", ssid);
 }

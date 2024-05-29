@@ -1,9 +1,18 @@
-use std::{collections::HashMap, net::SocketAddr};
+use std::{
+    collections::HashMap,
+    net::{IpAddr, SocketAddr},
+    sync::Arc,
+};
 use tokio::net::UdpSocket;
+use tokio::sync::RwLock;
 use tokio::time::{Duration, Instant};
 
-use crate::udp_packet::{TrackerStatus, UdpPacket, UdpPacketHandshake, PACKET_HEARTBEAT};
+use crate::{
+    udp_packet::{TrackerStatus, UdpPacket, UdpPacketHandshake, PACKET_HEARTBEAT},
+    ServerState,
+};
 
+pub const UDP_PORT: u16 = 5828;
 const DEVICE_TIMEOUT: Duration = Duration::from_millis(5000);
 const UPKEEP_INTERVAL: Duration = Duration::from_millis(1000);
 const SOCKET_TIMEOUT: Duration = Duration::from_millis(500);
@@ -51,24 +60,24 @@ pub struct UdpServer {
     address_to_device_index: HashMap<SocketAddr, usize>,
 
     socket: UdpSocket,
-    buffer: [u8; 64],
+    buffer: [u8; 256],
     last_upkeep_time: Instant,
+    state: Arc<RwLock<ServerState>>,
 }
 
 impl UdpServer {
-    pub const UDP_PORT: u16 = 5828;
-
-    async fn new() -> tokio::io::Result<Self> {
-        let socket = tokio::net::UdpSocket::bind(("0.0.0.0", Self::UDP_PORT)).await?;
+    async fn new(state: Arc<RwLock<ServerState>>) -> tokio::io::Result<Self> {
+        let socket = tokio::net::UdpSocket::bind(("0.0.0.0", UDP_PORT)).await?;
         log::info!("Bound UDP on {}", socket.local_addr()?);
 
         Ok(Self {
-            buffer: [0; 64],
+            buffer: [0; 256],
             devices: Default::default(),
             mac_to_device_index: Default::default(),
             address_to_device_index: Default::default(),
             last_upkeep_time: Instant::now(),
             socket,
+            state,
         })
     }
 
@@ -192,7 +201,7 @@ impl UdpServer {
     }
 }
 
-pub async fn start_server() -> tokio::io::Result<()> {
-    UdpServer::new().await?.run().await?;
+pub async fn start_server(state: Arc<RwLock<ServerState>>) -> tokio::io::Result<()> {
+    UdpServer::new(state).await?.run().await?;
     Ok(())
 }

@@ -3,17 +3,18 @@
 #include <array>
 #include <cstdint>
 
-struct WifiEntry {
-    uint32_t last_server_ip;
-    char password[65]; // Can only be a maximum of 64 characters (plus null byte)
-};
+#define MAX_PASSWORD_LENGTH 64
 
 class ConfigManager {
 public:
     void setup();
 
-    void save_wifi_entry(const char* ssid, uint32_t last_sever_ip, const char* password);
-    WifiEntry get_wifi_entry(const char* ssid);
+    void save_wifi_creds(const char* ssid, const char* password);
+    std::array<char, MAX_PASSWORD_LENGTH> get_wifi_password(const char* ssid);
+    bool wifi_creds_exists(const char* ssid);
+
+private:
+    void set_ssid_path(const char* ssid);
 
 private:
     char m_path_buf[64];

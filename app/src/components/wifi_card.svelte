@@ -8,8 +8,9 @@
         e.preventDefault();
         ws.send(
             JSON.stringify({
-                type: "Serial",
-                command: `WIFI\0${ssid}\0${password}`,
+                type: "Wifi",
+                ssid,
+                password,
             }),
         );
     }

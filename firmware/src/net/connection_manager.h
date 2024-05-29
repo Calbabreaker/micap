@@ -2,6 +2,7 @@
 
 #include <WiFiUdp.h>
 
+#include "IPAddress.h"
 #include "defines.h"
 #include "net/wifi_manager.h"
 #include "trackers/tracker.h"
@@ -21,6 +22,7 @@ public:
     void send_handshake();
     void send_hearbeat();
 
+    inline WifiManager& get_wifi() { return m_wifi; }
     inline bool is_connected() { return m_connected; }
 
 private:
@@ -37,8 +39,8 @@ private:
 private:
     WiFiUDP m_udp;
     bool m_connected = false;
-    IPAddress m_server_ip;
-    WiFiManager m_wifi;
+    IPAddress m_server_ip = INADDR_NONE;
+    WifiManager m_wifi;
     uint8_t m_buffer[64];
 
     std::array<TrackerStatus, MAX_TRACKER_COUNT> m_tracker_statuses_on_server;

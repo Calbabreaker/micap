@@ -15,7 +15,6 @@ void ConnectionManager::update() {
 
     if (just_reconnected) {
         set_server_ip();
-        LOG_INFO("Broadcasting to %s", m_server_ip.toString().c_str());
         m_udp.begin(UDP_PORT);
     }
 
@@ -107,7 +106,7 @@ void ConnectionManager::update_tracker_statuses() {
 }
 
 void ConnectionManager::send_handshake() {
-    LOG_TRACE("Sending handshake packet...");
+    LOG_TRACE("Sending handshake packet to %s...", m_server_ip.toString().c_str());
 
     begin_packet();
     m_udp.write(PACKET_HANDSHAKE);
