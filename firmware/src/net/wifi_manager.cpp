@@ -2,6 +2,7 @@
 #include <WiFiUdp.h>
 
 #include "core_esp8266_features.h"
+#include "defines.h"
 #include "globals.h"
 #include "log.h"
 #include "wifi_manager.h"
@@ -38,6 +39,7 @@ bool WifiManager::monitor() {
 
     if (m_test_networks_populated) {
         if (millis() > m_last_attempt_time + WIFI_CONNECT_TIMEOUT_MS) {
+            LOG_ERROR("Failed to connect to network, trying next");
             try_connect_next_network();
         }
     } else {
@@ -48,7 +50,7 @@ bool WifiManager::monitor() {
 }
 
 void WifiManager::use_credentials(const char* ssid, const char* password) {
-    if (m_connected) {
+    if (m_connected && WiFi.SSID() == ssid) {
         return;
     }
 
@@ -60,6 +62,7 @@ void WifiManager::use_credentials(const char* ssid, const char* password) {
 
 // Connects to the next test network in the list
 void WifiManager::try_connect_next_network() {
+    m_has_manually_set_creds = false;
     if (m_next_test_network_index == 0) {
         start_scan();
         return;
@@ -67,13 +70,13 @@ void WifiManager::try_connect_next_network() {
 
     // Highest is at the end so go from backwards
     const bss_info* info = m_test_network_infos[m_next_test_network_index - 1];
-    LOG_INFO("Trying to connect to network %s", info->ssid);
+    const char* ssid = (const char*)info->ssid;
+    LOG_INFO("Trying to connect to network %.32s", (const char*)info->ssid);
 
-    auto password = g_config_manager.get_wifi_password((const char*)info->ssid);
-    WiFi.begin((const char*)info->ssid, password.data());
+    auto password = g_config_manager.wifi_password_get(ssid);
+    WiFi.begin(ssid, password);
     m_next_test_network_index -= 1;
     m_last_attempt_time = millis();
-    m_has_manually_set_creds = false;
 }
 
 void WifiManager::try_populate_test_networks() {
@@ -85,9 +88,9 @@ void WifiManager::try_populate_test_networks() {
     for (int8_t i = 0; i < scan_result; i++) {
         // Get network information
         const bss_info* info = WiFi.getScanInfoByIndex(i);
-        if (g_config_manager.wifi_creds_exists((const char*)info->ssid)) {
-            if (m_next_test_network_index >= MAX_NETWORKS_TO_TRY) {
-                LOG_WARN("%d exceeded MAX_NETWORKS_TO_TRY", i);
+        if (g_config_manager.wifi_entry_exists((const char*)info->ssid)) {
+            if (m_next_test_network_index >= MAX_WIFI_ENTRIES) {
+                LOG_WARN("Test network count %d exceeded MAX_WIFI_ENTRIES", i);
                 break;
             }
 
@@ -133,6 +136,6 @@ void WifiManager::on_connect() {
     if (m_has_manually_set_creds) {
         struct station_config config;
         wifi_station_get_config(&config);
-        g_config_manager.save_wifi_creds((const char*)config.ssid, (const char*)config.password);
+        g_config_manager.wifi_entry_save((const char*)config.ssid, (const char*)config.password);
     }
 }

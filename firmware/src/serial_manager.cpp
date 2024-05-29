@@ -1,6 +1,5 @@
 #include <Arduino.h>
 
-#include "ESP8266WiFi.h"
 #include "globals.h"
 #include "log.h"
 #include "serial_manager.h"
@@ -44,5 +43,7 @@ void SerialManager::parse_incomming_command() {
         }
 
         g_connection_manager.get_wifi().use_credentials(arg_ptr, password_ptr);
+    } else if (strcmp(m_buffer, "FACTORY-RESET")) {
+        g_config_manager.reset();
     }
 }

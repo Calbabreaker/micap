@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import WifiCard from "../components/wifi_card.svelte";
+    import { json } from "@sveltejs/kit";
 
     interface Client {
         mac: string;
@@ -18,17 +19,16 @@
         );
 
         ws.addEventListener("message", (msg) => {
-            if (typeof msg.data === "string") {
-                handle_message(msg.data);
+            let message = JSON.parse(msg.data);
+            if (message) {
+                handle_message(message);
             }
         });
     });
 
-    function handle_message(message: string) {
-        console.log(message);
-        const args = message.split(":");
-        if (args[0] == "DEVICE-CONNECT") {
-            clients.push({ mac: args[1] });
+    function handle_message(message: any) {
+        if (message.type == "Error") {
+            console.error(message.error);
         }
     }
 </script>
@@ -42,4 +42,14 @@
         {/each}
     </div>
     <WifiCard {ws} />
+    <button
+        class="btn btn-primary"
+        on:click={() => {
+            if (confirm("Are you sure?")) {
+                ws.send(JSON.stringify({ type: "FactoryReset" }));
+            }
+        }}
+    >
+        Factory reset
+    </button>
 </div>

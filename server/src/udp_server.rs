@@ -1,8 +1,4 @@
-use std::{
-    collections::HashMap,
-    net::{IpAddr, SocketAddr},
-    sync::Arc,
-};
+use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tokio::net::UdpSocket;
 use tokio::sync::RwLock;
 use tokio::time::{Duration, Instant};
@@ -87,7 +83,10 @@ impl UdpServer {
             if let Ok(Ok((amount, src))) =
                 tokio::time::timeout(SOCKET_TIMEOUT, self.socket.recv_from(&mut self.buffer)).await
             {
-                log::trace!("Received {amount} bytes from {src}");
+                log::trace!(
+                    "Received {amount} bytes from {src} ({:#02x})",
+                    self.buffer[0]
+                );
                 self.handle_packet(src).await?;
             }
 

@@ -138,6 +138,10 @@ void ConnectionManager::send_tracker_data() {
         }
     }
 
+    if (tracker_count == 0) {
+        return;
+    }
+
     begin_packet();
     m_udp.write(PACKET_TRACKER_DATA);
 

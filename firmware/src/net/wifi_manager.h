@@ -1,12 +1,11 @@
 #pragma once
 
-#include "config_manager.h"
+#include "defines.h"
 #include <ESP8266WiFi.h>
 #include <array>
 #include <cstdint>
 
-#define WIFI_CONNECT_TIMEOUT_MS 8000
-#define MAX_NETWORKS_TO_TRY 8
+#define WIFI_CONNECT_TIMEOUT_MS 12000
 
 class WifiManager {
 public:
@@ -30,5 +29,5 @@ private:
     bool m_test_networks_populated = false;
     uint8_t m_next_test_network_index = 0;
     uint64_t m_last_attempt_time = 0;
-    std::array<const bss_info*, MAX_NETWORKS_TO_TRY> m_test_network_infos;
+    std::array<const bss_info*, MAX_WIFI_ENTRIES> m_test_network_infos;
 };

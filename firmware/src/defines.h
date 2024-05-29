@@ -12,5 +12,6 @@
 
 #define MAX_TRACKER_COUNT 2
 
+// Number of unique wifi ssid and passwords that can be stored
 // Each wifi entry takes 96 bytes
 #define MAX_WIFI_ENTRIES 4

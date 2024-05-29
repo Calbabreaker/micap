@@ -1,6 +1,6 @@
 use futures_util::{
     stream::{SplitSink, SplitStream},
-    StreamExt,
+    SinkExt, StreamExt,
 };
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -9,7 +9,7 @@ use warp::{
     Filter,
 };
 
-use crate::ServerState;
+use crate::{serial::write_serial, ServerState};
 
 pub const WEBSOCKET_PORT: u16 = 8298;
 
@@ -54,26 +54,40 @@ impl WebsocketConnection {
                 }
             };
 
-            if let Ok(msg) = msg.to_str() {
-                log::info!("Got from websocket: {msg}");
-                if let Ok(message) = serde_json::from_str(msg)
-                    .inspect_err(|e| log::error!("Error decoding websocket message: {e}"))
-                {
-                    self.handle_websocket_message(message);
+            if let Ok(string) = msg.to_str() {
+                log::info!("Got from websocket: {string}");
+                if let Err(error) = self.handle_websocket_message(string) {
+                    log::error!("{error}");
+                    self.send_websocket_message(WebsocketMessage::Error { error })
+                        .await;
                 }
             }
         }
     }
 
-    fn handle_websocket_message(&self, message: WebsocketMessage) {
+    fn handle_websocket_message(&self, string: &str) -> Result<(), String> {
+        let message = serde_json::from_str(string).map_err(|e| e.to_string())?;
+
         match message {
             WebsocketMessage::Wifi { ssid, password } => {
-                let command = format!("WIFI\0{ssid}\0{password}");
-                crate::serial::write_serial(command.as_bytes())
-                    .inspect_err(|e| log::error!("Failed to write to serial port: {e}"))
-                    .ok();
+                if ssid.len() > 32 || password.len() > 64 {
+                    return Err("SSID or password too long".to_string());
+                }
+
+                write_serial(format!("WIFI\0{ssid}\0{password}").as_bytes())?;
             }
-            WebsocketMessage::Error { message } => log::error!("Error from client: {message}"),
+            WebsocketMessage::FactoryReset => {
+                write_serial("FACTORY-RESET".as_bytes())?;
+            }
+            WebsocketMessage::Error { error } => log::error!("Error from client: {error}"),
+        }
+
+        Ok(())
+    }
+
+    async fn send_websocket_message(&mut self, message: WebsocketMessage) {
+        if let Ok(string) = serde_json::to_string(&message) {
+            self.ws_tx.send(Message::text(string)).await.ok();
         }
     }
 }
@@ -82,5 +96,6 @@ impl WebsocketConnection {
 #[serde(tag = "type")]
 pub enum WebsocketMessage {
     Wifi { ssid: String, password: String },
-    Error { message: String },
+    Error { error: String },
+    FactoryReset,
 }
