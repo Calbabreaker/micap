@@ -1,10 +1,11 @@
-use std::{collections::HashMap, net::SocketAddr, sync::Arc};
+use std::{borrow::BorrowMut, collections::HashMap, net::SocketAddr, sync::Arc};
 use tokio::net::UdpSocket;
 use tokio::sync::RwLock;
 use tokio::time::{Duration, Instant};
 
 use crate::{
-    udp_packet::{TrackerStatus, UdpPacket, UdpPacketHandshake, PACKET_HEARTBEAT},
+    server_state::Device,
+    udp_packet::{UdpPacket, UdpPacketHandshake, PACKET_HEARTBEAT},
     ServerState,
 };
 
@@ -13,18 +14,11 @@ const DEVICE_TIMEOUT: Duration = Duration::from_millis(5000);
 const UPKEEP_INTERVAL: Duration = Duration::from_millis(1000);
 const SOCKET_TIMEOUT: Duration = Duration::from_millis(500);
 
-#[derive(Default)]
-pub struct UdpTracker {
-    id: u8,
-    status: TrackerStatus,
-}
-
 pub struct UdpDevice {
     index: usize,
     last_packet_received_time: Instant,
     timed_out: bool,
     address: SocketAddr,
-    trackers: Vec<UdpTracker>,
 }
 
 impl UdpDevice {
@@ -34,19 +28,7 @@ impl UdpDevice {
             address,
             last_packet_received_time: Instant::now(),
             timed_out: false,
-            trackers: Vec::new(),
         }
-    }
-
-    fn set_tracker_status(&mut self, id: u8, status: TrackerStatus) {
-        if id as usize >= self.trackers.len() {
-            self.trackers
-                .resize_with((id + 1) as usize, Default::default);
-        }
-
-        let tracker = &mut self.trackers[id as usize];
-        tracker.id = id;
-        tracker.status = status;
     }
 }
 
@@ -117,8 +99,9 @@ impl UdpServer {
     }
 
     async fn handle_packet(&mut self, src: SocketAddr) -> tokio::io::Result<()> {
-        if let Some(device) = self.device_by_addr(&src) {
+        if let Some(index) = self.address_to_device_index.get(&src) {
             // Reset last packet time
+            let device = &mut self.devices[*index];
             device.last_packet_received_time = Instant::now();
         }
 
@@ -128,15 +111,22 @@ impl UdpServer {
                 self.handle_handshake(handshake, src).await?;
             }
             Some(UdpPacket::TrackerData(mut packet)) => {
-                while let Some(data) = packet.next(&mut bytes) {
-                    log::trace!("{:?}", data);
+                if let Some(index) = self.address_to_device_index.get(&src) {
+                    let device = &mut self.state.write().await.devices[*index];
+
+                    while let Some(data) = packet.next(&mut bytes) {
+                        let tracker = device.get_tracker_mut(data.tracker_id);
+                        tracker.orientation = data.orientation;
+                        tracker.acceleration = data.accleration;
+                    }
                 }
             }
             Some(UdpPacket::Heartbeat) => {}
             Some(UdpPacket::TrackerStatus(packet)) => {
                 log::trace!("Got {:?}", packet);
-                if let Some(device) = self.device_by_addr(&src) {
-                    device.set_tracker_status(packet.tracker_id, packet.tracker_status);
+                if let Some(index) = self.address_to_device_index.get(&src) {
+                    let device = &mut self.state.write().await.devices[*index];
+                    device.get_tracker_mut(packet.tracker_id).status = packet.tracker_status;
 
                     // Send back the tracker status so the device knows the server knows it
                     self.socket.send_to(&self.buffer[0..3], src).await?;
@@ -155,7 +145,7 @@ impl UdpServer {
 
     async fn handle_handshake(
         &mut self,
-        handshake: UdpPacketHandshake,
+        packet: UdpPacketHandshake,
         src: SocketAddr,
     ) -> tokio::io::Result<()> {
         self.socket
@@ -163,40 +153,32 @@ impl UdpServer {
             .await?;
 
         // First check if the device allready has connected with a mac address
-        if let Some(device) = self.device_by_mac(&handshake.mac_string) {
-            let index = device.index;
+        if let Some(index) = self.mac_to_device_index.get(&packet.mac_string) {
+            let device = &mut self.devices[*index];
+            let id = device.index;
             let old_address = device.address;
 
             device.address = src;
 
             // Move over to the new address if the device has a new ip
             self.address_to_device_index.remove(&old_address);
-            self.address_to_device_index.insert(src, index);
+            self.address_to_device_index.insert(src, id);
             log::info!("Reconnected from {src} from old: {old_address}");
             return Ok(());
         }
 
-        if self.device_by_addr(&src).is_some() {
+        if self.address_to_device_index.get(&src).is_some() {
             log::info!("Reconnected from {src}");
             return Ok(());
         }
 
-        let index = self.devices.len();
-        self.mac_to_device_index.insert(handshake.mac_string, index);
-        self.address_to_device_index.insert(src, index);
-        self.devices.push(UdpDevice::new(index, src));
+        let id = self.devices.len();
+        self.mac_to_device_index.insert(packet.mac_string, id);
+        self.address_to_device_index.insert(src, id);
+        self.devices.push(UdpDevice::new(id, src));
+        self.state.write().await.devices.push(Device::default());
         log::info!("New device connected from {src}");
         Ok(())
-    }
-
-    fn device_by_mac(&mut self, mac_string: &String) -> Option<&mut UdpDevice> {
-        let index = self.mac_to_device_index.get(mac_string)?;
-        Some(&mut self.devices[*index])
-    }
-
-    fn device_by_addr(&mut self, addr: &SocketAddr) -> Option<&mut UdpDevice> {
-        let index = self.address_to_device_index.get(addr)?;
-        Some(&mut self.devices[*index])
     }
 }
 

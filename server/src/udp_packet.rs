@@ -1,17 +1,10 @@
 use crate::math::{Quaternion, Vector3};
+use crate::server_state::TrackerStatus;
 
 pub const PACKET_HEARTBEAT: u8 = 0x00;
 pub const PACKET_HANDSHAKE: u8 = 0x01;
 pub const PACKET_TRACKER_STATUS: u8 = 0x02;
 pub const PACKET_TRACKER_DATA: u8 = 0x03;
-
-#[derive(Default, Debug)]
-pub enum TrackerStatus {
-    Ok,
-    Error,
-    #[default]
-    Off,
-}
 
 pub enum UdpPacket {
     Handshake(UdpPacketHandshake),
@@ -83,7 +76,7 @@ impl UdpPacketTrackerStatus {
 
 #[derive(Debug)]
 pub struct TrackerData {
-    pub id: u8,
+    pub tracker_id: u8,
     pub orientation: Quaternion,
     pub accleration: Vector3,
 }
@@ -107,7 +100,7 @@ impl UdpPacketTrackerData {
         }
 
         Some(TrackerData {
-            id: *bytes.next()?,
+            tracker_id: *bytes.next()?,
             orientation: Quaternion::new(
                 f32_safe_from_raw(bytes)?,
                 f32_safe_from_raw(bytes)?,
