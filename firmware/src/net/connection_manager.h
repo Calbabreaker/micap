@@ -12,6 +12,8 @@ const uint8_t PACKET_HANDSHAKE = 0x01;
 const uint8_t PACKET_TRACKER_STATUS = 0x02;
 const uint8_t PACKET_TRACKER_DATA = 0x03;
 
+const IPAddress MULTICAST_IP = IPAddress(239, 255, 0, 123);
+
 class ConnectionManager {
 public:
     void setup();
@@ -26,15 +28,13 @@ public:
     inline bool is_connected() { return m_connected; }
 
 private:
-    void begin_packet();
+    void begin_packet(uint8_t packet_type, bool multicast = false);
     void write_str(const char* str);
     void end_packet();
 
     void receive_packets();
     void update_tracker_statuses();
     bool should_send_tracker_data(Tracker* tracker);
-
-    void set_server_ip();
 
 private:
     WiFiUDP m_udp;
@@ -45,6 +45,7 @@ private:
 
     std::array<TrackerStatus, MAX_TRACKER_COUNT> m_tracker_statuses_on_server;
 
+    uint32_t m_next_packet_number = 0;
     uint64_t m_last_sent_handshake_time = 0;
     uint64_t m_last_received_time = 0;
     uint64_t m_last_tracker_status_sent_time = 0;

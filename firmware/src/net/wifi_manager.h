@@ -22,6 +22,7 @@ private:
     void try_populate_test_networks();
     void start_scan();
     void on_connect();
+    bool check_existing_test_network(const bss_info* info);
 
 private:
     bool m_connected = false;

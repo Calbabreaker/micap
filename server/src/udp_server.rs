@@ -1,11 +1,15 @@
-use std::{borrow::BorrowMut, collections::HashMap, net::SocketAddr, sync::Arc};
+use std::{
+    collections::HashMap,
+    net::{Ipv4Addr, SocketAddr},
+    sync::Arc,
+    time::{Duration, Instant},
+};
 use tokio::net::UdpSocket;
 use tokio::sync::RwLock;
-use tokio::time::{Duration, Instant};
 
 use crate::{
     server_state::Device,
-    udp_packet::{UdpPacket, UdpPacketHandshake, PACKET_HEARTBEAT},
+    udp_packet::{UdpPacket, UdpPacketHandshake, PACKET_HEARTBEAT, PACKET_TRACKER_STATUS},
     ServerState,
 };
 
@@ -14,9 +18,12 @@ const DEVICE_TIMEOUT: Duration = Duration::from_millis(5000);
 const UPKEEP_INTERVAL: Duration = Duration::from_millis(1000);
 const SOCKET_TIMEOUT: Duration = Duration::from_millis(500);
 
+pub const MULTICAST_IP: Ipv4Addr = Ipv4Addr::new(239, 255, 0, 123);
+
 pub struct UdpDevice {
     index: usize,
-    last_packet_received_time: Instant,
+    pub last_packet_received_time: Instant,
+    pub last_packet_number: u32,
     timed_out: bool,
     address: SocketAddr,
 }
@@ -27,6 +34,7 @@ impl UdpDevice {
             index,
             address,
             last_packet_received_time: Instant::now(),
+            last_packet_number: 0,
             timed_out: false,
         }
     }
@@ -38,7 +46,6 @@ pub struct UdpServer {
     address_to_device_index: HashMap<SocketAddr, usize>,
 
     socket: UdpSocket,
-    buffer: [u8; 256],
     last_upkeep_time: Instant,
     state: Arc<RwLock<ServerState>>,
 }
@@ -46,10 +53,9 @@ pub struct UdpServer {
 impl UdpServer {
     async fn new(state: Arc<RwLock<ServerState>>) -> tokio::io::Result<Self> {
         let socket = tokio::net::UdpSocket::bind(("0.0.0.0", UDP_PORT)).await?;
-        log::info!("Bound UDP on {}", socket.local_addr()?);
+        log::info!("Started UDP server on {}", socket.local_addr()?);
 
         Ok(Self {
-            buffer: [0; 256],
             devices: Default::default(),
             mac_to_device_index: Default::default(),
             address_to_device_index: Default::default(),
@@ -60,16 +66,23 @@ impl UdpServer {
     }
 
     async fn run(&mut self) -> tokio::io::Result<()> {
+        self.socket
+            .join_multicast_v4(MULTICAST_IP, Ipv4Addr::UNSPECIFIED)?;
+
+        let mut buffer = [0_u8; 256];
+
         loop {
             // Have receiving data timeout so that the upkeep check can happen continously
-            if let Ok(Ok((amount, src))) =
-                tokio::time::timeout(SOCKET_TIMEOUT, self.socket.recv_from(&mut self.buffer)).await
+            if let Ok(Ok((amount, peer_addr))) =
+                tokio::time::timeout(SOCKET_TIMEOUT, self.socket.recv_from(&mut buffer)).await
             {
                 log::trace!(
-                    "Received {amount} bytes from {src} ({:#02x})",
-                    self.buffer[0]
+                    "Received {amount} bytes from {peer_addr} ({:#02x})",
+                    buffer[0]
                 );
-                self.handle_packet(src).await?;
+
+                // Only pass through the amount received
+                self.handle_packet(&buffer[0..amount], peer_addr).await?;
             }
 
             if self.last_upkeep_time.elapsed() > UPKEEP_INTERVAL {
@@ -98,23 +111,24 @@ impl UdpServer {
         Ok(())
     }
 
-    async fn handle_packet(&mut self, src: SocketAddr) -> tokio::io::Result<()> {
-        if let Some(index) = self.address_to_device_index.get(&src) {
-            // Reset last packet time
-            let device = &mut self.devices[*index];
-            device.last_packet_received_time = Instant::now();
-        }
+    async fn handle_packet(
+        &mut self,
+        bytes: &[u8],
+        peer_addr: SocketAddr,
+    ) -> tokio::io::Result<()> {
+        let device_index = self.address_to_device_index.get(&peer_addr).copied();
+        let udp_device = device_index.and_then(|i| self.devices.get_mut(i));
 
-        let mut bytes = self.buffer.iter();
-        match UdpPacket::from_bytes(&mut bytes) {
-            Some(UdpPacket::Handshake(handshake)) => {
-                self.handle_handshake(handshake, src).await?;
+        let mut byte_iter = bytes.iter();
+        match UdpPacket::parse(&mut byte_iter, udp_device) {
+            Some(UdpPacket::Handshake(packet)) => {
+                self.handle_handshake(packet, peer_addr).await?;
             }
             Some(UdpPacket::TrackerData(mut packet)) => {
-                if let Some(index) = self.address_to_device_index.get(&src) {
-                    let device = &mut self.state.write().await.devices[*index];
+                if let Some(index) = device_index {
+                    let device = &mut self.state.write().await.devices[index];
 
-                    while let Some(data) = packet.next(&mut bytes) {
+                    while let Some(data) = packet.next(&mut byte_iter) {
                         let tracker = device.get_tracker_mut(data.tracker_id);
                         tracker.orientation = data.orientation;
                         tracker.acceleration = data.accleration;
@@ -124,19 +138,16 @@ impl UdpServer {
             Some(UdpPacket::Heartbeat) => {}
             Some(UdpPacket::TrackerStatus(packet)) => {
                 log::trace!("Got {:?}", packet);
-                if let Some(index) = self.address_to_device_index.get(&src) {
-                    let device = &mut self.state.write().await.devices[*index];
+                if let Some(index) = device_index {
+                    let device = &mut self.state.write().await.devices[index];
                     device.get_tracker_mut(packet.tracker_id).status = packet.tracker_status;
 
                     // Send back the tracker status so the device knows the server knows it
-                    self.socket.send_to(&self.buffer[0..3], src).await?;
+                    self.socket.send_to(&packet.to_bytes(), peer_addr).await?;
                 }
             }
             _ => {
-                log::warn!(
-                    "Received invalid packet: {}",
-                    String::from_utf8_lossy(&self.buffer)
-                )
+                log::warn!("Received invalid packet")
             }
         }
 
@@ -146,10 +157,10 @@ impl UdpServer {
     async fn handle_handshake(
         &mut self,
         packet: UdpPacketHandshake,
-        src: SocketAddr,
+        peer_addr: SocketAddr,
     ) -> tokio::io::Result<()> {
         self.socket
-            .send_to(UdpPacketHandshake::RESPONSE, src)
+            .send_to(UdpPacketHandshake::RESPONSE, peer_addr)
             .await?;
 
         // First check if the device allready has connected with a mac address
@@ -158,26 +169,26 @@ impl UdpServer {
             let id = device.index;
             let old_address = device.address;
 
-            device.address = src;
+            device.address = peer_addr;
 
             // Move over to the new address if the device has a new ip
             self.address_to_device_index.remove(&old_address);
-            self.address_to_device_index.insert(src, id);
-            log::info!("Reconnected from {src} from old: {old_address}");
+            self.address_to_device_index.insert(peer_addr, id);
+            log::info!("Reconnected from {peer_addr} from old: {old_address}");
             return Ok(());
         }
 
-        if self.address_to_device_index.get(&src).is_some() {
-            log::info!("Reconnected from {src}");
+        if self.address_to_device_index.contains_key(&peer_addr) {
+            log::info!("Reconnected from {peer_addr}");
             return Ok(());
         }
 
         let id = self.devices.len();
         self.mac_to_device_index.insert(packet.mac_string, id);
-        self.address_to_device_index.insert(src, id);
-        self.devices.push(UdpDevice::new(id, src));
+        self.address_to_device_index.insert(peer_addr, id);
+        self.devices.push(UdpDevice::new(id, peer_addr));
         self.state.write().await.devices.push(Device::default());
-        log::info!("New device connected from {src}");
+        log::info!("New device connected from {peer_addr}");
         Ok(())
     }
 }

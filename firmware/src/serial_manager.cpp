@@ -43,7 +43,7 @@ void SerialManager::parse_incomming_command() {
         }
 
         g_connection_manager.get_wifi().use_credentials(arg_ptr, password_ptr);
-    } else if (strcmp(m_buffer, "FACTORY-RESET")) {
+    } else if (strcmp(m_buffer, "FACTORY-RESET") == 0) {
         g_config_manager.reset();
     }
 }

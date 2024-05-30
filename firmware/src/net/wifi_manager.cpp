@@ -80,17 +80,26 @@ void WifiManager::try_connect_next_network() {
 }
 
 void WifiManager::try_populate_test_networks() {
-    int8_t scan_result = WiFi.scanComplete();
-    if (scan_result <= 0) {
+    int8_t num_networks = WiFi.scanComplete();
+    if (num_networks <= 0) {
         return;
     }
 
-    for (int8_t i = 0; i < scan_result; i++) {
+    m_next_test_network_index = 0;
+
+    for (int8_t i = 0; i < num_networks; i++) {
         // Get network information
         const bss_info* info = WiFi.getScanInfoByIndex(i);
+
+        if (check_existing_test_network(info)) {
+            continue;
+        }
+
         if (g_config_manager.wifi_entry_exists((const char*)info->ssid)) {
             if (m_next_test_network_index >= MAX_WIFI_ENTRIES) {
-                LOG_WARN("Test network count %d exceeded MAX_WIFI_ENTRIES", i);
+                LOG_WARN(
+                    "Test network count %d exceeded MAX_WIFI_ENTRIES", m_next_test_network_index
+                );
                 break;
             }
 
@@ -102,10 +111,12 @@ void WifiManager::try_populate_test_networks() {
     // Sort by signal strength (highest will be at the end)
     for (int i = 0; i < m_next_test_network_index; i++) {
         for (int j = i + 1; j < m_next_test_network_index; j++) {
-            if (m_test_network_infos[i]->rssi > m_test_network_infos[j]->rssi) {
-                const bss_info* tmp = m_test_network_infos[i];
-                m_test_network_infos[i] = m_test_network_infos[j];
-                m_test_network_infos[j] = tmp;
+            // Swap them when they are greater
+            const bss_info* info_a = m_test_network_infos[i];
+            const bss_info* info_b = m_test_network_infos[j];
+            if (info_a->rssi > info_b->rssi) {
+                m_test_network_infos[i] = info_b;
+                m_test_network_infos[j] = info_a;
             }
         }
     }
@@ -121,6 +132,23 @@ void WifiManager::try_populate_test_networks() {
     m_test_networks_populated = true;
 }
 
+bool WifiManager::check_existing_test_network(const bss_info* info) {
+    // Go through the test networks to see if it already exists (potential duplicate SSIDs)
+    for (int8_t i = 0; i < m_next_test_network_index; i++) {
+        const char* test_ssid = (const char*)m_test_network_infos[i]->ssid;
+        const char* current_ssid = (const char*)info->ssid;
+        if (strncmp(current_ssid, test_ssid, MAX_SSID_LENGTH) == 0) {
+            // Set the one with the higher RSSI
+            if (info->rssi > m_test_network_infos[i]->rssi) {
+                m_test_network_infos[i] = info;
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 void WifiManager::start_scan() {
     LOG_INFO("Scanning for networks...");
     WiFi.scanDelete();
@@ -130,7 +158,9 @@ void WifiManager::start_scan() {
 }
 
 void WifiManager::on_connect() {
-    LOG_INFO("Connected to WiFi with ip %s", WiFi.localIP().toString().c_str());
+    LOG_INFO(
+        "Connected to WiFi %s with ip %s", WiFi.SSID().c_str(), WiFi.localIP().toString().c_str()
+    );
     m_connected = true;
 
     if (m_has_manually_set_creds) {

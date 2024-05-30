@@ -25,7 +25,7 @@ pub fn setup_log() {
 }
 
 pub async fn start_server() {
-    let state = Arc::new(RwLock::new(ServerState::new().await));
+    let state = Arc::new(RwLock::new(ServerState::default()));
 
     tokio::spawn(
         udp_server::start_server(state.clone())

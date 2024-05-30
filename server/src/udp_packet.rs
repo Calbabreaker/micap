@@ -1,5 +1,10 @@
-use crate::math::{Quaternion, Vector3};
+use std::time::Instant;
+
 use crate::server_state::TrackerStatus;
+use crate::{
+    math::{Quaternion, Vector3},
+    udp_server::UdpDevice,
+};
 
 pub const PACKET_HEARTBEAT: u8 = 0x00;
 pub const PACKET_HANDSHAKE: u8 = 0x01;
@@ -14,8 +19,21 @@ pub enum UdpPacket {
 }
 
 impl UdpPacket {
-    pub fn from_bytes(bytes: &mut std::slice::Iter<u8>) -> Option<Self> {
-        Some(match *bytes.next()? {
+    pub fn parse(bytes: &mut std::slice::Iter<u8>, device: Option<&mut UdpDevice>) -> Option<Self> {
+        let packet_type = *bytes.next()?;
+        let packet_number = u32_parse(bytes)?;
+
+        if let Some(device) = device {
+            if packet_number <= device.last_packet_number {
+                log::warn!("Received out of order packet");
+                return None;
+            }
+
+            device.last_packet_number = packet_number;
+            device.last_packet_received_time = Instant::now();
+        }
+
+        Some(match packet_type {
             PACKET_HEARTBEAT => Self::Heartbeat,
             PACKET_HANDSHAKE => Self::Handshake(UdpPacketHandshake::from_bytes(bytes)?),
             PACKET_TRACKER_DATA => Self::TrackerData(UdpPacketTrackerData::from_bytes(bytes)?),
@@ -72,6 +90,14 @@ impl UdpPacketTrackerStatus {
             },
         })
     }
+
+    pub fn to_bytes(&self) -> [u8; 3] {
+        [
+            PACKET_TRACKER_STATUS,
+            self.tracker_id,
+            self.tracker_status as u8,
+        ]
+    }
 }
 
 #[derive(Debug)]
@@ -102,22 +128,27 @@ impl UdpPacketTrackerData {
         Some(TrackerData {
             tracker_id: *bytes.next()?,
             orientation: Quaternion::new(
-                f32_safe_from_raw(bytes)?,
-                f32_safe_from_raw(bytes)?,
-                f32_safe_from_raw(bytes)?,
-                f32_safe_from_raw(bytes)?,
+                f32_parse(bytes)?,
+                f32_parse(bytes)?,
+                f32_parse(bytes)?,
+                f32_parse(bytes)?,
             ),
-            accleration: Vector3::new(
-                f32_safe_from_raw(bytes)?,
-                f32_safe_from_raw(bytes)?,
-                f32_safe_from_raw(bytes)?,
-            ),
+            accleration: Vector3::new(f32_parse(bytes)?, f32_parse(bytes)?, f32_parse(bytes)?),
         })
     }
 }
 
-fn f32_safe_from_raw(bytes: &mut std::slice::Iter<u8>) -> Option<f32> {
+fn f32_parse(bytes: &mut std::slice::Iter<u8>) -> Option<f32> {
     Some(f32::from_le_bytes([
+        *bytes.next()?,
+        *bytes.next()?,
+        *bytes.next()?,
+        *bytes.next()?,
+    ]))
+}
+
+fn u32_parse(bytes: &mut std::slice::Iter<u8>) -> Option<u32> {
+    Some(u32::from_le_bytes([
         *bytes.next()?,
         *bytes.next()?,
         *bytes.next()?,

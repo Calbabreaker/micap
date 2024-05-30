@@ -2,12 +2,13 @@ use std::net::{IpAddr, SocketAddr};
 
 use crate::math::{Quaternion, Vector3};
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone, Copy)]
+#[repr(u8)]
 pub enum TrackerStatus {
-    Ok,
-    Error,
+    Ok = 0,
+    Error = 1,
     #[default]
-    Off,
+    Off = 2,
 }
 
 #[derive(Default)]
@@ -34,24 +35,7 @@ impl Device {
     }
 }
 
+#[derive(Default)]
 pub struct ServerState {
     pub devices: Vec<Device>,
-    local_ip: Option<IpAddr>,
-}
-
-impl ServerState {
-    pub async fn new() -> Self {
-        Self {
-            devices: Vec::new(),
-            local_ip: get_local_ip().await,
-        }
-    }
-}
-
-async fn get_local_ip() -> Option<IpAddr> {
-    let socket = tokio::net::UdpSocket::bind("0.0.0.0:12345").await.ok()?;
-    socket.connect(("1.1.1.1", 80)).await.ok()?;
-    let local_ip = socket.local_addr().ok()?.ip();
-    log::info!("Found local ip: {local_ip}");
-    Some(local_ip)
 }
