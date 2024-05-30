@@ -74,14 +74,14 @@ impl UdpPacketHandshake {
 
 #[derive(Debug)]
 pub struct UdpPacketTrackerStatus {
-    pub tracker_id: u8,
+    pub tracker_index: u8,
     pub tracker_status: TrackerStatus,
 }
 
 impl UdpPacketTrackerStatus {
     fn from_bytes(bytes: &mut std::slice::Iter<u8>) -> Option<Self> {
         Some(Self {
-            tracker_id: *bytes.next()?,
+            tracker_index: *bytes.next()?,
             tracker_status: match bytes.next()? {
                 0 => TrackerStatus::Ok,
                 1 => TrackerStatus::Error,
@@ -94,7 +94,7 @@ impl UdpPacketTrackerStatus {
     pub fn to_bytes(&self) -> [u8; 3] {
         [
             PACKET_TRACKER_STATUS,
-            self.tracker_id,
+            self.tracker_index,
             self.tracker_status as u8,
         ]
     }
@@ -102,7 +102,7 @@ impl UdpPacketTrackerStatus {
 
 #[derive(Debug)]
 pub struct TrackerData {
-    pub tracker_id: u8,
+    pub tracker_index: u8,
     pub orientation: Quaternion,
     pub accleration: Vector3,
 }
@@ -126,7 +126,7 @@ impl UdpPacketTrackerData {
         }
 
         Some(TrackerData {
-            tracker_id: *bytes.next()?,
+            tracker_index: *bytes.next()?,
             orientation: Quaternion::new(
                 f32_parse(bytes)?,
                 f32_parse(bytes)?,

@@ -9,7 +9,7 @@ use tokio::sync::RwLock;
 
 use crate::{
     server_state::Device,
-    udp_packet::{UdpPacket, UdpPacketHandshake, PACKET_HEARTBEAT, PACKET_TRACKER_STATUS},
+    udp_packet::{UdpPacket, UdpPacketHandshake, PACKET_HEARTBEAT},
     ServerState,
 };
 
@@ -129,7 +129,7 @@ impl UdpServer {
                     let device = &mut self.state.write().await.devices[index];
 
                     while let Some(data) = packet.next(&mut byte_iter) {
-                        let tracker = device.get_tracker_mut(data.tracker_id);
+                        let tracker = device.get_tracker_mut(data.tracker_index);
                         tracker.orientation = data.orientation;
                         tracker.acceleration = data.accleration;
                     }
@@ -140,7 +140,7 @@ impl UdpServer {
                 log::trace!("Got {:?}", packet);
                 if let Some(index) = device_index {
                     let device = &mut self.state.write().await.devices[index];
-                    device.get_tracker_mut(packet.tracker_id).status = packet.tracker_status;
+                    device.get_tracker_mut(packet.tracker_index).status = packet.tracker_status;
 
                     // Send back the tracker status so the device knows the server knows it
                     self.socket.send_to(&packet.to_bytes(), peer_addr).await?;
@@ -166,14 +166,14 @@ impl UdpServer {
         // First check if the device allready has connected with a mac address
         if let Some(index) = self.mac_to_device_index.get(&packet.mac_string) {
             let device = &mut self.devices[*index];
-            let id = device.index;
+            let index = device.index;
             let old_address = device.address;
 
             device.address = peer_addr;
 
             // Move over to the new address if the device has a new ip
             self.address_to_device_index.remove(&old_address);
-            self.address_to_device_index.insert(peer_addr, id);
+            self.address_to_device_index.insert(peer_addr, index);
             log::info!("Reconnected from {peer_addr} from old: {old_address}");
             return Ok(());
         }
@@ -183,10 +183,10 @@ impl UdpServer {
             return Ok(());
         }
 
-        let id = self.devices.len();
-        self.mac_to_device_index.insert(packet.mac_string, id);
-        self.address_to_device_index.insert(peer_addr, id);
-        self.devices.push(UdpDevice::new(id, peer_addr));
+        let index = self.devices.len();
+        self.mac_to_device_index.insert(packet.mac_string, index);
+        self.address_to_device_index.insert(peer_addr, index);
+        self.devices.push(UdpDevice::new(index, peer_addr));
         self.state.write().await.devices.push(Device::default());
         log::info!("New device connected from {peer_addr}");
         Ok(())

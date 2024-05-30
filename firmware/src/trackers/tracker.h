@@ -14,14 +14,14 @@ enum class TrackerStatus : uint8_t {
 
 class Tracker {
 public:
-    Tracker(TrackerKind kind, uint8_t id, uint8_t address)
-        : m_kind(kind), m_id(id), m_address(address) {}
+    Tracker(TrackerKind kind, uint8_t index, uint8_t address)
+        : m_kind(kind), m_index(index), m_address(address) {}
     virtual ~Tracker(){};
 
     virtual void setup(){};
     virtual void update(){};
 
-    inline uint8_t get_id() { return m_id; }
+    inline uint8_t get_index() { return m_index; }
     inline uint8_t get_address() { return m_address; }
 
 public:
@@ -32,6 +32,6 @@ public:
 
 protected:
     TrackerKind m_kind;
-    uint8_t m_id;
+    uint8_t m_index;
     uint8_t m_address;
 };

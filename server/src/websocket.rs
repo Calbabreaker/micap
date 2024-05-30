@@ -2,7 +2,7 @@ use futures_util::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 use tokio::sync::RwLock;
 use warp::{
     filters::ws::{Message, WebSocket},

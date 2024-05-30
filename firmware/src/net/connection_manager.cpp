@@ -99,8 +99,8 @@ void ConnectionManager::receive_packets() {
 
 void ConnectionManager::update_tracker_statuses() {
     for (Tracker* tracker : g_tracker_manager.get_trackers()) {
-        if (tracker->status != m_tracker_statuses_on_server[tracker->get_id()]) {
-            send_tracker_status(tracker->get_id(), tracker->status);
+        if (tracker->status != m_tracker_statuses_on_server[tracker->get_index()]) {
+            send_tracker_status(tracker->get_index(), tracker->status);
         }
     }
 
@@ -149,7 +149,7 @@ void ConnectionManager::send_tracker_data() {
 
     for (Tracker* tracker : g_tracker_manager.get_trackers()) {
         if (should_send_tracker_data(tracker)) {
-            m_udp.write(tracker->get_id());
+            m_udp.write(tracker->get_index());
             m_udp.write(tracker->acceleration.as_bytes(), sizeof(Vector3));
             m_udp.write(tracker->orientation.as_bytes(), sizeof(Quaternion));
         }
@@ -167,7 +167,7 @@ void ConnectionManager::send_tracker_status(uint8_t tracker_id, TrackerStatus tr
 
 bool ConnectionManager::should_send_tracker_data(Tracker* tracker) {
     return tracker->status == TrackerStatus::Ok &&
-           m_tracker_statuses_on_server[tracker->get_id()] == TrackerStatus::Ok;
+           m_tracker_statuses_on_server[tracker->get_index()] == TrackerStatus::Ok;
 }
 
 void ConnectionManager::write_str(const char* str) {

@@ -1,5 +1,3 @@
-use std::net::{IpAddr, SocketAddr};
-
 use crate::math::{Quaternion, Vector3};
 
 #[derive(Default, Debug, Clone, Copy)]
@@ -13,7 +11,7 @@ pub enum TrackerStatus {
 
 #[derive(Default)]
 pub struct Tracker {
-    pub id: u8,
+    pub index: u8,
     pub status: TrackerStatus,
     pub orientation: Quaternion,
     pub acceleration: Vector3,
@@ -25,13 +23,13 @@ pub struct Device {
 }
 
 impl Device {
-    pub fn get_tracker_mut(&mut self, id: u8) -> &mut Tracker {
-        if id as usize >= self.trackers.len() {
+    pub fn get_tracker_mut(&mut self, index: u8) -> &mut Tracker {
+        if index as usize >= self.trackers.len() {
             self.trackers
-                .resize_with((id + 1) as usize, Default::default);
+                .resize_with((index + 1) as usize, Default::default);
         }
 
-        &mut self.trackers[id as usize]
+        &mut self.trackers[index as usize]
     }
 }
 

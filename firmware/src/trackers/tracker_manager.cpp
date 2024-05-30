@@ -1,5 +1,6 @@
 #include <Wire.h>
 
+#include "defines.h"
 #include "log.h"
 #include "tracker_manager.h"
 #include "trackers/tracker.h"
@@ -10,10 +11,10 @@ bool i2c_device_connected(uint8_t address) {
     return Wire.endTransmission() == 0;
 }
 
-Tracker* make_tracker(TrackerKind kind, uint8_t id, uint8_t address) {
+Tracker* make_tracker(TrackerKind kind, uint8_t index, uint8_t address) {
     switch (kind) {
     case TrackerKind::BMI160:
-        return new TrackerBMI160(id, address);
+        return new TrackerBMI160(index, address);
     default:
         LOG_ERROR("Unknown tracker kind %d", (uint8_t)kind);
         return nullptr;
@@ -21,31 +22,31 @@ Tracker* make_tracker(TrackerKind kind, uint8_t id, uint8_t address) {
 }
 
 void TrackerManager::register_tracker(TrackerKind kind, uint8_t address, bool required) {
-    uint8_t id = m_next_tracker_id;
-    if (id >= m_trackers.size()) {
+    uint8_t index = m_tracker_count;
+    if (index >= MAX_TRACKER_COUNT) {
         LOG_ERROR("Number of trackers exceeded MAX_TRACKER_COUNT, please increase in defines.h");
         return;
     }
 
-    Tracker* tracker = make_tracker(kind, id, address);
+    Tracker* tracker = make_tracker(kind, index, address);
 
     if (!i2c_device_connected(address)) {
         if (required) {
-            LOG_ERROR("Required tracker %d with address 0x%02x not found", id, address);
+            LOG_ERROR("Required tracker %d with address 0x%02x not found", index, address);
             tracker->status = TrackerStatus::Error;
         } else {
-            LOG_WARN("Optional tracker %d with address 0x%02x not found", id, address);
+            LOG_WARN("Optional tracker %d with address 0x%02x not found", index, address);
             tracker->status = TrackerStatus::Off;
         }
     }
 
     if (tracker->status == TrackerStatus::Ok) {
-        LOG_INFO("Tracker %d found with address 0x%02x", id, address);
+        LOG_INFO("Tracker %d found with address 0x%02x", index, address);
         tracker->setup();
     }
 
-    m_trackers[id] = tracker;
-    m_next_tracker_id++;
+    m_trackers[index] = tracker;
+    m_tracker_count++;
 }
 
 void TrackerManager::setup() {
@@ -55,6 +56,7 @@ void TrackerManager::setup() {
     register_tracker(TrackerKind::BMI160, 0x69, false);
 }
 
+// Not currently used
 void TrackerManager::poll_tracker_status() {
     // Do polling every 5000 ms
     if (millis() < m_last_status_poll_time + 5000) {

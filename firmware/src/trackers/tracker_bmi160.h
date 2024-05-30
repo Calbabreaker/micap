@@ -6,7 +6,7 @@
 
 class TrackerBMI160 : public Tracker {
 public:
-    TrackerBMI160(uint8_t id, uint8_t address) : Tracker(TrackerKind::BMI160, id, address) {}
+    TrackerBMI160(uint8_t index, uint8_t address) : Tracker(TrackerKind::BMI160, index, address) {}
 
     void setup() override final;
     void update() override final;
