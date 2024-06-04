@@ -1,8 +1,8 @@
 use futures_util::{
     stream::{SplitSink, SplitStream},
-    SinkExt, StreamExt,
+    FutureExt, SinkExt, StreamExt,
 };
-use std::sync::Arc;
+use std::{net::Ipv4Addr, sync::Arc};
 use tokio::sync::RwLock;
 use warp::{
     filters::ws::{Message, WebSocket},
@@ -19,7 +19,7 @@ pub async fn start_server(state: Arc<RwLock<ServerState>>) {
         .map(|ws: warp::ws::Ws, state| ws.on_upgrade(|ws| on_connect(ws, state)));
 
     warp::serve(websocket)
-        .run(([127, 0, 0, 1], WEBSOCKET_PORT))
+        .run((Ipv4Addr::LOCALHOST, WEBSOCKET_PORT))
         .await;
 }
 
@@ -39,8 +39,8 @@ impl WebsocketConnection {
         let (ws_tx, ws_rx) = ws.split();
         Self {
             state,
-            ws_rx,
             ws_tx,
+            ws_rx,
         }
     }
 
@@ -80,11 +80,11 @@ impl WebsocketConnection {
                 write_serial("FACTORY-RESET".as_bytes())?;
             }
             WebsocketMessage::Error { error } => log::error!("Error from client: {error}"),
+            WebsocketMessage::RequestTrackerData { id } => todo!(),
         }
 
         Ok(())
     }
-
     async fn send_websocket_message(&mut self, message: WebsocketMessage) {
         if let Ok(string) = serde_json::to_string(&message) {
             self.ws_tx.send(Message::text(string)).await.ok();
@@ -98,4 +98,5 @@ pub enum WebsocketMessage {
     Wifi { ssid: String, password: String },
     Error { error: String },
     FactoryReset,
+    RequestTrackerData { id: u8 },
 }

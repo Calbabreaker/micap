@@ -1,8 +1,8 @@
 #![feature(concat_bytes)]
 
+mod main_server;
 mod math;
 mod serial;
-mod server_state;
 mod udp_packet;
 mod udp_server;
 mod websocket;
@@ -13,8 +13,6 @@ pub use websocket::WEBSOCKET_PORT;
 use futures_util::TryFutureExt;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-
-use crate::server_state::ServerState;
 
 pub fn setup_log() {
     env_logger::builder()
