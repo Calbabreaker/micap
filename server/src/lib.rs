@@ -14,6 +14,8 @@ use futures_util::TryFutureExt;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+use crate::main_server::MainServer;
+
 pub fn setup_log() {
     env_logger::builder()
         .format_timestamp(None)
@@ -23,7 +25,7 @@ pub fn setup_log() {
 }
 
 pub async fn start_server() {
-    let state = Arc::new(RwLock::new(ServerState::default()));
+    let state = Arc::new(RwLock::new(MainServer::default()));
 
     tokio::spawn(
         udp_server::start_server(state.clone())

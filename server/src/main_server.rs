@@ -1,6 +1,8 @@
+use std::collections::HashMap;
+
 use crate::math::{Quaternion, Vector3};
 
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, serde::Serialize)]
 #[repr(u8)]
 pub enum TrackerStatus {
     Ok = 0,
@@ -9,35 +11,54 @@ pub enum TrackerStatus {
     Off = 2,
 }
 
-#[derive(Default)]
+#[derive(Clone, Default, serde::Serialize)]
 pub struct Tracker {
     pub id: String,
     pub index: usize,
     pub status: TrackerStatus,
+    #[serde(skip)]
     pub orientation: Quaternion,
+    #[serde(skip)]
     pub acceleration: Vector3,
 }
 
-pub enum ServerEvent {
-    TrackerStatus { id: u32, status: TrackerStatus },
-    TrackerData,
-}
+#[derive(Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct TrackerConfig {}
 
 #[derive(Default)]
 pub struct MainServer {
-    pub trackers: Vec<Tracker>,
+    trackers: Vec<Tracker>,
+    tracker_id_to_index: HashMap<String, usize>,
+    tracker_configs: HashMap<String, TrackerConfig>,
 }
 
 impl MainServer {
-    pub fn register_tracker(&mut self, id: String) -> usize {
+    pub fn load_config(&mut self) {
+        for (id, config) in &self.tracker_configs.clone() {
+            self.register_tracker(id);
+        }
+    }
+
+    // Register a tracker to get its index and use that to access it later since using strings with
+    // hashmaps is a bit slow
+    pub fn register_tracker(&mut self, id: &String) -> usize {
+        if let Some(index) = self.tracker_id_to_index.get(id) {
+            return *index;
+        }
+
         let index = self.trackers.len();
         self.trackers.push(Tracker {
-            id,
+            id: id.clone(),
             index,
             ..Default::default()
         });
+        self.tracker_id_to_index.insert(id.clone(), index);
+        self.tracker_configs
+            .insert(id.clone(), TrackerConfig::default());
         index
     }
 
-    pub fn handle_event(event: ServerEvent) {}
+    pub fn set_tracker_status(&mut self, index: usize, status: TrackerStatus) {
+        self.trackers[index].status = status;
+    }
 }
