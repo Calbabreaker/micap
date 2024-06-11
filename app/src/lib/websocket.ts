@@ -1,16 +1,47 @@
 import { writable } from "svelte/store";
 
-export enum TrackerStatus {
-    Ok = 0,
-    Error = 1,
-    Off = 2,
-}
-
-export interface Tracker {
+interface TrackerInfo {
     id: string;
-    status: TrackerStatus;
+    index: number;
+    status: "Ok" | "Error" | "Off" | "TimedOut";
 }
 
-export const websocket = writable<WebSocket | undefined>();
+export interface TrackerI {
+    info: TrackerInfo;
+}
 
-export const trackers = writable<Tracker[]>([]);
+export const websocket = writable<WebSocket>();
+export const trackers = writable<TrackerI[]>([]);
+export const websocketError = writable("");
+
+websocket.subscribe((websocket) => {
+    if (websocket) {
+        websocket.addEventListener("message", (msg) => {
+            let message = JSON.parse(msg.data);
+            if (message) {
+                handleMessage(message);
+            }
+        });
+    }
+});
+
+function handleMessage(message: Record<string, any>) {
+    console.log(message);
+    switch (message.type) {
+        case "Error":
+            websocketError.set(message.error);
+            break;
+        case "TrackerInfo":
+            message.info.index;
+            trackers.update((trackers) => {
+                const tracker: TrackerI = {
+                    info: message.info,
+                };
+
+                trackers[message.info.index] = tracker;
+                return trackers;
+            });
+
+            break;
+    }
+}

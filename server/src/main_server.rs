@@ -10,16 +10,36 @@ pub enum ServerMessage {
     TrackerDataUpdate(TrackerData),
 }
 
+struct ServerMessageChannel {
+    tx: UnboundedSender<ServerMessage>,
+    // Id to keep track of where channel is in array to remove
+    id: u32,
+}
+
 #[derive(Default)]
 pub struct MainServer {
     pub trackers: Vec<Tracker>,
     tracker_id_to_index: HashMap<String, usize>,
-    message_rxs: Vec<UnboundedSender<ServerMessage>>,
+    message_channels: Vec<ServerMessageChannel>,
+    next_message_tx_id: u32,
 }
 
 impl MainServer {
-    pub fn add_message_rx(&mut self, rx: UnboundedSender<ServerMessage>) {
-        self.message_rxs.push(rx)
+    pub fn add_message_channel(&mut self, tx: UnboundedSender<ServerMessage>) -> u32 {
+        let id = self.next_message_tx_id;
+        self.message_channels.push(ServerMessageChannel { tx, id });
+        self.next_message_tx_id += 1;
+        id
+    }
+
+    pub fn remove_message_channel(&mut self, id: u32) {
+        if let Some(index) = self
+            .message_channels
+            .iter()
+            .position(|channel| channel.id == id)
+        {
+            self.message_channels.swap_remove(index);
+        }
     }
 
     pub fn load_config(&mut self) {
@@ -46,15 +66,23 @@ impl MainServer {
     }
 
     pub fn update_tracker_status(&mut self, index: usize, status: TrackerStatus) {
-        self.trackers[index].info.status = status;
+        let info = &mut self.trackers[index].info;
+        // Only allow changing status to TimedOut if tracker is Ok and vice-versa
+        if (status == TrackerStatus::TimedOut && info.status != TrackerStatus::Ok)
+            || (info.status == TrackerStatus::TimedOut && status != TrackerStatus::Ok)
+        {
+            return;
+        }
+
+        info.status = status;
         self.send_message_to_all(ServerMessage::TrackerInfoUpdate(
             self.trackers[index].info.clone(),
         ));
     }
 
-    fn send_message_to_all(&self, message: ServerMessage) {
-        for rx in &self.message_rxs {
-            rx.send(message.clone());
+    fn send_message_to_all(&mut self, message: ServerMessage) {
+        for channel in &self.message_channels {
+            channel.tx.send(message.clone()).unwrap();
         }
     }
 }

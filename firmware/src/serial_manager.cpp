@@ -6,9 +6,9 @@
 
 // Go to the start of the next string using strlen (which relies on the null byte)
 const char* next_arg(const char* start, size_t* length_left) {
-    size_t length = strlen(start) + 1;
+    size_t length = strlen(start) + 1; // Includes null byte
     if (length >= *length_left) {
-        return 0;
+        return nullptr;
     }
 
     *length_left -= length;
@@ -30,19 +30,17 @@ void SerialManager::parse_incomming_command() {
     m_buffer[bytes_read] = '\0';
     LOG_TRACE("Got command %s with %zu chars", m_buffer, bytes_read);
 
-    const char* arg_ptr = next_arg(m_buffer, &bytes_read);
-    if (!arg_ptr) {
-        return;
-    }
-
     if (strcmp(m_buffer, "WIFI") == 0) {
-        const char* password_ptr = next_arg(arg_ptr, &bytes_read);
-        // Set password to empty string if non provided
+        const char* ssid_ptr = next_arg(m_buffer, &bytes_read);
+        const char* password_ptr = next_arg(ssid_ptr, &bytes_read);
+        if (!ssid_ptr) {
+            return;
+        }
         if (!password_ptr) {
             password_ptr = "";
         }
 
-        g_connection_manager.get_wifi().use_credentials(arg_ptr, password_ptr);
+        g_connection_manager.get_wifi().use_credentials(ssid_ptr, password_ptr);
     } else if (strcmp(m_buffer, "FACTORY-RESET") == 0) {
         g_config_manager.reset();
     }

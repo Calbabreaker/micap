@@ -1,12 +1,13 @@
 use crate::math::{Quaternion, Vector3};
 
-#[derive(Default, Debug, Clone, Copy, serde::Serialize)]
+#[derive(Default, PartialEq, Debug, Clone, Copy, serde::Serialize)]
 #[repr(u8)]
 pub enum TrackerStatus {
     Ok = 0,
     Error = 1,
     #[default]
     Off = 2,
+    TimedOut,
 }
 
 #[derive(Clone, Default, serde::Serialize)]
@@ -35,7 +36,7 @@ impl Tracker {
             info: TrackerInfo {
                 id,
                 index,
-                status: TrackerStatus::Off,
+                ..Default::default()
             },
             data: TrackerData::default(),
         }

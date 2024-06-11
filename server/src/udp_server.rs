@@ -9,6 +9,7 @@ use tokio::sync::RwLock;
 
 use crate::{
     main_server::MainServer,
+    tracker::TrackerStatus,
     udp_packet::{
         UdpPacket, UdpPacketHandshake, UdpPacketTrackerData, UdpPacketTrackerStatus,
         PACKET_HEARTBEAT,
@@ -23,11 +24,11 @@ const SOCKET_TIMEOUT: Duration = Duration::from_millis(500);
 pub const MULTICAST_IP: Ipv4Addr = Ipv4Addr::new(239, 255, 0, 123);
 
 pub struct UdpDevice {
-    // Maps the udp device's tracker index to the tracker's global index
-    tracker_indexs: Vec<usize>,
-    index: usize,
+    pub(super) index: usize,
     pub(super) last_packet_received_time: Instant,
     pub(super) last_packet_number: u32,
+    // Maps the udp device's tracker index to the tracker's global index
+    tracker_indexs: Vec<usize>,
     timed_out: bool,
     mac: String,
     address: SocketAddr,
@@ -53,6 +54,23 @@ impl UdpDevice {
         }
 
         self.tracker_indexs[local_index as usize] = global_index;
+    }
+
+    async fn set_timed_out(&mut self, main: &Arc<RwLock<MainServer>>, timed_out: bool) {
+        if timed_out == self.timed_out {
+            return;
+        }
+
+        self.timed_out = timed_out;
+
+        for i in &self.tracker_indexs {
+            let status = if timed_out {
+                TrackerStatus::TimedOut
+            } else {
+                TrackerStatus::Ok
+            };
+            main.write().await.update_tracker_status(*i, status);
+        }
     }
 }
 
@@ -90,10 +108,10 @@ impl UdpServer {
             if let Ok(Ok((amount, peer_addr))) =
                 tokio::time::timeout(SOCKET_TIMEOUT, self.socket.recv_from(&mut buffer)).await
             {
-                log::trace!(
-                    "Received {amount} bytes from {peer_addr} ({:#02x})",
-                    buffer[0]
-                );
+                // log::trace!(
+                //     "Received {amount} bytes from {peer_addr} ({:#02x})",
+                //     buffer[0]
+                // );
 
                 // Only pass through the amount received
                 self.handle_packet(&buffer[0..amount], peer_addr).await?;
@@ -108,12 +126,9 @@ impl UdpServer {
     async fn upkeep(&mut self) -> tokio::io::Result<()> {
         for device in &mut self.devices {
             if device.last_packet_received_time.elapsed() > DEVICE_TIMEOUT {
-                if !device.timed_out {
-                    device.timed_out = true;
-                    log::info!("Device at {} timed out", device.address);
-                }
+                device.set_timed_out(&self.main, true).await;
             } else {
-                device.timed_out = false;
+                device.set_timed_out(&self.main, false).await;
             }
 
             self.socket
@@ -131,29 +146,26 @@ impl UdpServer {
         peer_addr: SocketAddr,
     ) -> tokio::io::Result<()> {
         let mut byte_iter = bytes.iter();
-        let device_index = self.address_to_device_index.get(&peer_addr);
-        let udp_device = device_index.and_then(|i| self.devices.get_mut(*i));
+        let udp_device = self
+            .address_to_device_index
+            .get(&peer_addr)
+            .and_then(|i| self.devices.get_mut(*i));
 
         match UdpPacket::parse(&mut byte_iter, udp_device) {
             Some(UdpPacket::Heartbeat) => {}
             Some(UdpPacket::Handshake(packet)) => {
                 self.handle_handshake(packet, peer_addr).await?;
             }
-            Some(UdpPacket::TrackerData(packet)) => {
-                if let Some(device_index) = device_index {
-                    self.handle_tracker_data(packet, *device_index).await;
-                }
+            Some(UdpPacket::TrackerData((packet, device_index))) => {
+                self.handle_tracker_data(packet, device_index).await;
             }
-            Some(UdpPacket::TrackerStatus(packet)) => {
+            Some(UdpPacket::TrackerStatus((packet, device_index))) => {
                 log::trace!("Got {:?}", packet);
 
-                if let Some(device_index) = device_index {
-                    self.handlet_tracker_status(packet, *device_index).await;
-                }
+                self.socket.send_to(&packet.to_bytes(), peer_addr).await?;
+                self.handlet_tracker_status(packet, device_index).await;
             }
-            None => {
-                log::warn!("Received invalid packet");
-            }
+            None => (),
         }
 
         Ok(())
@@ -168,26 +180,26 @@ impl UdpServer {
             .send_to(UdpPacketHandshake::RESPONSE, peer_addr)
             .await?;
 
-        if self.address_to_device_index.contains_key(&peer_addr) {
-            log::info!("Reconnected from {peer_addr}");
-            return Ok(());
-        }
-
-        // Check if the device already has connected with a mac address but different address
+        // Check if the device already has connected with a mac address
         if let Some(index) = self.mac_to_device_index.get(&packet.mac_string) {
             let device = &mut self.devices[*index];
             let index = device.index;
             let old_address = device.address;
 
-            device.address = peer_addr;
-
             // Move over to the new address if the device has a new ip
-            self.address_to_device_index.remove(&old_address);
-            self.address_to_device_index.insert(peer_addr, index);
-            log::info!("Reconnected from {peer_addr} from old: {old_address}");
+            if device.address != peer_addr {
+                self.address_to_device_index.remove(&old_address);
+                self.address_to_device_index.insert(peer_addr, index);
+                device.address = peer_addr;
+                log::info!("Reconnected from {peer_addr} from old: {old_address}");
+            } else {
+                log::info!("Reconnected from {peer_addr}");
+            }
+
             return Ok(());
         }
 
+        // Create a new udp device
         let index = self.devices.len();
         let device = UdpDevice::new(index, peer_addr, packet.mac_string.clone());
         self.mac_to_device_index.insert(packet.mac_string, index);

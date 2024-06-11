@@ -10,6 +10,30 @@ use crate::{main_server::ServerMessage, serial::write_serial, tracker::TrackerIn
 
 pub const WEBSOCKET_PORT: u16 = 8298;
 
+// Sent from server
+#[derive(Clone, serde::Serialize)]
+#[serde(tag = "type")]
+enum WebsocketServerMessage {
+    Error { error: String },
+    TrackerInfo { info: TrackerInfo },
+}
+
+// Receieved from client
+#[derive(Clone, serde::Deserialize)]
+#[serde(tag = "type")]
+enum WebsocketClientMessage {
+    Wifi { ssid: String, password: String },
+    FactoryReset,
+}
+
+async fn send_websocket_message(
+    ws_tx: &Arc<RwLock<SplitSink<WebSocket, Message>>>,
+    message: WebsocketServerMessage,
+) {
+    if let Ok(string) = serde_json::to_string(&message) {
+        ws_tx.write().await.send(Message::text(string)).await.ok();
+    }
+}
 pub async fn start_server(main: Arc<RwLock<MainServer>>) {
     let websocket = warp::ws()
         .and(warp::any().map(move || main.clone()))
@@ -25,26 +49,30 @@ async fn on_connect(ws: WebSocket, main: Arc<RwLock<MainServer>>) {
     let (_ws_tx, mut ws_rx) = ws.split();
     let ws_tx = Arc::new(RwLock::new(_ws_tx));
 
-    let (server_rx, mut server_tx) = tokio::sync::mpsc::unbounded_channel();
-
-    main.write().await.add_message_rx(server_rx);
+    let (server_tx, mut server_rx) = tokio::sync::mpsc::unbounded_channel();
+    let server_channel_id = main.write().await.add_message_channel(server_tx);
 
     for tracker in &main.read().await.trackers {
         send_websocket_message(
             &ws_tx,
-            WebsocketServerMessage::TrackerInfo(tracker.info.clone()),
+            WebsocketServerMessage::TrackerInfo {
+                info: tracker.info.clone(),
+            },
         )
         .await;
     }
 
-    // Spawn seperate task for listeneing to server messages
+    // Spawn seperate task for listening to server messages
     let ws_tx_clone = ws_tx.clone();
     tokio::spawn(async move {
-        while let Some(message) = server_tx.recv().await {
+        while let Some(message) = server_rx.recv().await {
             match message {
                 ServerMessage::TrackerInfoUpdate(info) => {
-                    send_websocket_message(&ws_tx_clone, WebsocketServerMessage::TrackerInfo(info))
-                        .await;
+                    send_websocket_message(
+                        &ws_tx_clone,
+                        WebsocketServerMessage::TrackerInfo { info },
+                    )
+                    .await;
                 }
                 ServerMessage::TrackerDataUpdate(_) => todo!(),
             }
@@ -68,6 +96,9 @@ async fn on_connect(ws: WebSocket, main: Arc<RwLock<MainServer>>) {
             }
         }
     }
+
+    log::info!("Websocket client disconnected");
+    main.write().await.remove_message_channel(server_channel_id);
 }
 
 fn handle_websocket_message(string: &str) -> Result<(), String> {
@@ -87,29 +118,4 @@ fn handle_websocket_message(string: &str) -> Result<(), String> {
     }
 
     Ok(())
-}
-
-// Sent from server
-#[derive(Clone, serde::Serialize)]
-#[serde(tag = "type")]
-enum WebsocketServerMessage {
-    Error { error: String },
-    TrackerInfo(TrackerInfo),
-}
-
-// Receieved from client
-#[derive(Clone, serde::Deserialize)]
-#[serde(tag = "type")]
-enum WebsocketClientMessage {
-    Wifi { ssid: String, password: String },
-    FactoryReset,
-}
-
-async fn send_websocket_message(
-    ws_tx: &Arc<RwLock<SplitSink<WebSocket, Message>>>,
-    message: WebsocketServerMessage,
-) {
-    if let Ok(string) = serde_json::to_string(&message) {
-        ws_tx.write().await.send(Message::text(string)).await.ok();
-    }
 }
