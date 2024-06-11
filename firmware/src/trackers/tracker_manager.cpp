@@ -41,7 +41,7 @@ void TrackerManager::register_tracker(TrackerKind kind, uint8_t address, bool re
     }
 
     if (tracker->status == TrackerStatus::Ok) {
-        LOG_INFO("Tracker %d found with address 0x%02x", index, address);
+        LOG_INFO("Tracker %d with address 0x%02x found", index, address);
         tracker->setup();
     }
 

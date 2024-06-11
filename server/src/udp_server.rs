@@ -1,6 +1,5 @@
 use std::{
     collections::HashMap,
-    fmt::format,
     net::{Ipv4Addr, SocketAddr},
     sync::Arc,
     time::{Duration, Instant},
@@ -10,7 +9,10 @@ use tokio::sync::RwLock;
 
 use crate::{
     main_server::MainServer,
-    udp_packet::{UdpPacket, UdpPacketHandshake, UdpPacketTrackerStatus, PACKET_HEARTBEAT},
+    udp_packet::{
+        UdpPacket, UdpPacketHandshake, UdpPacketTrackerData, UdpPacketTrackerStatus,
+        PACKET_HEARTBEAT,
+    },
 };
 
 pub const UDP_PORT: u16 = 5828;
@@ -21,7 +23,7 @@ const SOCKET_TIMEOUT: Duration = Duration::from_millis(500);
 pub const MULTICAST_IP: Ipv4Addr = Ipv4Addr::new(239, 255, 0, 123);
 
 pub struct UdpDevice {
-    // Maps a udp tracker index to the tracker's global index
+    // Maps the udp device's tracker index to the tracker's global index
     tracker_indexs: Vec<usize>,
     index: usize,
     pub(super) last_packet_received_time: Instant,
@@ -42,6 +44,15 @@ impl UdpDevice {
             last_packet_number: 0,
             timed_out: false,
         }
+    }
+
+    fn set_global_tracker_index(&mut self, local_index: u8, global_index: usize) {
+        if local_index as usize >= self.tracker_indexs.len() {
+            self.tracker_indexs
+                .resize_with(local_index as usize + 1, usize::default);
+        }
+
+        self.tracker_indexs[local_index as usize] = global_index;
     }
 }
 
@@ -128,22 +139,16 @@ impl UdpServer {
             Some(UdpPacket::Handshake(packet)) => {
                 self.handle_handshake(packet, peer_addr).await?;
             }
-            Some(UdpPacket::TrackerData(mut packet)) => {
-                if let Some(udp_device) = udp_device {
-                    let device = &mut self.main.write().await.devices[index];
-
-                    while let Some(data) = packet.next(&mut byte_iter) {
-                        let tracker = device.get_tracker_mut(data.tracker_index);
-                        tracker.orientation = data.orientation;
-                        tracker.acceleration = data.accleration;
-                    }
+            Some(UdpPacket::TrackerData(packet)) => {
+                if let Some(device_index) = device_index {
+                    self.handle_tracker_data(packet, *device_index).await;
                 }
             }
             Some(UdpPacket::TrackerStatus(packet)) => {
                 log::trace!("Got {:?}", packet);
 
                 if let Some(device_index) = device_index {
-                    self.handlet_tracker_status(packet, *device_index);
+                    self.handlet_tracker_status(packet, *device_index).await;
                 }
             }
             None => {
@@ -202,11 +207,19 @@ impl UdpServer {
 
         let global_index = match device.tracker_indexs.get(packet.tracker_index as usize) {
             Some(index) => *index,
-            None => main.register_tracker(format!("{}/{}", device.mac, packet.tracker_index)),
+            None => {
+                // Register the tracker and add the index into the udp device array to know
+                let index =
+                    main.register_tracker(&format!("{}/{}", device.mac, packet.tracker_index));
+                device.set_global_tracker_index(packet.tracker_index, index);
+                index
+            }
         };
 
-        main.set_tracker_status(global_index, packet.tracker_status);
+        main.update_tracker_status(global_index, packet.tracker_status);
     }
+
+    async fn handle_tracker_data(&mut self, packet: UdpPacketTrackerData, device_index: usize) {}
 }
 
 pub async fn start_server(main: Arc<RwLock<MainServer>>) -> tokio::io::Result<()> {

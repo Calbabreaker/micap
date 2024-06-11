@@ -1,4 +1,4 @@
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, serde::Serialize)]
 pub struct Vector3 {
     pub x: f32,
     pub y: f32,
@@ -11,7 +11,7 @@ impl Vector3 {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, serde::Serialize)]
 pub struct Quaternion {
     pub x: f32,
     pub y: f32,

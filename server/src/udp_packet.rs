@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use crate::main_server::TrackerStatus;
+use crate::tracker::TrackerStatus;
 use crate::{
     math::{Quaternion, Vector3},
     udp_server::UdpDevice,
@@ -101,7 +101,7 @@ impl UdpPacketTrackerStatus {
 }
 
 #[derive(Debug)]
-pub struct TrackerData {
+pub struct UdpTrackerData {
     pub tracker_index: u8,
     pub orientation: Quaternion,
     pub accleration: Vector3,
@@ -120,12 +120,12 @@ impl UdpPacketTrackerData {
         })
     }
 
-    pub fn next(&mut self, bytes: &mut std::slice::Iter<u8>) -> Option<TrackerData> {
+    pub fn next(&mut self, bytes: &mut std::slice::Iter<u8>) -> Option<UdpTrackerData> {
         if self.current_tracker_index >= self.num_trackers {
             return None;
         }
 
-        Some(TrackerData {
+        Some(UdpTrackerData {
             tracker_index: *bytes.next()?,
             orientation: Quaternion::new(
                 f32_parse(bytes)?,

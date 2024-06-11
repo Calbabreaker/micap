@@ -3,6 +3,7 @@
 mod main_server;
 mod math;
 mod serial;
+mod tracker;
 mod udp_packet;
 mod udp_server;
 mod websocket;

@@ -1,40 +1,30 @@
 use std::collections::HashMap;
 
-use crate::math::{Quaternion, Vector3};
+use tokio::sync::mpsc::UnboundedSender;
 
-#[derive(Default, Debug, Clone, Copy, serde::Serialize)]
-#[repr(u8)]
-pub enum TrackerStatus {
-    Ok = 0,
-    Error = 1,
-    #[default]
-    Off = 2,
+use crate::tracker::*;
+
+#[derive(Clone)]
+pub enum ServerMessage {
+    TrackerInfoUpdate(TrackerInfo),
+    TrackerDataUpdate(TrackerData),
 }
-
-#[derive(Clone, Default, serde::Serialize)]
-pub struct Tracker {
-    pub id: String,
-    pub index: usize,
-    pub status: TrackerStatus,
-    #[serde(skip)]
-    pub orientation: Quaternion,
-    #[serde(skip)]
-    pub acceleration: Vector3,
-}
-
-#[derive(Clone, Default, serde::Serialize, serde::Deserialize)]
-pub struct TrackerConfig {}
 
 #[derive(Default)]
 pub struct MainServer {
-    trackers: Vec<Tracker>,
+    pub trackers: Vec<Tracker>,
     tracker_id_to_index: HashMap<String, usize>,
-    tracker_configs: HashMap<String, TrackerConfig>,
+    message_rxs: Vec<UnboundedSender<ServerMessage>>,
 }
 
 impl MainServer {
+    pub fn add_message_rx(&mut self, rx: UnboundedSender<ServerMessage>) {
+        self.message_rxs.push(rx)
+    }
+
     pub fn load_config(&mut self) {
-        for (id, config) in &self.tracker_configs.clone() {
+        let tracker_configs = HashMap::<String, TrackerConfig>::new();
+        for (id, config) in &tracker_configs {
             self.register_tracker(id);
         }
     }
@@ -47,18 +37,24 @@ impl MainServer {
         }
 
         let index = self.trackers.len();
-        self.trackers.push(Tracker {
-            id: id.clone(),
-            index,
-            ..Default::default()
-        });
+        self.trackers.push(Tracker::new(id.clone(), index));
         self.tracker_id_to_index.insert(id.clone(), index);
-        self.tracker_configs
-            .insert(id.clone(), TrackerConfig::default());
+        self.send_message_to_all(ServerMessage::TrackerInfoUpdate(
+            self.trackers[index].info.clone(),
+        ));
         index
     }
 
-    pub fn set_tracker_status(&mut self, index: usize, status: TrackerStatus) {
-        self.trackers[index].status = status;
+    pub fn update_tracker_status(&mut self, index: usize, status: TrackerStatus) {
+        self.trackers[index].info.status = status;
+        self.send_message_to_all(ServerMessage::TrackerInfoUpdate(
+            self.trackers[index].info.clone(),
+        ));
+    }
+
+    fn send_message_to_all(&self, message: ServerMessage) {
+        for rx in &self.message_rxs {
+            rx.send(message.clone());
+        }
     }
 }

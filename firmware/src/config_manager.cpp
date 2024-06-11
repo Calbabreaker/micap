@@ -21,6 +21,7 @@ void ConfigManager::setup() {
     memset(&m_wifi_entries, 0, sizeof(WifiEntries));
 
     if (LittleFS.exists(WIFI_FILE)) {
+        LOG_INFO("Read wifi file");
         File file = LittleFS.open(WIFI_FILE, "r");
         file.read((uint8_t*)&m_wifi_entries, sizeof(WifiEntries));
         file.close();
@@ -53,7 +54,6 @@ void ConfigManager::wifi_entry_save(const char* ssid, const char* password) {
 
     strncpy(m_wifi_entries.array[i].password, password, MAX_PASSWORD_LENGTH);
 
-    // Only write the specific entry
     file.write((uint8_t*)&m_wifi_entries, sizeof(WifiEntries));
     file.close();
 }

@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 
+// Note: LOG_* is only for debugging purposes and will be removed during production builds
 #define ENABLE_LOG 1
 
 #if ENABLE_LOG == 1

@@ -1,12 +1,12 @@
 <script lang="ts">
-    export let ws: WebSocket;
+    import { websocket } from "$lib/websocket";
 
     let ssid = "";
     let password = "";
 
     function setWifi(e: SubmitEvent) {
         e.preventDefault();
-        ws.send(
+        $websocket.send(
             JSON.stringify({
                 type: "Wifi",
                 ssid,

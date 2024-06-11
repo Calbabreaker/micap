@@ -7,7 +7,7 @@
 #define MAX_SSID_LENGTH 32
 
 struct WifiEntry {
-    char ssid[MAX_PASSWORD_LENGTH];
+    char ssid[MAX_SSID_LENGTH];
     char password[MAX_PASSWORD_LENGTH];
 };
 

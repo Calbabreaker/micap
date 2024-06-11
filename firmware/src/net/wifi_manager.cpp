@@ -39,7 +39,7 @@ bool WifiManager::monitor() {
 
     if (m_test_networks_populated) {
         if (millis() > m_last_attempt_time + WIFI_CONNECT_TIMEOUT_MS) {
-            LOG_ERROR("Failed to connect to network, trying next");
+            LOG_WARN("Failed to connect to network, trying next");
             try_connect_next_network();
         }
     } else {
