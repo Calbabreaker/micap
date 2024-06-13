@@ -69,7 +69,6 @@ void TrackerBMI160::setup() {
     m_device.accel_cfg.range = BMI160_ACCEL_RANGE_4G;
     m_device.accel_cfg.bw = BMI160_ACCEL_BW_NORMAL_AVG4;
     m_device.accel_cfg.power = BMI160_ACCEL_NORMAL_MODE;
-
     m_device.gyro_cfg.odr = BMI160_GYRO_ODR_400HZ;
     m_device.gyro_cfg.range = BMI160_GYRO_RANGE_500_DPS;
     m_device.gyro_cfg.bw = BMI160_GYRO_BW_NORMAL_MODE;

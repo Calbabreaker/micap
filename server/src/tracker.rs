@@ -1,7 +1,5 @@
 use std::{default, time::Duration};
 
-use crate::math::{Quaternion, Vector3};
-
 #[derive(Default, PartialEq, Debug, Clone, Copy, serde::Serialize)]
 #[repr(u8)]
 pub enum TrackerStatus {
@@ -32,10 +30,10 @@ pub struct TrackerInfo {
 
 #[derive(Clone, Default, serde::Serialize)]
 pub struct TrackerData {
-    pub orientation: Quaternion,
-    pub acceleration: Vector3,
-    pub velocity: Vector3,
-    pub position: Vector3,
+    pub orientation: glam::Quat,
+    pub acceleration: glam::Vec3A,
+    pub velocity: glam::Vec3A,
+    pub position: glam::Vec3A,
 }
 
 #[derive(Clone)]
@@ -57,7 +55,13 @@ impl Tracker {
         }
     }
 
-    pub fn tick(&mut self, delta: Duration) {}
+    pub fn tick(&mut self, delta: Duration) {
+        let delta_secs = delta.as_secs_f32();
+        self.data.velocity += self.data.acceleration * delta_secs;
+        self.data.position += self.data.velocity * delta_secs;
+        self.data.orientation.z = 100.;
+        self.data.orientation = self.data.orientation.normalize();
+    }
 }
 
 /// Seperate from TrackerInfo to be used to save to a file

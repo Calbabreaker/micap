@@ -3,11 +3,12 @@
 #include <cstdint>
 #include <pins_arduino.h>
 
-#ifdef LED_BUILTIN
-#define INTERNAL_LED_PIN LED_BUILTIN
-#define LED_ENABLED
+#if defined(CUSTOM_LED_PIN)
+    #define INTERNAL_LED_PIN CUSTOM_LED_PIN
+#elif defined(LED_BUILTIN)
+    #define INTERNAL_LED_PIN LED_BUILTIN
 #else
-#define INTERNAL_LED_PIN 0
+    #define INTERNAL_LED_PIN 0
 #endif
 
 class LedManager {

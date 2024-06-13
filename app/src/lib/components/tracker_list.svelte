@@ -1,0 +1,21 @@
+<script lang="ts">
+    import { trackers } from "$lib/websocket";
+    import TrackerPreview from "./tracker_preview.svelte";
+</script>
+
+<div class="bg-neutral-700 p-4 shadow rounded mb-4">
+    <h1 class="text-xl mb-4">Trackers</h1>
+    {#each $trackers as tracker}
+        <div class="bg-neutral-600 p-4 rounded shadow">
+            <span>{tracker.info.config.name}</span>
+            <span>{tracker.info.status}</span>
+            {#if tracker.data}
+                <p>Orientation: {tracker.data.orientation}</p>
+                <p>Acceleration: {tracker.data.acceleration}</p>
+                <div class="w-96 h-96 bg-black mt-2">
+                    <TrackerPreview data={tracker.data} />
+                </div>
+            {/if}
+        </div>
+    {/each}
+</div>

@@ -5,7 +5,7 @@
 
 #include <ESP8266WiFi.h>
 
-SerialManager g_serial_manager;
+SerialManager serial_manager;
 ConnectionManager g_connection_manager;
 ConfigManager g_config_manager;
 LedManager g_internal_led(INTERNAL_LED_PIN);
@@ -17,6 +17,7 @@ void setup() {
     Serial.begin(9600);
     g_config_manager.setup();
     g_internal_led.setup();
+    g_internal_led.off();
     g_tracker_manager.setup();
     g_connection_manager.setup();
 
@@ -24,7 +25,7 @@ void setup() {
 }
 
 void loop() {
-    g_serial_manager.parse_incomming_command();
+    serial_manager.parse_incomming_command();
     g_connection_manager.update();
 
     if (g_connection_manager.is_connected()) {

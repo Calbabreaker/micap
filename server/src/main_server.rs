@@ -6,10 +6,7 @@ use std::{
 
 use tokio::sync::{mpsc::UnboundedSender, RwLock};
 
-use crate::{
-    math::{Quaternion, Vector3},
-    tracker::*,
-};
+use crate::tracker::*;
 
 #[derive(Clone)]
 pub enum ServerMessage {
@@ -95,8 +92,8 @@ impl MainServer {
     pub fn update_tracker_data(
         &mut self,
         index: usize,
-        acceleration: Vector3,
-        orientation: Quaternion,
+        acceleration: glam::Vec3A,
+        orientation: glam::Quat,
     ) {
         let data = &mut self.trackers[index].data;
         data.orientation = orientation;

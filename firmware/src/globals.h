@@ -1,9 +1,9 @@
 #pragma once
 
-#include "config_manager.h"
 #define STRINGIFY(x) #x
 #define STRINGIFY_V(x) STRINGIFY(x)
 
+#include "config_manager.h"
 #include "led_manager.h"
 #include "net/connection_manager.h"
 #include "trackers/tracker_manager.h"

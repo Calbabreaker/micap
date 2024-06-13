@@ -61,6 +61,7 @@ void WifiManager::use_credentials(const char* ssid, const char* password) {
 
 // Connects to the next test network in the list
 void WifiManager::try_connect_next_network() {
+    g_internal_led.blink(20);
     m_has_manually_set_creds = false;
     if (m_test_network_count == 0) {
         start_scan();
@@ -72,7 +73,7 @@ void WifiManager::try_connect_next_network() {
     const char* ssid = (const char*)info->ssid;
     LOG_INFO("Trying to connect to network %.32s", (const char*)info->ssid);
 
-    auto password = g_config_manager.wifi_password_get(ssid);
+    const char* password = g_config_manager.wifi_password_get(ssid);
     WiFi.begin(ssid, password);
     m_test_network_count -= 1;
     m_last_attempt_time = millis();

@@ -1,12 +1,7 @@
 use std::time::Instant;
 
 use crate::tracker::TrackerStatus;
-use crate::{
-    math::{Quaternion, Vector3},
-    udp_server::UdpDevice,
-};
-
-pub const SUPPORTED_FIRMWARE_VERSION_MAJOR: u8 = 0;
+use crate::udp_server::UdpDevice;
 
 pub const PACKET_HEARTBEAT: u8 = 0x00;
 pub const PACKET_HANDSHAKE: u8 = 0x01;
@@ -117,8 +112,8 @@ impl UdpPacketTrackerStatus {
 #[derive(Debug)]
 pub struct UdpTrackerData {
     pub tracker_index: u8,
-    pub orientation: Quaternion,
-    pub accleration: Vector3,
+    pub orientation: glam::Quat,
+    pub accleration: glam::Vec3A,
 }
 
 pub struct UdpPacketTrackerData<'a> {
@@ -143,13 +138,13 @@ impl<'a> UdpPacketTrackerData<'a> {
 
         Some(UdpTrackerData {
             tracker_index: *self.bytes.next()?,
-            orientation: Quaternion::new(
+            orientation: glam::Quat::from_xyzw(
                 f32_parse(self.bytes)?,
                 f32_parse(self.bytes)?,
                 f32_parse(self.bytes)?,
                 f32_parse(self.bytes)?,
             ),
-            accleration: Vector3::new(
+            accleration: glam::Vec3A::new(
                 f32_parse(self.bytes)?,
                 f32_parse(self.bytes)?,
                 f32_parse(self.bytes)?,

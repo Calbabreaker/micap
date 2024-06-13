@@ -1,10 +1,10 @@
 use futures_util::{stream::SplitSink, SinkExt, StreamExt};
-use std::{net::Ipv4Addr, sync::Arc};
-use tokio::sync::RwLock;
-use warp::{
-    filters::ws::{Message, WebSocket},
-    Filter,
+use std::{
+    net::{Ipv4Addr, SocketAddr},
+    sync::Arc,
 };
+use tokio::sync::RwLock;
+use warp::{filters::ws::WebSocket, Filter};
 
 use crate::{
     main_server::ServerMessage,
@@ -32,12 +32,12 @@ enum WebsocketClientMessage {
     FactoryReset,
 }
 
-async fn send_websocket_message(
-    ws_tx: &Arc<RwLock<SplitSink<WebSocket, Message>>>,
-    message: WebsocketServerMessage,
-) {
+type WebsocketTx = Arc<RwLock<SplitSink<WebSocket, warp::ws::Message>>>;
+
+async fn send_websocket_message(ws_tx: &WebsocketTx, message: WebsocketServerMessage) {
     if let Ok(string) = serde_json::to_string(&message) {
-        ws_tx.write().await.send(Message::text(string)).await.ok();
+        let mut ws_tx = ws_tx.write().await;
+        ws_tx.send(warp::ws::Message::text(string)).await.ok();
     }
 }
 pub async fn start_server(main: Arc<RwLock<MainServer>>) -> anyhow::Result<()> {
@@ -45,9 +45,9 @@ pub async fn start_server(main: Arc<RwLock<MainServer>>) -> anyhow::Result<()> {
         .and(warp::any().map(move || main.clone()))
         .map(|ws: warp::ws::Ws, main| ws.on_upgrade(|ws| on_connect(ws, main)));
 
-    warp::serve(websocket)
-        .run((Ipv4Addr::LOCALHOST, WEBSOCKET_PORT))
-        .await;
+    let address = SocketAddr::from((Ipv4Addr::LOCALHOST, WEBSOCKET_PORT));
+    log::info!("Started websocket server on {address}");
+    warp::serve(websocket).run(address).await;
     Ok(())
 }
 
@@ -73,22 +73,7 @@ async fn on_connect(ws: WebSocket, main: Arc<RwLock<MainServer>>) {
     let ws_tx_clone = ws_tx.clone();
     let server_messages_task = tokio::spawn(async move {
         while let Some(message) = server_rx.recv().await {
-            match message {
-                ServerMessage::TrackerInfoUpdate(info) => {
-                    send_websocket_message(
-                        &ws_tx_clone,
-                        WebsocketServerMessage::TrackerInfo { info },
-                    )
-                    .await;
-                }
-                ServerMessage::TrackerDataUpdate((index, data)) => {
-                    send_websocket_message(
-                        &ws_tx_clone,
-                        WebsocketServerMessage::TrackerData { index, data },
-                    )
-                    .await;
-                }
-            }
+            handle_server_message(message, &ws_tx_clone).await;
         }
     });
 
@@ -121,6 +106,18 @@ async fn on_connect(ws: WebSocket, main: Arc<RwLock<MainServer>>) {
     server_messages_task.await.ok();
 }
 
+async fn handle_server_message(message: ServerMessage, ws_tx: &WebsocketTx) {
+    match message {
+        ServerMessage::TrackerInfoUpdate(info) => {
+            send_websocket_message(ws_tx, WebsocketServerMessage::TrackerInfo { info }).await;
+        }
+        ServerMessage::TrackerDataUpdate((index, data)) => {
+            send_websocket_message(ws_tx, WebsocketServerMessage::TrackerData { index, data })
+                .await;
+        }
+    }
+}
+
 fn handle_websocket_message(string: &str) -> anyhow::Result<()> {
     let message = serde_json::from_str(string)?;
 
@@ -130,10 +127,10 @@ fn handle_websocket_message(string: &str) -> anyhow::Result<()> {
                 return Err(anyhow::Error::msg("SSID or password too long"));
             }
 
-            write_serial(format!("WIFI\0{ssid}\0{password}").as_bytes())?;
+            write_serial(format!("Wifi\0{ssid}\0{password}").as_bytes())?;
         }
         WebsocketClientMessage::FactoryReset => {
-            write_serial("FACTORY-RESET".as_bytes())?;
+            write_serial("FactoryReset".as_bytes())?;
         }
     }
 

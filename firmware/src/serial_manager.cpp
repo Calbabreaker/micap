@@ -30,7 +30,7 @@ void SerialManager::parse_incomming_command() {
     m_buffer[bytes_read] = '\0';
     LOG_TRACE("Got command %s with %zu chars", m_buffer, bytes_read);
 
-    if (strcmp(m_buffer, "WIFI") == 0) {
+    if (strcmp(m_buffer, "Wifi") == 0) {
         const char* ssid_ptr = next_arg(m_buffer, &bytes_read);
         const char* password_ptr = next_arg(ssid_ptr, &bytes_read);
         if (!ssid_ptr) {
@@ -41,7 +41,7 @@ void SerialManager::parse_incomming_command() {
         }
 
         g_connection_manager.get_wifi().use_credentials(ssid_ptr, password_ptr);
-    } else if (strcmp(m_buffer, "FACTORY-RESET") == 0) {
+    } else if (strcmp(m_buffer, "FactoryReset") == 0) {
         g_config_manager.reset();
     }
 }

@@ -1115,6 +1115,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "glam"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "779ae4bf7e8421cf91c0b3b64e7e8b40b862fba4d393f59150042de7c4965a94"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "glib"
 version = "0.18.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1954,6 +1963,7 @@ dependencies = [
  "anyhow",
  "env_logger",
  "futures-util",
+ "glam",
  "log",
  "serde",
  "serde_json",
