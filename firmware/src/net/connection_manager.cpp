@@ -14,9 +14,7 @@ void ConnectionManager::update() {
     bool just_connected = m_wifi.monitor();
 
     if (just_connected) {
-        // Start using multicast to find the server by sending handshake packets
-        // After handshake use unicast
-        m_udp.beginMulticast(WiFi.localIP(), MULTICAST_IP, UDP_PORT);
+        m_udp.begin(UDP_PORT);
     }
 
     if (!m_wifi.is_connected()) {
@@ -59,7 +57,7 @@ void ConnectionManager::receive_packets() {
     switch (m_buffer[0]) {
     case PACKET_HANDSHAKE:
         // Check mycap header mark
-        // MYCAP-SERVER indicates server response
+        // MYCAP-SERVER indicates mycap server response
         if (strcmp((const char*)m_buffer + 1, "MYCAP-SERVER") != 0) {
             break;
         }
@@ -68,7 +66,7 @@ void ConnectionManager::receive_packets() {
             LOG_INFO("Successfully handshaked with %s", m_udp.remoteIP().toString().c_str());
             m_connected = true;
             m_server_ip = m_udp.remoteIP();
-            m_udp.begin(UDP_PORT);
+            m_next_packet_number = 1; // Handshake would use packet number 0
 
             // Set the tracker statuses to off so they can be resent
             std::fill(
@@ -108,13 +106,19 @@ void ConnectionManager::update_tracker_statuses() {
 }
 
 void ConnectionManager::send_handshake() {
+    // Start using multicast to find the server by sending handshake packets
+    // After handshake use unicast
     LOG_TRACE("Sending handshake packet to multicast ip %s", MULTICAST_IP.toString().c_str());
 
-    begin_packet(PACKET_HANDSHAKE, true);
+    m_udp.beginPacketMulticast(MULTICAST_IP, UDP_PORT, WiFi.localIP());
+    m_udp.write(PACKET_HANDSHAKE);
+
     write_str("MYCAP-DEVICE"); // mark as mycap handshake
+
     uint8_t* mac = WiFi.macAddress(m_buffer);
     m_udp.write(mac, 6); // mac adresss as unique id
     end_packet();
+
     m_last_sent_handshake_time = millis();
 }
 
@@ -174,13 +178,8 @@ void ConnectionManager::write_str(const char* str) {
     m_udp.write(str, strlen(str));
 }
 
-void ConnectionManager::begin_packet(uint8_t packet_type, bool multicast) {
-    if (multicast) {
-        m_udp.beginPacketMulticast(MULTICAST_IP, UDP_PORT, WiFi.localIP());
-    } else {
-        m_udp.beginPacket(m_server_ip, UDP_PORT);
-    }
-
+void ConnectionManager::begin_packet(uint8_t packet_type) {
+    m_udp.beginPacket(m_server_ip, UDP_PORT);
     m_udp.write(packet_type);
     m_udp.write((uint8_t*)&m_next_packet_number, sizeof(uint32_t));
     m_next_packet_number += 1;

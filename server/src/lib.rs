@@ -1,5 +1,3 @@
-#![feature(concat_bytes)]
-
 mod main_server;
 mod math;
 mod serial;
@@ -11,7 +9,6 @@ mod websocket;
 pub use udp_server::UDP_PORT;
 pub use websocket::WEBSOCKET_PORT;
 
-use futures_util::TryFutureExt;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -25,13 +22,17 @@ pub fn setup_log() {
         .init();
 }
 
-pub async fn start_server() {
+pub async fn start_server() -> anyhow::Result<()> {
     let state = Arc::new(RwLock::new(MainServer::default()));
 
-    tokio::spawn(
-        udp_server::start_server(state.clone())
-            .inspect_err(|e| log::error!("UDP server error: {e}")),
-    );
+    let mut join_set = tokio::task::JoinSet::new();
 
-    websocket::start_server(state.clone()).await;
+    join_set.spawn(udp_server::start_server(state.clone()));
+    join_set.spawn(websocket::start_server(state.clone()));
+
+    while let Some(result) = join_set.join_next().await {
+        result??;
+    }
+
+    Ok(())
 }

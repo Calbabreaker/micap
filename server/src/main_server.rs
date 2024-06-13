@@ -7,82 +7,65 @@ use crate::tracker::*;
 #[derive(Clone)]
 pub enum ServerMessage {
     TrackerInfoUpdate(TrackerInfo),
-    TrackerDataUpdate(TrackerData),
-}
-
-struct ServerMessageChannel {
-    tx: UnboundedSender<ServerMessage>,
-    // Id to keep track of where channel is in array to remove
-    id: u32,
+    TrackerDataUpdate((usize, TrackerData)),
 }
 
 #[derive(Default)]
 pub struct MainServer {
     pub trackers: Vec<Tracker>,
     tracker_id_to_index: HashMap<String, usize>,
-    message_channels: Vec<ServerMessageChannel>,
-    next_message_tx_id: u32,
+    message_channels: Vec<UnboundedSender<ServerMessage>>,
 }
 
 impl MainServer {
-    pub fn add_message_channel(&mut self, tx: UnboundedSender<ServerMessage>) -> u32 {
-        let id = self.next_message_tx_id;
-        self.message_channels.push(ServerMessageChannel { tx, id });
-        self.next_message_tx_id += 1;
-        id
-    }
-
-    pub fn remove_message_channel(&mut self, id: u32) {
-        if let Some(index) = self
-            .message_channels
-            .iter()
-            .position(|channel| channel.id == id)
-        {
-            self.message_channels.swap_remove(index);
-        }
+    pub fn add_message_channel(&mut self, tx: UnboundedSender<ServerMessage>) {
+        self.message_channels.push(tx);
     }
 
     pub fn load_config(&mut self) {
         let tracker_configs = HashMap::<String, TrackerConfig>::new();
-        for (id, config) in &tracker_configs {
-            self.register_tracker(id);
+        for (id, config) in tracker_configs {
+            self.register_tracker(id, config);
         }
     }
 
+    pub fn tick() {}
+
     // Register a tracker to get its index and use that to access it later since using strings with
     // hashmaps is a bit slow
-    pub fn register_tracker(&mut self, id: &String) -> usize {
-        if let Some(index) = self.tracker_id_to_index.get(id) {
+    pub fn register_tracker(&mut self, id: String, config: TrackerConfig) -> usize {
+        if let Some(index) = self.tracker_id_to_index.get(&id) {
             return *index;
         }
 
         let index = self.trackers.len();
-        self.trackers.push(Tracker::new(id.clone(), index));
-        self.tracker_id_to_index.insert(id.clone(), index);
-        self.send_message_to_all(ServerMessage::TrackerInfoUpdate(
+        self.trackers.push(Tracker::new(id.clone(), index, config));
+        self.tracker_id_to_index.insert(id, index);
+        self.send_message_to_channels(ServerMessage::TrackerInfoUpdate(
             self.trackers[index].info.clone(),
         ));
         index
     }
 
     pub fn update_tracker_status(&mut self, index: usize, status: TrackerStatus) {
-        let info = &mut self.trackers[index].info;
-        // Only allow changing status to TimedOut if tracker is Ok and vice-versa
-        if (status == TrackerStatus::TimedOut && info.status != TrackerStatus::Ok)
-            || (info.status == TrackerStatus::TimedOut && status != TrackerStatus::Ok)
-        {
-            return;
-        }
-
-        info.status = status;
-        self.send_message_to_all(ServerMessage::TrackerInfoUpdate(
+        self.trackers[index].info.status = status;
+        self.send_message_to_channels(ServerMessage::TrackerInfoUpdate(
             self.trackers[index].info.clone(),
         ));
     }
 
-    fn send_message_to_all(&mut self, message: ServerMessage) {
-        for channel in &self.message_channels {
-            channel.tx.send(message.clone()).unwrap();
+    fn send_message_to_channels(&mut self, message: ServerMessage) {
+        let mut to_remove = None;
+
+        for (i, channel) in self.message_channels.iter().enumerate() {
+            // The channel got closed so remove it
+            if channel.send(message.clone()).is_err() {
+                to_remove = Some(i)
+            }
+        }
+
+        if let Some(to_remove) = to_remove {
+            self.message_channels.swap_remove(to_remove);
         }
     }
 }

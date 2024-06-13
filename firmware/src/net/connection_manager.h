@@ -28,7 +28,7 @@ public:
     inline bool is_connected() { return m_connected; }
 
 private:
-    void begin_packet(uint8_t packet_type, bool multicast = false);
+    void begin_packet(uint8_t packet_type);
     void write_str(const char* str);
     void end_packet();
 

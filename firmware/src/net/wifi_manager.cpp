@@ -1,7 +1,6 @@
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 
-#include "core_esp8266_features.h"
 #include "defines.h"
 #include "globals.h"
 #include "log.h"
@@ -134,8 +133,8 @@ bool WifiManager::check_existing_test_network(const bss_info* info) {
     // Go through the test networks to see if it already exists (potential duplicate SSIDs)
     for (int8_t i = 0; i < m_test_network_count; i++) {
         const char* test_ssid = (const char*)m_test_network_infos[i]->ssid;
-        const char* current_ssid = (const char*)info->ssid;
-        if (strncmp(current_ssid, test_ssid, MAX_SSID_LENGTH) == 0) {
+        const char* ssid = (const char*)info->ssid;
+        if (strncmp(ssid, test_ssid, MAX_SSID_LENGTH) == 0) {
             // Set the one with the higher RSSI
             if (info->rssi > m_test_network_infos[i]->rssi) {
                 m_test_network_infos[i] = info;

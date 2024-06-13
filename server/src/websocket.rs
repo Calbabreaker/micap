@@ -1,5 +1,5 @@
 use futures_util::{stream::SplitSink, SinkExt, StreamExt};
-use std::{net::Ipv4Addr, sync::Arc};
+use std::{any, net::Ipv4Addr, sync::Arc};
 use tokio::sync::RwLock;
 use warp::{
     filters::ws::{Message, WebSocket},
@@ -34,7 +34,7 @@ async fn send_websocket_message(
         ws_tx.write().await.send(Message::text(string)).await.ok();
     }
 }
-pub async fn start_server(main: Arc<RwLock<MainServer>>) {
+pub async fn start_server(main: Arc<RwLock<MainServer>>) -> anyhow::Result<()> {
     let websocket = warp::ws()
         .and(warp::any().map(move || main.clone()))
         .map(|ws: warp::ws::Ws, main| ws.on_upgrade(|ws| on_connect(ws, main)));
@@ -42,6 +42,8 @@ pub async fn start_server(main: Arc<RwLock<MainServer>>) {
     warp::serve(websocket)
         .run((Ipv4Addr::LOCALHOST, WEBSOCKET_PORT))
         .await;
+
+    Ok(())
 }
 
 async fn on_connect(ws: WebSocket, main: Arc<RwLock<MainServer>>) {
@@ -50,7 +52,7 @@ async fn on_connect(ws: WebSocket, main: Arc<RwLock<MainServer>>) {
     let ws_tx = Arc::new(RwLock::new(_ws_tx));
 
     let (server_tx, mut server_rx) = tokio::sync::mpsc::unbounded_channel();
-    let server_channel_id = main.write().await.add_message_channel(server_tx);
+    main.write().await.add_message_channel(server_tx);
 
     for tracker in &main.read().await.trackers {
         send_websocket_message(
@@ -64,7 +66,7 @@ async fn on_connect(ws: WebSocket, main: Arc<RwLock<MainServer>>) {
 
     // Spawn seperate task for listening to server messages
     let ws_tx_clone = ws_tx.clone();
-    tokio::spawn(async move {
+    let server_messages_task = tokio::spawn(async move {
         while let Some(message) = server_rx.recv().await {
             match message {
                 ServerMessage::TrackerInfoUpdate(info) => {
@@ -92,22 +94,29 @@ async fn on_connect(ws: WebSocket, main: Arc<RwLock<MainServer>>) {
             log::info!("Got from websocket: {string}");
             if let Err(error) = handle_websocket_message(string) {
                 log::error!("{error}");
-                send_websocket_message(&ws_tx, WebsocketServerMessage::Error { error }).await;
+                send_websocket_message(
+                    &ws_tx,
+                    WebsocketServerMessage::Error {
+                        error: error.to_string(),
+                    },
+                )
+                .await;
             }
         }
     }
 
     log::info!("Websocket client disconnected");
-    main.write().await.remove_message_channel(server_channel_id);
+    server_messages_task.abort();
+    server_messages_task.await.ok();
 }
 
-fn handle_websocket_message(string: &str) -> Result<(), String> {
-    let message = serde_json::from_str(string).map_err(|e| e.to_string())?;
+fn handle_websocket_message(string: &str) -> anyhow::Result<()> {
+    let message = serde_json::from_str(string)?;
 
     match message {
         WebsocketClientMessage::Wifi { ssid, password } => {
             if ssid.len() > 32 || password.len() > 64 {
-                return Err("SSID or password too long".to_string());
+                return Err(anyhow::Error::msg("SSID or password too long"));
             }
 
             write_serial(format!("WIFI\0{ssid}\0{password}").as_bytes())?;

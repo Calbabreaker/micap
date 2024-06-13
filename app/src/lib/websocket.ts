@@ -1,17 +1,22 @@
 import { writable } from "svelte/store";
 
+interface TrackerConfig {
+    name: string;
+}
+
 interface TrackerInfo {
     id: string;
     index: number;
     status: "Ok" | "Error" | "Off" | "TimedOut";
+    config: TrackerConfig;
 }
 
-export interface TrackerI {
+export interface Tracker {
     info: TrackerInfo;
 }
 
 export const websocket = writable<WebSocket>();
-export const trackers = writable<TrackerI[]>([]);
+export const trackers = writable<Tracker[]>([]);
 export const websocketError = writable("");
 
 websocket.subscribe((websocket) => {
@@ -34,7 +39,7 @@ function handleMessage(message: Record<string, any>) {
         case "TrackerInfo":
             message.info.index;
             trackers.update((trackers) => {
-                const tracker: TrackerI = {
+                const tracker: Tracker = {
                     info: message.info,
                 };
 

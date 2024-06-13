@@ -14,6 +14,7 @@ bool i2c_device_connected(uint8_t address) {
 Tracker* make_tracker(TrackerKind kind, uint8_t index, uint8_t address) {
     switch (kind) {
     case TrackerKind::BMI160:
+        // Have to heap allocate to use polymorphism
         return new TrackerBMI160(index, address);
     default:
         LOG_ERROR("Unknown tracker kind %d", (uint8_t)kind);

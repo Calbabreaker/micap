@@ -6,6 +6,8 @@ use crate::{
     udp_server::UdpDevice,
 };
 
+pub const SUPPORTED_FIRMWARE_VERSION_MAJOR: u8 = 0;
+
 pub const PACKET_HEARTBEAT: u8 = 0x00;
 pub const PACKET_HANDSHAKE: u8 = 0x01;
 pub const PACKET_TRACKER_STATUS: u8 = 0x02;
@@ -24,11 +26,18 @@ impl UdpPacket {
         mut device: Option<&mut UdpDevice>,
     ) -> Option<Self> {
         let packet_type = *bytes.next()?;
-        let packet_number = u32_parse(bytes)?;
+
+        let packet_number = if packet_type == PACKET_HANDSHAKE {
+            // PACKET_HANDSHAKE won't contain the packet number since it should be the first packet in the communication
+            0
+        } else {
+            // Get the packet number from the bytes
+            u32_parse(bytes)?
+        };
 
         if let Some(device) = device.as_mut() {
             if packet_number <= device.last_packet_number && packet_type != PACKET_HANDSHAKE {
-                log::warn!("Received out of order packet");
+                log::warn!("Received out of order packet {packet_number}");
                 return None;
             }
 

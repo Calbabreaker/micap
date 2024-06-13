@@ -31,6 +31,7 @@ void loop() {
         g_connection_manager.send_tracker_data();
     }
 
+#ifdef TARGET_LOOP_DELTA_MS
     uint64_t delta = millis() - last_loop_time;
     int64_t sleep_time = TARGET_LOOP_DELTA_MS - (int64_t)delta;
     if (sleep_time > 0) {
@@ -43,4 +44,5 @@ void loop() {
     }
 
     last_loop_time = millis();
+#endif
 }

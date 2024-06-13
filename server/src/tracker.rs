@@ -1,3 +1,5 @@
+use std::default;
+
 use crate::math::{Quaternion, Vector3};
 
 #[derive(Default, PartialEq, Debug, Clone, Copy, serde::Serialize)]
@@ -10,11 +12,20 @@ pub enum TrackerStatus {
     TimedOut,
 }
 
+#[derive(Default, Clone, Copy, serde::Serialize, serde::Deserialize)]
+pub enum TrackerLocation {
+    #[default]
+    Head,
+    Hand,
+    // TODO: add more locations
+}
+
 #[derive(Clone, Default, serde::Serialize)]
 pub struct TrackerInfo {
     pub id: String,
     pub index: usize,
     pub status: TrackerStatus,
+    pub config: TrackerConfig,
 }
 
 #[derive(Clone, Default, serde::Serialize)]
@@ -31,17 +42,31 @@ pub struct Tracker {
 }
 
 impl Tracker {
-    pub fn new(id: String, index: usize) -> Self {
+    pub fn new(id: String, index: usize, config: TrackerConfig) -> Self {
         Self {
             info: TrackerInfo {
                 id,
                 index,
-                ..Default::default()
+                config,
+                status: TrackerStatus::default(),
             },
             data: TrackerData::default(),
         }
     }
 }
 
+/// Seperate from TrackerInfo to be used to save to a file
 #[derive(Clone, Default, serde::Serialize, serde::Deserialize)]
-pub struct TrackerConfig {}
+pub struct TrackerConfig {
+    pub name: String,
+    pub location: TrackerLocation,
+}
+
+impl TrackerConfig {
+    pub fn with_name(name: String) -> Self {
+        Self {
+            name,
+            ..Default::default()
+        }
+    }
+}

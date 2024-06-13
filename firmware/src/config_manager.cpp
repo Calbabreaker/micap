@@ -53,9 +53,7 @@ void ConfigManager::wifi_entry_save(const char* ssid, const char* password) {
 
     strncpy(m_wifi_entries.array[i].password, password, MAX_PASSWORD_LENGTH);
 
-    size_t bytes = file.write((uint8_t*)&m_wifi_entries, sizeof(WifiEntries));
-    LOG_INFO("saved %zu %zu", bytes, sizeof(WifiEntries));
-
+    file.write((uint8_t*)&m_wifi_entries, sizeof(WifiEntries));
     file.close();
 }
 
