@@ -57,6 +57,27 @@ impl UdpDevice {
         self.tracker_indexs[local_index as usize] = global_index;
     }
 
+    async fn get_global_tracker_index(
+        &mut self,
+        main: &Arc<RwLock<MainServer>>,
+        local_index: u8,
+    ) -> usize {
+        match self.tracker_indexs.get(local_index as usize) {
+            Some(index) => *index,
+            None => {
+                // Register the tracker and add the index into the udp device array to know
+                let id = format!("{}/{}", self.mac, local_index);
+                let name = format!("UDP Tracker {}", self.address);
+                let index = main
+                    .write()
+                    .await
+                    .register_tracker(id, TrackerConfig::with_name(name));
+                self.set_global_tracker_index(local_index, index);
+                index
+            }
+        }
+    }
+
     async fn set_timed_out(&mut self, main: &Arc<RwLock<MainServer>>, timed_out: bool) {
         if timed_out == self.timed_out {
             return;
@@ -224,24 +245,31 @@ impl UdpServer {
         device_index: usize,
     ) {
         let device = &mut self.devices[device_index];
+
+        let global_index = device
+            .get_global_tracker_index(&self.main, packet.tracker_index)
+            .await;
+
         let mut main = self.main.write().await;
-
-        let global_index = match device.tracker_indexs.get(packet.tracker_index as usize) {
-            Some(index) => *index,
-            None => {
-                // Register the tracker and add the index into the udp device array to know
-                let id = format!("{}/{}", device.mac, packet.tracker_index);
-                let name = format!("UDP Tracker {}", device.address);
-                let index = main.register_tracker(id, TrackerConfig::with_name(name));
-                device.set_global_tracker_index(packet.tracker_index, index);
-                index
-            }
-        };
-
         main.update_tracker_status(global_index, packet.tracker_status);
     }
 
-    async fn handle_tracker_data(&mut self, packet: UdpPacketTrackerData, device_index: usize) {}
+    async fn handle_tracker_data<'a>(
+        &mut self,
+        mut packet: UdpPacketTrackerData<'a>,
+        device_index: usize,
+    ) {
+        let device = &mut self.devices[device_index];
+
+        while let Some(data) = packet.next() {
+            let global_index = device
+                .get_global_tracker_index(&self.main, data.tracker_index)
+                .await;
+
+            let mut main = self.main.write().await;
+            main.update_tracker_data(global_index, data.accleration, data.orientation);
+        }
+    }
 }
 
 pub async fn start_server(main: Arc<RwLock<MainServer>>) -> anyhow::Result<()> {

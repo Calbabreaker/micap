@@ -13,16 +13,16 @@ pub const PACKET_HANDSHAKE: u8 = 0x01;
 pub const PACKET_TRACKER_STATUS: u8 = 0x02;
 pub const PACKET_TRACKER_DATA: u8 = 0x03;
 
-pub enum UdpPacket {
+pub enum UdpPacket<'a> {
     Handshake(UdpPacketHandshake),
-    TrackerData((UdpPacketTrackerData, usize)),
+    TrackerData((UdpPacketTrackerData<'a>, usize)),
     TrackerStatus((UdpPacketTrackerStatus, usize)),
     Heartbeat,
 }
 
-impl UdpPacket {
+impl<'a> UdpPacket<'a> {
     pub fn parse(
-        bytes: &mut std::slice::Iter<u8>,
+        bytes: &'a mut std::slice::Iter<'a, u8>,
         mut device: Option<&mut UdpDevice>,
     ) -> Option<Self> {
         let packet_type = *bytes.next()?;
@@ -121,33 +121,39 @@ pub struct UdpTrackerData {
     pub accleration: Vector3,
 }
 
-pub struct UdpPacketTrackerData {
+pub struct UdpPacketTrackerData<'a> {
     pub num_trackers: usize,
     pub current_tracker_index: usize,
+    bytes: &'a mut std::slice::Iter<'a, u8>,
 }
 
-impl UdpPacketTrackerData {
-    fn from_bytes(bytes: &mut std::slice::Iter<u8>) -> Option<Self> {
+impl<'a> UdpPacketTrackerData<'a> {
+    fn from_bytes(bytes: &'a mut std::slice::Iter<'a, u8>) -> Option<Self> {
         Some(Self {
             num_trackers: *bytes.next()? as usize,
             current_tracker_index: 0,
+            bytes,
         })
     }
 
-    pub fn next(&mut self, bytes: &mut std::slice::Iter<u8>) -> Option<UdpTrackerData> {
+    pub fn next(&mut self) -> Option<UdpTrackerData> {
         if self.current_tracker_index >= self.num_trackers {
             return None;
         }
 
         Some(UdpTrackerData {
-            tracker_index: *bytes.next()?,
+            tracker_index: *self.bytes.next()?,
             orientation: Quaternion::new(
-                f32_parse(bytes)?,
-                f32_parse(bytes)?,
-                f32_parse(bytes)?,
-                f32_parse(bytes)?,
+                f32_parse(self.bytes)?,
+                f32_parse(self.bytes)?,
+                f32_parse(self.bytes)?,
+                f32_parse(self.bytes)?,
             ),
-            accleration: Vector3::new(f32_parse(bytes)?, f32_parse(bytes)?, f32_parse(bytes)?),
+            accleration: Vector3::new(
+                f32_parse(self.bytes)?,
+                f32_parse(self.bytes)?,
+                f32_parse(self.bytes)?,
+            ),
         })
     }
 }

@@ -23,16 +23,17 @@ pub fn setup_log() {
 }
 
 pub async fn start_server() -> anyhow::Result<()> {
-    let state = Arc::new(RwLock::new(MainServer::default()));
+    let main = Arc::new(RwLock::new(MainServer::default()));
 
-    let mut join_set = tokio::task::JoinSet::new();
-
-    join_set.spawn(udp_server::start_server(state.clone()));
-    join_set.spawn(websocket::start_server(state.clone()));
-
-    while let Some(result) = join_set.join_next().await {
-        result??;
-    }
+    tokio::try_join!(
+        flatten(tokio::spawn(udp_server::start_server(main.clone()))),
+        flatten(tokio::spawn(websocket::start_server(main.clone()))),
+        flatten(tokio::spawn(main_server::start_main_server_loop(main)))
+    )?;
 
     Ok(())
+}
+
+async fn flatten(handle: tokio::task::JoinHandle<anyhow::Result<()>>) -> anyhow::Result<()> {
+    handle.await?
 }

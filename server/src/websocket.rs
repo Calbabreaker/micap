@@ -1,12 +1,17 @@
 use futures_util::{stream::SplitSink, SinkExt, StreamExt};
-use std::{any, net::Ipv4Addr, sync::Arc};
+use std::{net::Ipv4Addr, sync::Arc};
 use tokio::sync::RwLock;
 use warp::{
     filters::ws::{Message, WebSocket},
     Filter,
 };
 
-use crate::{main_server::ServerMessage, serial::write_serial, tracker::TrackerInfo, MainServer};
+use crate::{
+    main_server::ServerMessage,
+    serial::write_serial,
+    tracker::{TrackerData, TrackerInfo},
+    MainServer,
+};
 
 pub const WEBSOCKET_PORT: u16 = 8298;
 
@@ -16,6 +21,7 @@ pub const WEBSOCKET_PORT: u16 = 8298;
 enum WebsocketServerMessage {
     Error { error: String },
     TrackerInfo { info: TrackerInfo },
+    TrackerData { index: usize, data: TrackerData },
 }
 
 // Receieved from client
@@ -42,7 +48,6 @@ pub async fn start_server(main: Arc<RwLock<MainServer>>) -> anyhow::Result<()> {
     warp::serve(websocket)
         .run((Ipv4Addr::LOCALHOST, WEBSOCKET_PORT))
         .await;
-
     Ok(())
 }
 
@@ -52,7 +57,7 @@ async fn on_connect(ws: WebSocket, main: Arc<RwLock<MainServer>>) {
     let ws_tx = Arc::new(RwLock::new(_ws_tx));
 
     let (server_tx, mut server_rx) = tokio::sync::mpsc::unbounded_channel();
-    main.write().await.add_message_channel(server_tx);
+    main.write().await.message_channels.add(server_tx);
 
     for tracker in &main.read().await.trackers {
         send_websocket_message(
@@ -76,7 +81,13 @@ async fn on_connect(ws: WebSocket, main: Arc<RwLock<MainServer>>) {
                     )
                     .await;
                 }
-                ServerMessage::TrackerDataUpdate(_) => todo!(),
+                ServerMessage::TrackerDataUpdate((index, data)) => {
+                    send_websocket_message(
+                        &ws_tx_clone,
+                        WebsocketServerMessage::TrackerData { index, data },
+                    )
+                    .await;
+                }
             }
         }
     });

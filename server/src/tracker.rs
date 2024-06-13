@@ -1,4 +1,4 @@
-use std::default;
+use std::{default, time::Duration};
 
 use crate::math::{Quaternion, Vector3};
 
@@ -14,7 +14,9 @@ pub enum TrackerStatus {
 
 #[derive(Default, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub enum TrackerLocation {
+    /// Not attached to any body part, free to move anywhere
     #[default]
+    Free,
     Head,
     Hand,
     // TODO: add more locations
@@ -32,6 +34,7 @@ pub struct TrackerInfo {
 pub struct TrackerData {
     pub orientation: Quaternion,
     pub acceleration: Vector3,
+    pub velocity: Vector3,
     pub position: Vector3,
 }
 
@@ -53,6 +56,8 @@ impl Tracker {
             data: TrackerData::default(),
         }
     }
+
+    pub fn tick(&mut self, delta: Duration) {}
 }
 
 /// Seperate from TrackerInfo to be used to save to a file
