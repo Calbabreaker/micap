@@ -17,6 +17,7 @@
 
     <T.DirectionalLight args={[0xffffff, 1]} />
     <T.AmbientLight args={[0xffffff, 0.5]} />
+    <T.GridHelper args={[10, 10]} />
     <T.Mesh quaternion={data.orientation} scale={[4, 4, 4]}>
         <T.AxesHelper args={[5]} />
         <T.BoxGeometry />

@@ -155,7 +155,7 @@ void ConnectionManager::send_tracker_data() {
         if (should_send_tracker_data(tracker)) {
             m_udp.write(tracker->get_index());
             m_udp.write(tracker->acceleration.as_bytes(), sizeof(Vector3));
-            m_udp.write(tracker->orientation.as_bytes(), sizeof(Quaternion));
+            m_udp.write(tracker->orientation.as_bytes(), sizeof(Vector3));
         }
     }
 

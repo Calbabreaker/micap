@@ -59,8 +59,6 @@ impl Tracker {
         let delta_secs = delta.as_secs_f32();
         self.data.velocity += self.data.acceleration * delta_secs;
         self.data.position += self.data.velocity * delta_secs;
-        self.data.orientation.z = 100.;
-        self.data.orientation = self.data.orientation.normalize();
     }
 }
 

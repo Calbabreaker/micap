@@ -6,7 +6,7 @@
 #include "trackers/tracker.h"
 #include "trackers/tracker_bmi160.h"
 
-bool i2c_device_connected(uint8_t address) {
+bool test_i2c_connection(uint8_t address) {
     Wire.beginTransmission(address);
     return Wire.endTransmission() == 0;
 }
@@ -31,7 +31,7 @@ void TrackerManager::register_tracker(TrackerKind kind, uint8_t address, bool re
 
     Tracker* tracker = make_tracker(kind, index, address);
 
-    if (!i2c_device_connected(address)) {
+    if (!test_i2c_connection(address)) {
         if (required) {
             LOG_ERROR("Required tracker %d with address 0x%02x not found", index, address);
             tracker->status = TrackerStatus::Error;
@@ -67,7 +67,7 @@ void TrackerManager::poll_tracker_status() {
     LOG_TRACE("Polling i2c bus for new trackers");
     for (Tracker* tracker : m_trackers) {
         // If the tracker isn't ok, try to see if it is connected and setup again
-        if (tracker->status != TrackerStatus::Ok && i2c_device_connected(tracker->get_address())) {
+        if (tracker->status != TrackerStatus::Ok && test_i2c_connection(tracker->get_address())) {
             tracker->status = TrackerStatus::Ok;
             tracker->setup();
             if (tracker->status == TrackerStatus::Ok) {

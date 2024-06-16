@@ -28,7 +28,7 @@ public:
     TrackerStatus status = TrackerStatus::Ok;
     // Values to be sent to server on each update loop
     Vector3 acceleration;
-    Quaternion orientation;
+    Vector3 orientation;
 
 protected:
     TrackerKind m_kind;

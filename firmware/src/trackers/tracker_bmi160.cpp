@@ -65,12 +65,12 @@ void TrackerBMI160::setup() {
     int8_t result = bmi160_init(&m_device);
 
     // Set the imu config (values good for general motion capture)
-    m_device.accel_cfg.odr = BMI160_ACCEL_ODR_200HZ;
-    m_device.accel_cfg.range = BMI160_ACCEL_RANGE_4G;
+    m_device.accel_cfg.odr = BMI160_ACCEL_ODR_100HZ;
+    m_device.accel_cfg.range = BMI160_ACCEL_RANGE_FLAG;
     m_device.accel_cfg.bw = BMI160_ACCEL_BW_NORMAL_AVG4;
     m_device.accel_cfg.power = BMI160_ACCEL_NORMAL_MODE;
-    m_device.gyro_cfg.odr = BMI160_GYRO_ODR_400HZ;
-    m_device.gyro_cfg.range = BMI160_GYRO_RANGE_500_DPS;
+    m_device.gyro_cfg.odr = BMI160_GYRO_ODR_200HZ;
+    m_device.gyro_cfg.range = BMI160_GYRO_RANGE_FLAG;
     m_device.gyro_cfg.bw = BMI160_GYRO_BW_NORMAL_MODE;
     m_device.gyro_cfg.power = BMI160_GYRO_NORMAL_MODE;
     result = bmi160_set_sens_conf(&m_device);
@@ -89,7 +89,7 @@ void TrackerBMI160::update() {
 
     this->acceleration = Vector3(raw_accel.x, raw_accel.y, raw_accel.z);
     // Definitely not correct
-    this->orientation = Quaternion(raw_gyro.x, raw_gyro.y, raw_gyro.z, 1.0);
+    this->orientation = Vector3(raw_gyro.x, raw_gyro.y, raw_gyro.z);
 
     if (result != BMI160_OK) {
         LOG_ERROR("BMI160 tracker error %d", result);

@@ -138,8 +138,8 @@ impl<'a> UdpPacketTrackerData<'a> {
 
         Some(UdpTrackerData {
             tracker_index: *self.bytes.next()?,
-            orientation: glam::Quat::from_xyzw(
-                f32_parse(self.bytes)?,
+            orientation: glam::Quat::from_euler(
+                glam::EulerRot::XYZ,
                 f32_parse(self.bytes)?,
                 f32_parse(self.bytes)?,
                 f32_parse(self.bytes)?,
