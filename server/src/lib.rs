@@ -25,9 +25,8 @@ pub async fn start_server() -> anyhow::Result<()> {
     let main = Arc::new(RwLock::new(MainServer::default()));
 
     tokio::try_join!(
-        flatten(tokio::spawn(udp_server::start_server(main.clone()))),
         flatten(tokio::spawn(websocket::start_server(main.clone()))),
-        flatten(tokio::spawn(main_server::start_main_server_loop(main)))
+        flatten(tokio::spawn(main_server::start_server(main)))
     )?;
 
     Ok(())

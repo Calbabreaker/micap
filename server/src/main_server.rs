@@ -4,16 +4,23 @@ use std::{
     time::{Duration, Instant},
 };
 
-use tokio::sync::{mpsc::UnboundedSender, RwLock};
+use tokio::sync::{
+    mpsc::{UnboundedReceiver, UnboundedSender},
+    RwLock,
+};
 
-use crate::tracker::*;
+use crate::{tracker::*, udp_server::UdpServer};
 
-#[derive(Clone)]
+#[derive(Clone, serde::Serialize)]
+#[serde(tag = "type")]
 pub enum ServerMessage {
-    TrackerInfoUpdate(TrackerInfo),
-    TrackerDataUpdate((usize, TrackerData)),
+    TrackerInfo { info: TrackerInfo },
+    TrackerData { index: usize, data: TrackerData },
+    Error { error: String },
 }
 
+/// Stuff like the websocket server needs to run on a completely seperate task but need to receive
+/// tracker data when it is ready. So we use mspc channels
 #[derive(Default)]
 pub struct MessageChannelManager {
     channels: Vec<UnboundedSender<ServerMessage>>,
@@ -26,7 +33,7 @@ impl MessageChannelManager {
         for (i, channel) in self.channels.iter().enumerate() {
             // The channel got closed so remove it
             if channel.send(message.clone()).is_err() {
-                to_remove = Some(i)
+                to_remove = Some(i);
             }
         }
 
@@ -34,20 +41,22 @@ impl MessageChannelManager {
             self.channels.swap_remove(to_remove);
         }
     }
-
-    pub fn add(&mut self, tx: UnboundedSender<ServerMessage>) {
-        self.channels.push(tx);
-    }
 }
 
 #[derive(Default)]
 pub struct MainServer {
     pub trackers: Vec<Tracker>,
     tracker_id_to_index: HashMap<String, usize>,
-    pub message_channels: MessageChannelManager,
+    message_channels: MessageChannelManager,
 }
 
 impl MainServer {
+    pub fn new_message_channel(&mut self) -> UnboundedReceiver<ServerMessage> {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        self.message_channels.channels.push(tx);
+        rx
+    }
+
     pub fn load_config(&mut self) {
         let tracker_configs = HashMap::<String, TrackerConfig>::new();
         for (id, config) in tracker_configs {
@@ -59,10 +68,10 @@ impl MainServer {
         for tracker in &mut self.trackers {
             tracker.tick(delta);
             self.message_channels
-                .send_to_all(ServerMessage::TrackerDataUpdate((
-                    tracker.info.index,
-                    tracker.data.clone(),
-                )));
+                .send_to_all(ServerMessage::TrackerData {
+                    index: tracker.info.index,
+                    data: tracker.data.clone(),
+                });
         }
     }
 
@@ -77,7 +86,9 @@ impl MainServer {
         let tracker = Tracker::new(id.clone(), index, config);
         self.tracker_id_to_index.insert(id, index);
         self.message_channels
-            .send_to_all(ServerMessage::TrackerInfoUpdate(tracker.info.clone()));
+            .send_to_all(ServerMessage::TrackerInfo {
+                info: tracker.info.clone(),
+            });
         self.trackers.push(tracker);
         index
     }
@@ -86,7 +97,7 @@ impl MainServer {
         let info = &mut self.trackers[index].info;
         info.status = status;
         self.message_channels
-            .send_to_all(ServerMessage::TrackerInfoUpdate(info.clone()));
+            .send_to_all(ServerMessage::TrackerInfo { info: info.clone() });
     }
 
     pub fn update_tracker_data(
@@ -99,16 +110,31 @@ impl MainServer {
         data.orientation = orientation;
         data.acceleration = acceleration;
     }
+
+    pub fn notify_error(&mut self, error: &str) {
+        self.message_channels.send_to_all(ServerMessage::Error {
+            error: error.to_string(),
+        });
+    }
 }
 
 const TARGET_LOOP_DELTA: Duration = Duration::from_millis(1000 / 50);
 
-pub async fn start_main_server_loop(main: Arc<RwLock<MainServer>>) -> anyhow::Result<()> {
+pub async fn start_server(main: Arc<RwLock<MainServer>>) -> anyhow::Result<()> {
     let mut last_loop_time = Instant::now();
+
+    let mut udp_server = UdpServer::new().await?;
+
     loop {
         let delta = last_loop_time.elapsed();
         last_loop_time = Instant::now();
-        main.write().await.tick(delta);
+
+        // Tick all the servers
+        {
+            let mut main = main.write().await;
+            main.tick(delta);
+            udp_server.tick(&mut main).await?;
+        }
 
         let post_delta = last_loop_time.elapsed();
         if let Some(sleep_duration) = TARGET_LOOP_DELTA.checked_sub(post_delta) {
@@ -116,7 +142,7 @@ pub async fn start_main_server_loop(main: Arc<RwLock<MainServer>>) -> anyhow::Re
         } else {
             log::warn!(
                 "Main server loop took {post_delta:?} which is longer than target {TARGET_LOOP_DELTA:?}"
-            )
+            );
         }
     }
 }
