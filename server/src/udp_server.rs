@@ -118,10 +118,10 @@ impl UdpServer {
             // Try and get all the packets that were received
             match self.socket.try_recv_from(&mut buffer) {
                 Ok((amount, peer_addr)) => {
-                    log::trace!(
-                        "Received {amount} bytes from {peer_addr} ({:#02x})",
-                        buffer[0]
-                    );
+                    // log::trace!(
+                    //     "Received {amount} bytes from {peer_addr} ({:#02x})",
+                    //     buffer[0]
+                    // );
 
                     // Only pass through the amount received
                     self.handle_packet(&buffer[0..amount], peer_addr, main)
@@ -144,6 +144,10 @@ impl UdpServer {
                 device.set_timed_out(main, false);
             }
 
+            // log::info!(
+            //     "{}fps",
+            //     1. / device.last_packet_received_time.elapsed().as_secs_f32()
+            // );
             self.socket
                 .send_to(&[PACKET_HEARTBEAT], device.address)
                 .await?;

@@ -1,4 +1,4 @@
-use std::{default, time::Duration};
+use std::time::Duration;
 
 #[derive(Default, PartialEq, Debug, Clone, Copy, serde::Serialize)]
 #[repr(u8)]

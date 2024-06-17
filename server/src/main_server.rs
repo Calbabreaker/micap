@@ -118,7 +118,7 @@ impl MainServer {
     }
 }
 
-const TARGET_LOOP_DELTA: Duration = Duration::from_millis(1000 / 50);
+const TARGET_LOOP_DELTA: Duration = Duration::from_millis(1000 / 100);
 
 pub async fn start_server(main: Arc<RwLock<MainServer>>) -> anyhow::Result<()> {
     let mut last_loop_time = Instant::now();

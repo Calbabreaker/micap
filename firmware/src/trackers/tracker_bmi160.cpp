@@ -4,12 +4,6 @@
 #include "log.h"
 #include <Wire.h>
 
-// float from_raw(int raw, float range) {
-//     // (LSB/°/s or LSB/m/s^2)
-//     float sensitivity = 0x8000 / range;
-//     return (float)raw / sensitivity;
-// }
-
 int8_t i2c_read(uint8_t dev_addr, uint8_t reg_addr, uint8_t* data, uint16_t len) {
     Wire.beginTransmission(dev_addr);
     Wire.write(reg_addr);
@@ -87,9 +81,15 @@ void TrackerBMI160::update() {
     int8_t result =
         bmi160_get_sensor_data(BMI160_BOTH_ACCEL_AND_GYRO, &raw_accel, &raw_gyro, &m_device);
 
-    this->acceleration = Vector3(raw_accel.x, raw_accel.y, raw_accel.z);
-    // Definitely not correct
-    this->orientation = Vector3(raw_gyro.x, raw_gyro.y, raw_gyro.z);
+    this->acceleration = Vector3(
+        raw_accel.x * BMI160_ACCEL_SCALE, raw_accel.y * BMI160_ACCEL_SCALE,
+        raw_accel.z * BMI160_ACCEL_SCALE
+    );
+
+    this->orientation = Vector3(
+        raw_gyro.x * BMI160_GYRO_SCALE, raw_gyro.y * BMI160_GYRO_SCALE,
+        raw_gyro.z * BMI160_GYRO_SCALE
+    );
 
     if (result != BMI160_OK) {
         LOG_ERROR("BMI160 tracker error %d", result);

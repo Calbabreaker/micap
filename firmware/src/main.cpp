@@ -12,6 +12,7 @@ LedManager g_internal_led(INTERNAL_LED_PIN);
 TrackerManager g_tracker_manager;
 
 uint64_t last_loop_time;
+uint64_t last_print_time = 0;
 
 void setup() {
     Serial.begin(9600);
@@ -32,18 +33,24 @@ void loop() {
         g_connection_manager.send_tracker_data();
     }
 
-#ifdef TARGET_LOOP_DELTA_MS
-    uint64_t delta = millis() - last_loop_time;
-    int64_t sleep_time = TARGET_LOOP_DELTA_MS - (int64_t)delta;
+    uint64_t delta = micros() - last_loop_time;
+#ifdef ENABLE_LOG
+    if (last_print_time > 1000000) {
+        LOG_TRACE("FPS: %lu", 1000000 / delta);
+        last_print_time = 0;
+    }
+    last_print_time += delta;
+#endif
+#ifdef TARGET_LOOP_DELTA_MICROS
+    int64_t sleep_time = TARGET_LOOP_DELTA_MICROS - (int64_t)delta;
     if (sleep_time > 0) {
-        delay(sleep_time);
+        delayMicroseconds(sleep_time);
     } else {
         LOG_WARN(
             "Loop took %lu ms which is longer than target " STRINGIFY_V(TARGET_LOOP_DELTA_MS) " ms",
             delta
         );
     }
-
-    last_loop_time = millis();
 #endif
+    last_loop_time = micros();
 }

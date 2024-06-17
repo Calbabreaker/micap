@@ -32,7 +32,7 @@ impl<'a> UdpPacket<'a> {
 
         if let Some(ref mut device) = device {
             if packet_number <= device.last_packet_number && packet_type != PACKET_HANDSHAKE {
-                log::warn!("Received out of order packet {packet_number}");
+                // log::warn!("Received out of order packet {packet_number}");
                 return None;
             }
 

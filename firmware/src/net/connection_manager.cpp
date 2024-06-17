@@ -66,7 +66,7 @@ void ConnectionManager::receive_packets() {
             LOG_INFO("Successfully handshaked with %s", m_udp.remoteIP().toString().c_str());
             m_connected = true;
             m_server_ip = m_udp.remoteIP();
-            m_next_packet_number = 1; // Handshake would use packet number 0
+            m_next_packet_number = 1; // Use 1 since handshake would use packet number 0
 
             // Set the tracker statuses to off so they can be resent
             std::fill(
@@ -106,11 +106,16 @@ void ConnectionManager::update_tracker_statuses() {
 }
 
 void ConnectionManager::send_handshake() {
-    // Start using multicast to find the server by sending handshake packets
-    // After handshake use unicast
     LOG_TRACE("Sending handshake packet to multicast ip %s", MULTICAST_IP.toString().c_str());
 
+#ifdef SERVER_IP
+    // Hardcoded server
+    m_udp.beginPacket(SERVER_IP, UDP_PORT);
+#else
+    // Start using multicast to find the server by sending handshake packets
+    // After handshake use unicast
     m_udp.beginPacketMulticast(MULTICAST_IP, UDP_PORT, WiFi.localIP());
+#endif
     m_udp.write(PACKET_HANDSHAKE);
 
     write_str("MYCAP-DEVICE"); // mark as mycap handshake

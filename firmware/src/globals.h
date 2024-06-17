@@ -1,5 +1,6 @@
 #pragma once
 
+#define EARTH_GRAVITY 9.8
 #define STRINGIFY(x) #x
 #define STRINGIFY_V(x) STRINGIFY(x)
 
