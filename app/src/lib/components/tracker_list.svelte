@@ -11,7 +11,7 @@
             <span>{tracker.info.status}</span>
             {#if tracker.data}
                 <p>Orientation: {tracker.data.orientation}</p>
-                <p>Acceleration: {tracker.data.acceleration}</p>
+                <p>Velocity: {tracker.data.velocity}</p>
                 <div class="w-96 h-96 bg-black mt-2">
                     <TrackerPreview data={tracker.data} />
                 </div>
