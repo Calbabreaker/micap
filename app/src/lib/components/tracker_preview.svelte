@@ -2,7 +2,9 @@
     import { Canvas } from "@threlte/core";
     import { T } from "@threlte/core";
     import type { TrackerData } from "$lib/websocket";
-    import { ArrowHelper, Vector3 } from "three";
+    import { ArrowHelper, Vector3, Object3D } from "three";
+
+    Object3D.DEFAULT_UP = new Vector3(0, 0, 1);
 
     export let data: TrackerData;
 
@@ -31,7 +33,12 @@
     />
     <T.DirectionalLight args={[0xffffff, 1]} />
     <T.AmbientLight args={[0xffffff, 0.5]} />
-    <T.GridHelper args={[10, 10]} />
+    <T.GridHelper
+        args={[10, 10]}
+        on:create={({ ref }) => {
+            ref.rotateX(Math.PI / 2);
+        }}
+    />
 
     <T.ArrowHelper bind:ref={arrowRef} />
     <T.Mesh quaternion={data.orientation} scale={[2, 2, 2]}>

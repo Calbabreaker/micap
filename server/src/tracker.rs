@@ -68,12 +68,3 @@ pub struct TrackerConfig {
     pub name: String,
     pub location: TrackerLocation,
 }
-
-impl TrackerConfig {
-    pub fn with_name(name: String) -> Self {
-        Self {
-            name,
-            ..Default::default()
-        }
-    }
-}

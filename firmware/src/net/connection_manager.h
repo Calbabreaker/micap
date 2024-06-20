@@ -24,8 +24,8 @@ public:
     void send_handshake();
     void send_hearbeat();
 
-    inline WifiManager& get_wifi() { return m_wifi; }
-    inline bool is_connected() { return m_connected; }
+    WifiManager& get_wifi() { return m_wifi; }
+    bool is_connected() { return m_connected; }
 
 private:
     void begin_packet(uint8_t packet_type);
@@ -34,7 +34,6 @@ private:
 
     void receive_packets();
     void update_tracker_statuses();
-    bool should_send_tracker_data(Tracker* tracker);
 
 private:
     WiFiUDP m_udp;

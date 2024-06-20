@@ -7,15 +7,15 @@ use tokio::net::UdpSocket;
 
 use crate::{
     main_server::MainServer,
-    tracker::{TrackerConfig, TrackerStatus},
+    tracker::{TrackerConfig, TrackerData, TrackerStatus},
     udp_packet::{UdpPacket, UdpPacketHandshake, PACKET_HEARTBEAT},
 };
 
 pub const UDP_PORT: u16 = 5828;
 pub const MULTICAST_IP: Ipv4Addr = Ipv4Addr::new(239, 255, 0, 123);
 
-const DEVICE_TIMEOUT: Duration = Duration::from_millis(5000);
-const UPKEEP_INTERVAL: Duration = Duration::from_millis(1000);
+const DEVICE_TIMEOUT: Duration = Duration::from_millis(4000);
+const UPKEEP_INTERVAL: Duration = Duration::from_millis(2000);
 
 pub struct UdpDevice {
     pub(super) index: usize,
@@ -57,7 +57,13 @@ impl UdpDevice {
                 // Register the tracker and add the index into the udp device array to know
                 let id = format!("{}/{}", self.mac, local_index);
                 let name = format!("UDP Tracker {}", self.address);
-                let index = main.register_tracker(id, TrackerConfig::with_name(name));
+                let index = main.register_tracker(
+                    id,
+                    TrackerConfig {
+                        name,
+                        ..Default::default()
+                    },
+                );
                 self.set_global_tracker_index(local_index, index);
                 index
             }
@@ -164,18 +170,20 @@ impl UdpServer {
         main: &mut MainServer,
     ) -> tokio::io::Result<()> {
         let mut byte_iter = bytes.iter();
-        let udp_device = self
+        let device = self
             .address_to_device_index
             .get(&peer_addr)
             .and_then(|i| self.devices.get_mut(*i));
 
-        match UdpPacket::parse(&mut byte_iter, udp_device) {
+        match UdpPacket::parse(&mut byte_iter, device) {
             Some(UdpPacket::Heartbeat) => {}
             Some(UdpPacket::Handshake(packet)) => {
                 self.socket
                     .send_to(UdpPacketHandshake::RESPONSE, peer_addr)
                     .await?;
-                self.handle_handshake(packet, peer_addr);
+                if let Some(device) = self.handle_handshake(packet, peer_addr) {
+                    device.last_packet_number = 0;
+                }
             }
             Some(UdpPacket::TrackerData((mut packet, device))) => {
                 while let Some(data) = packet.next() {
@@ -189,6 +197,8 @@ impl UdpServer {
                 self.socket.send_to(&packet.to_bytes(), peer_addr).await?;
                 let global_index = device.get_global_tracker_index(main, packet.tracker_index);
                 main.update_tracker_status(global_index, packet.tracker_status);
+
+                main.trackers[global_index].data = TrackerData::default();
             }
             None => (),
         }
@@ -196,7 +206,11 @@ impl UdpServer {
         Ok(())
     }
 
-    fn handle_handshake(&mut self, packet: UdpPacketHandshake, peer_addr: SocketAddr) {
+    fn handle_handshake(
+        &mut self,
+        packet: UdpPacketHandshake,
+        peer_addr: SocketAddr,
+    ) -> Option<&mut UdpDevice> {
         // Check if the device already has connected with a mac address
         if let Some(index) = self.mac_to_device_index.get(&packet.mac_string) {
             let device = &mut self.devices[*index];
@@ -209,13 +223,14 @@ impl UdpServer {
                 self.address_to_device_index.insert(peer_addr, index);
                 device.address = peer_addr;
                 log::info!("Reconnected from {peer_addr} from old: {old_address}");
+                return Some(device);
             } else if device.timed_out {
                 log::info!("Reconnected from {peer_addr}");
+                return Some(device);
             } else {
                 log::warn!("Received handshake packet while already connected");
+                return None;
             }
-
-            return;
         }
 
         // Create a new udp device
@@ -225,5 +240,6 @@ impl UdpServer {
         self.address_to_device_index.insert(peer_addr, index);
         self.devices.push(device);
         log::info!("New device connected from {peer_addr}");
+        self.devices.get_mut(index)
     }
 }

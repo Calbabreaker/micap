@@ -106,12 +106,13 @@ void ConnectionManager::update_tracker_statuses() {
 }
 
 void ConnectionManager::send_handshake() {
-    LOG_TRACE("Sending handshake packet to multicast ip %s", MULTICAST_IP.toString().c_str());
 
 #ifdef SERVER_IP
-    // Hardcoded server
+    // Hardcoded server ip
+    LOG_TRACE("Sending handshake hardcoded ip %s", SERVER_IP.toString().c_str());
     m_udp.beginPacket(SERVER_IP, UDP_PORT);
 #else
+    LOG_TRACE("Sending handshake packet to multicast ip %s", MULTICAST_IP.toString().c_str());
     // Start using multicast to find the server by sending handshake packets
     // After handshake use unicast
     m_udp.beginPacketMulticast(MULTICAST_IP, UDP_PORT, WiFi.localIP());
@@ -134,36 +135,20 @@ void ConnectionManager::send_hearbeat() {
 
 // Packs orientation and acceleration data for each tracker in a single packet
 void ConnectionManager::send_tracker_data() {
-    uint8_t tracker_count = 0;
-    for (Tracker* tracker : g_tracker_manager.get_trackers()) {
-        if (should_send_tracker_data(tracker)) {
-            // Update the tracker here so it only happens once the server knows the tracker status
-            tracker->update();
-
-            // Tracker update could have resulted in an error
-            if (tracker->status == TrackerStatus::Ok) {
-                tracker_count += 1;
-            }
-        }
-    }
-
-    if (tracker_count == 0) {
-        return;
-    }
-
     begin_packet(PACKET_TRACKER_DATA);
 
-    // Send number of trackers in this packet so server knows how much to read
-    m_udp.write(tracker_count);
-
     for (Tracker* tracker : g_tracker_manager.get_trackers()) {
-        if (should_send_tracker_data(tracker)) {
+        bool acked = m_tracker_statuses_on_server[tracker->get_index()] == tracker->status;
+        if (tracker->has_new_data && acked) {
             m_udp.write(tracker->get_index());
             m_udp.write(tracker->acceleration.as_bytes(), sizeof(Vector3));
-            m_udp.write(tracker->orientation.as_bytes(), sizeof(Vector3));
+            m_udp.write(tracker->orientation.as_bytes(), sizeof(Quaternion));
+            tracker->has_new_data = false;
         }
     }
 
+    // 0xff where the tracker index would usually go signifies the end of the packet
+    m_udp.write(0xff);
     end_packet();
 }
 
@@ -172,11 +157,6 @@ void ConnectionManager::send_tracker_status(uint8_t tracker_id, TrackerStatus tr
     m_udp.write(tracker_id);
     m_udp.write((uint8_t)tracker_state);
     end_packet();
-}
-
-bool ConnectionManager::should_send_tracker_data(Tracker* tracker) {
-    return tracker->status == TrackerStatus::Ok &&
-           m_tracker_statuses_on_server[tracker->get_index()] == TrackerStatus::Ok;
 }
 
 void ConnectionManager::write_str(const char* str) {

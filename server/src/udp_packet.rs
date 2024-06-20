@@ -22,22 +22,19 @@ impl<'a> UdpPacket<'a> {
     ) -> Option<Self> {
         let packet_type = *bytes.next()?;
 
-        let packet_number = if packet_type == PACKET_HANDSHAKE {
-            // PACKET_HANDSHAKE won't contain the packet number since it should be the first packet in the communication
-            0
-        } else {
+        // Handshake packet would always be the first packet
+        if packet_type != PACKET_HANDSHAKE {
             // Get the packet number from the bytes
-            u32_parse(bytes)?
-        };
+            let packet_number = u32_parse(bytes)?;
+            if let Some(ref mut device) = device {
+                if packet_number <= device.last_packet_number {
+                    log::warn!("Received out of order packet {packet_number}");
+                    return None;
+                }
 
-        if let Some(ref mut device) = device {
-            if packet_number <= device.last_packet_number && packet_type != PACKET_HANDSHAKE {
-                // log::warn!("Received out of order packet {packet_number}");
-                return None;
+                device.last_packet_number = packet_number;
+                device.last_packet_received_time = Instant::now();
             }
-
-            device.last_packet_number = packet_number;
-            device.last_packet_received_time = Instant::now();
         }
 
         Some(match packet_type {
@@ -117,34 +114,30 @@ pub struct UdpTrackerData {
 }
 
 pub struct UdpPacketTrackerData<'a> {
-    pub num_trackers: usize,
-    pub current_tracker_index: usize,
     bytes: &'a mut std::slice::Iter<'a, u8>,
 }
 
 impl<'a> UdpPacketTrackerData<'a> {
     fn from_bytes(bytes: &'a mut std::slice::Iter<'a, u8>) -> Option<Self> {
-        Some(Self {
-            num_trackers: *bytes.next()? as usize,
-            current_tracker_index: 0,
-            bytes,
-        })
+        Some(Self { bytes })
     }
 
     pub fn next(&mut self) -> Option<UdpTrackerData> {
-        if self.current_tracker_index >= self.num_trackers {
+        let tracker_index = *self.bytes.next()?;
+        // 0xff where the tracker id would usually go signifies the end of the packet
+        if tracker_index == 0xff {
             return None;
         }
 
         Some(UdpTrackerData {
-            tracker_index: *self.bytes.next()?,
-            orientation: glam::Quat::from_euler(
-                glam::EulerRot::XYZ,
+            tracker_index,
+            accleration: glam::Vec3A::new(
                 f32_parse(self.bytes)?,
                 f32_parse(self.bytes)?,
                 f32_parse(self.bytes)?,
             ),
-            accleration: glam::Vec3A::new(
+            orientation: glam::Quat::from_xyzw(
+                f32_parse(self.bytes)?,
                 f32_parse(self.bytes)?,
                 f32_parse(self.bytes)?,
                 f32_parse(self.bytes)?,

@@ -15,7 +15,7 @@ public:
 
     void use_credentials(const char* ssid, const char* password);
 
-    inline bool is_connected() { return m_connected; }
+    bool is_connected() { return m_connected; }
 
 private:
     void try_connect_next_network();

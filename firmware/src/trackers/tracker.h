@@ -9,7 +9,7 @@ enum class TrackerKind : uint8_t {
 enum class TrackerStatus : uint8_t {
     Ok,
     Error, // Shown as error on the UI
-    Off,   // Won't be shown on the UI
+    Off,
 };
 
 class Tracker {
@@ -20,15 +20,18 @@ public:
 
     virtual void setup(){};
     virtual void update(){};
+    virtual void calibrate(){};
 
-    inline uint8_t get_index() { return m_index; }
-    inline uint8_t get_address() { return m_address; }
+    uint8_t get_index() { return m_index; }
+    uint8_t get_address() { return m_address; }
 
 public:
     TrackerStatus status = TrackerStatus::Ok;
     // Values to be sent to server on each update loop
     Vector3 acceleration;
-    Vector3 orientation;
+    Quaternion orientation;
+
+    bool has_new_data;
 
 protected:
     TrackerKind m_kind;

@@ -18,6 +18,7 @@
  * `VQF_SINGLE_PRECISION` define to change this type to `float`. Note that the Butterworth filter
  * implementation will always use double precision as using floats can cause numeric issues.
  */
+#define VQF_SINGLE_PRECISION
 #ifndef VQF_SINGLE_PRECISION
 typedef double vqf_real_t;
 #else
