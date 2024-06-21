@@ -1,4 +1,5 @@
 #include "tracker_bmi160.h"
+#include "globals.h"
 #include "log.h"
 #include "math.h"
 
@@ -88,17 +89,13 @@ void TrackerBMI160::setup() {
     }
 
     calibrate();
+    LOG_INFO("TEMP: %f", get_temperature());
 }
 
 void TrackerBMI160::update() {
     int8_t result = read_fifo();
 
-    // Probably means there is no data in fifo buffer
-    if (result == BMI160_READ_WRITE_LENGHT_INVALID) {
-        return;
-    } else if (result != BMI160_OK) {
-        LOG_ERROR("BMI160 tracker error %d", result);
-        this->status = TrackerStatus::Error;
+    if (result != BMI160_OK) {
         return;
     }
 
@@ -126,6 +123,7 @@ void TrackerBMI160::calibrate() {
     // FOC doesn't work with gyro for some reason so do it by collecting samples
     const float num_samples = 100;
     int32_t gyro_sum_xyz[3] = {0, 0, 0};
+
     for (int i = 0; i < num_samples; i++) {
         struct bmi160_sensor_data raw_gyro;
         bmi160_get_sensor_data(BMI160_GYRO_SEL, nullptr, &raw_gyro, &m_device);
@@ -219,8 +217,22 @@ void TrackerBMI160::handle_raw_accel(int16_t raw_accel[3]) {
 void TrackerBMI160::handle_raw_gyro(int16_t raw_gyro[3]) {
     float gyro_xyz[3];
     for (size_t i = 0; i < 3; i++) {
-        gyro_xyz[i] = ((float)raw_gyro[i] - m_gyro_offsets[i]) * BMI160_GYRO_CONVERSION;
+        gyro_xyz[i] = ((float)raw_gyro[i] - m_gyro_offsets[i]) * BMI160_GYRO_CONVERSION * -1.1062;
     }
 
     m_sensor_fusion.update_gyro(gyro_xyz);
+}
+
+float TrackerBMI160::get_temperature() {
+    const float ZERO_OFFSET = 23;
+    const float TEMP_RANGE = 128. / 65535;
+
+    uint8_t buffer[2];
+    int result = bmi160_get_regs(0x20, buffer, 2, &m_device);
+    int16_t temp_raw = (((int16_t)buffer[1]) << 8) | buffer[0];
+    if (result == BMI160_OK) {
+        return (temp_raw * TEMP_RANGE) + ZERO_OFFSET;
+    } else {
+        return NAN;
+    }
 }
