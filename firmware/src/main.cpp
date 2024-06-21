@@ -3,6 +3,8 @@
 #include "log.h"
 #include "serial_manager.h"
 
+#include <i2c_clearbus.h>
+
 SerialManager serial_manager;
 ConnectionManager g_connection_manager;
 ConfigManager g_config_manager;
@@ -20,6 +22,9 @@ void setup() {
     g_internal_led.off();
     g_tracker_manager.setup();
     g_connection_manager.setup();
+
+    // Make sure i2c bus doesn't get stuck
+    I2C_ClearBus();
 }
 
 void loop() {
