@@ -96,8 +96,8 @@ void WifiManager::try_populate_test_networks() {
         }
 
         if (g_config_manager.wifi_entry_exists((const char*)info->ssid)) {
-            if (m_test_network_count >= MAX_WIFI_ENTRIES) {
-                LOG_WARN("Test network count %d exceeded MAX_WIFI_ENTRIES", m_test_network_count);
+            if (m_test_network_count >= m_test_network_infos.size()) {
+                LOG_WARN("Test network count %d exceeded test network size", m_test_network_count);
                 break;
             }
 

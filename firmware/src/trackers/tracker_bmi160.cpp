@@ -217,7 +217,7 @@ void TrackerBMI160::handle_raw_accel(int16_t raw_accel[3]) {
 void TrackerBMI160::handle_raw_gyro(int16_t raw_gyro[3]) {
     float gyro_xyz[3];
     for (size_t i = 0; i < 3; i++) {
-        gyro_xyz[i] = ((float)raw_gyro[i] - m_gyro_offsets[i]) * BMI160_GYRO_CONVERSION * -1.1062;
+        gyro_xyz[i] = ((float)raw_gyro[i] - m_gyro_offsets[i]) * BMI160_GYRO_CONVERSION;
     }
 
     m_sensor_fusion.update_gyro(gyro_xyz);
@@ -226,9 +226,10 @@ void TrackerBMI160::handle_raw_gyro(int16_t raw_gyro[3]) {
 float TrackerBMI160::get_temperature() {
     const float ZERO_OFFSET = 23;
     const float TEMP_RANGE = 128. / 65535;
+    const uint8_t TEMP_REGISTER = 0x20;
 
     uint8_t buffer[2];
-    int result = bmi160_get_regs(0x20, buffer, 2, &m_device);
+    int result = bmi160_get_regs(TEMP_REGISTER, buffer, 2, &m_device);
     int16_t temp_raw = (((int16_t)buffer[1]) << 8) | buffer[0];
     if (result == BMI160_OK) {
         return (temp_raw * TEMP_RANGE) + ZERO_OFFSET;

@@ -8,7 +8,6 @@
 #include "trackers/sensor_fusion.h"
 
 const size_t BMI160_FIFO_BUFFER_SIZE = 128;
-const float BMI160_VOLTAGE_DIFF = 0.03;
 
 // Change both HZ and FLAG when changing config
 const uint8_t BMI160_GYRO_ODR_FLAG = BMI160_GYRO_ODR_200HZ;

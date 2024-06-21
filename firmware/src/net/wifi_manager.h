@@ -30,5 +30,5 @@ private:
     bool m_test_networks_populated = false;
     uint8_t m_test_network_count = 0;
     uint64_t m_last_attempt_time = 0;
-    std::array<const bss_info*, MAX_WIFI_ENTRIES> m_test_network_infos;
+    std::array<const bss_info*, 6> m_test_network_infos;
 };
