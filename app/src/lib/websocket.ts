@@ -2,11 +2,11 @@ import { writable } from "svelte/store";
 
 const WEBSOCKET_PORT = 8298;
 
-interface TrackerConfig {
+export interface TrackerConfig {
     name: string;
 }
 
-interface TrackerInfo {
+export interface TrackerInfo {
     id: string;
     index: number;
     status: "Ok" | "Error" | "Off" | "TimedOut";
@@ -47,17 +47,19 @@ websocket.subscribe((ws) => {
             websocket.set(undefined);
         };
 
+        ws.onerror = () => {
+            console.log("Websocket error");
+            ws.close();
+        };
+
         ws.onmessage = (event) => {
-            let message = JSON.parse(event.data);
+            const message = JSON.parse(event.data);
             if (message) {
                 handleMessage(message);
             }
         };
     } else {
-        // If not connected periodically try to connect in case server doesn't respond
-        setTimeout(() => {
-            connectWebsocket();
-        }, 500);
+        connectWebsocket();
     }
 });
 

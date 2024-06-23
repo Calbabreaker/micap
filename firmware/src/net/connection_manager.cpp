@@ -70,8 +70,8 @@ void ConnectionManager::receive_packets() {
 
             // Set the tracker statuses to off so they can be resent
             std::fill(
-                m_tracker_statuses_on_server.begin(),
-                m_tracker_statuses_on_server.begin() + MAX_TRACKER_COUNT, TrackerStatus::Off
+                m_tracker_statuses_on_server.begin(), m_tracker_statuses_on_server.end(),
+                TrackerStatus::Off
             );
         } else {
             // Ignore later handshake packets
@@ -112,9 +112,9 @@ void ConnectionManager::send_handshake() {
     LOG_TRACE("Sending handshake hardcoded ip %s", SERVER_IP.toString().c_str());
     m_udp.beginPacket(SERVER_IP, UDP_PORT);
 #else
-    LOG_TRACE("Sending handshake packet to multicast ip %s", MULTICAST_IP.toString().c_str());
     // Start using multicast to find the server by sending handshake packets
     // After handshake use unicast
+    LOG_TRACE("Sending handshake packet to multicast ip %s", MULTICAST_IP.toString().c_str());
     m_udp.beginPacketMulticast(MULTICAST_IP, UDP_PORT, WiFi.localIP());
 #endif
     m_udp.write(PACKET_HANDSHAKE);
@@ -172,4 +172,8 @@ void ConnectionManager::begin_packet(uint8_t packet_type) {
 
 void ConnectionManager::end_packet() {
     m_udp.endPacket();
+    // If about to overflow, restart the connection to reset the packet number
+    if (m_next_packet_number == UINT32_MAX) {
+        m_connected = false;
+    }
 }

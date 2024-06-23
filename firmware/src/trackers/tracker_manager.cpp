@@ -1,4 +1,5 @@
 #include <Wire.h>
+#include <i2c_clearbus.h>
 
 #include "defines.h"
 #include "log.h"
@@ -22,16 +23,21 @@ Tracker* make_tracker(TrackerKind kind, uint8_t index, uint8_t address) {
     }
 }
 
-void TrackerManager::register_tracker(TrackerKind kind, uint8_t address, bool required) {
-    uint8_t index = m_tracker_count;
+void TrackerManager::register_tracker(
+    uint8_t index, TrackerKind kind, uint8_t address, bool required
+) {
     if (index >= MAX_TRACKER_COUNT) {
-        LOG_ERROR("Number of trackers exceeded MAX_TRACKER_COUNT, please increase in defines.h");
+        LOG_ERROR("Index is greater than MAX_TRACKER_COUNT, please increase in defines.h");
         return;
     }
 
     Tracker* tracker = make_tracker(kind, index, address);
+    m_trackers[index] = tracker;
 
-    if (!test_i2c_connection(address)) {
+    if (test_i2c_connection(address)) {
+        LOG_INFO("Tracker %d with address 0x%02x found", index, address);
+        tracker->setup();
+    } else {
         if (required) {
             LOG_ERROR("Required tracker %d with address 0x%02x not found", index, address);
             tracker->status = TrackerStatus::Error;
@@ -40,21 +46,15 @@ void TrackerManager::register_tracker(TrackerKind kind, uint8_t address, bool re
             tracker->status = TrackerStatus::Off;
         }
     }
-
-    if (tracker->status == TrackerStatus::Ok) {
-        LOG_INFO("Tracker %d with address 0x%02x found", index, address);
-        tracker->setup();
-    }
-
-    m_trackers[index] = tracker;
-    m_tracker_count++;
 }
 
 void TrackerManager::setup() {
+    // Make sure i2c bus doesn't get stuck
+    I2C_ClearBus();
     Wire.begin();
 
-    register_tracker(TrackerKind::BMI160, 0x68, true);
-    register_tracker(TrackerKind::BMI160, 0x69, false);
+    register_tracker(0, TrackerKind::BMI160, 0x68, true);
+    register_tracker(1, TrackerKind::BMI160, 0x69, false);
 }
 
 void TrackerManager::update() {

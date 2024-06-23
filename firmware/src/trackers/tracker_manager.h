@@ -8,7 +8,7 @@
 class TrackerManager {
 public:
     ~TrackerManager();
-    void register_tracker(TrackerKind kind, uint8_t address, bool required);
+    void register_tracker(uint8_t index, TrackerKind kind, uint8_t address, bool required);
     void setup();
     void update();
     void poll_tracker_status();
@@ -17,6 +17,5 @@ public:
 
 private:
     std::array<Tracker*, MAX_TRACKER_COUNT> m_trackers;
-    uint8_t m_tracker_count = 0;
     uint64_t m_last_status_poll_time = 0;
 };

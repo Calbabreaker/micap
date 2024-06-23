@@ -1,7 +1,6 @@
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 
-#include "defines.h"
 #include "globals.h"
 #include "log.h"
 #include "wifi_manager.h"
@@ -29,7 +28,7 @@ bool WifiManager::monitor() {
     // Just disconnected
     if (m_connected) {
         LOG_INFO("Disconnected from WiFi, reconnecting...");
-        m_test_network_count = 0;
+        m_test_networks.clear();
         m_connected = false;
 
         // First try the auto reconnect
@@ -63,19 +62,19 @@ void WifiManager::use_credentials(const char* ssid, const char* password) {
 void WifiManager::try_connect_next_network() {
     g_internal_led.blink(20);
     m_has_manually_set_creds = false;
-    if (m_test_network_count == 0) {
+    if (m_test_networks.empty()) {
         start_scan();
         return;
     }
 
     // Highest is at the end so go from backwards
-    const bss_info* info = m_test_network_infos[m_test_network_count - 1];
+    const bss_info* info = m_test_networks.back();
     const char* ssid = (const char*)info->ssid;
     LOG_INFO("Trying to connect to network %.32s", (const char*)info->ssid);
 
     const char* password = g_config_manager.wifi_password_get(ssid);
     WiFi.begin(ssid, password);
-    m_test_network_count -= 1;
+    m_test_networks.pop_back();
     m_last_attempt_time = millis();
 }
 
@@ -85,41 +84,35 @@ void WifiManager::try_populate_test_networks() {
         return;
     }
 
-    m_test_network_count = 0;
+    m_test_networks.clear();
 
     for (int8_t i = 0; i < num_networks; i++) {
         // Get network information
         const bss_info* info = WiFi.getScanInfoByIndex(i);
 
-        if (check_existing_test_network(info)) {
+        if (check_test_network_exists(info)) {
             continue;
         }
 
         if (g_config_manager.wifi_entry_exists((const char*)info->ssid)) {
-            if (m_test_network_count >= m_test_network_infos.size()) {
-                LOG_WARN("Test network count %d exceeded test network size", m_test_network_count);
-                break;
-            }
-
-            m_test_network_infos[m_test_network_count] = info;
-            m_test_network_count += 1;
+            m_test_networks.push_back(info);
         }
     }
 
     // Sort by signal strength (highest will be at the end)
-    for (int i = 0; i < m_test_network_count; i++) {
-        for (int j = i + 1; j < m_test_network_count; j++) {
+    for (size_t i = 0; i < m_test_networks.size(); i++) {
+        for (size_t j = i + 1; j < m_test_networks.size(); j++) {
             // Swap them when they are greater
-            const bss_info* info_a = m_test_network_infos[i];
-            const bss_info* info_b = m_test_network_infos[j];
+            const bss_info* info_a = m_test_networks[i];
+            const bss_info* info_b = m_test_networks[j];
             if (info_a->rssi > info_b->rssi) {
-                m_test_network_infos[i] = info_b;
-                m_test_network_infos[j] = info_a;
+                m_test_networks[i] = info_b;
+                m_test_networks[j] = info_a;
             }
         }
     }
 
-    if (m_test_network_count == 0) {
+    if (m_test_networks.empty()) {
         LOG_WARN("No WiFi networks found that was saved in flash memory");
         // This makes it so it will rescan after WIFI_CONNECT_TIMEOUT_MS
         m_last_attempt_time = millis();
@@ -130,15 +123,15 @@ void WifiManager::try_populate_test_networks() {
     m_test_networks_populated = true;
 }
 
-bool WifiManager::check_existing_test_network(const bss_info* info) {
+bool WifiManager::check_test_network_exists(const bss_info* info) {
     // Go through the test networks to see if it already exists (potential duplicate SSIDs)
-    for (int8_t i = 0; i < m_test_network_count; i++) {
-        const char* test_ssid = (const char*)m_test_network_infos[i]->ssid;
+    for (uint8_t i = 0; i < m_test_networks.size(); i++) {
+        const char* test_ssid = (const char*)m_test_networks[i]->ssid;
         const char* ssid = (const char*)info->ssid;
         if (strncmp(ssid, test_ssid, MAX_SSID_LENGTH) == 0) {
             // Set the one with the higher RSSI
-            if (info->rssi > m_test_network_infos[i]->rssi) {
-                m_test_network_infos[i] = info;
+            if (info->rssi > m_test_networks[i]->rssi) {
+                m_test_networks[i] = info;
                 return true;
             }
         }
@@ -152,7 +145,7 @@ void WifiManager::start_scan() {
     WiFi.scanDelete();
     WiFi.scanNetworks(true, true); // Scan in async mode
     m_test_networks_populated = false;
-    m_test_network_count = 0;
+    m_test_networks.clear();
 }
 
 void WifiManager::on_connect() {

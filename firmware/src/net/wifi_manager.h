@@ -1,9 +1,7 @@
 #pragma once
 
-#include "defines.h"
 #include <ESP8266WiFi.h>
-#include <array>
-#include <cstdint>
+#include <vector>
 
 #define WIFI_CONNECT_TIMEOUT_MS 12000
 
@@ -22,13 +20,12 @@ private:
     void try_populate_test_networks();
     void start_scan();
     void on_connect();
-    bool check_existing_test_network(const bss_info* info);
+    bool check_test_network_exists(const bss_info* info);
 
 private:
     bool m_connected = false;
     bool m_has_manually_set_creds = false;
     bool m_test_networks_populated = false;
-    uint8_t m_test_network_count = 0;
     uint64_t m_last_attempt_time = 0;
-    std::array<const bss_info*, 6> m_test_network_infos;
+    std::vector<const bss_info*> m_test_networks;
 };
