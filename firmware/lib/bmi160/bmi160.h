@@ -42,21 +42,21 @@
  * @{*/
 
 #ifndef BMI160_H_
-#define BMI160_H_
+    #define BMI160_H_
 
-/*************************** C++ guard macro *****************************/
-#ifdef __cplusplus
+    /*************************** C++ guard macro *****************************/
+    #ifdef __cplusplus
 extern "C" {
-#endif
+    #endif
 
-#include "bmi160_defs.h"
-#ifdef __KERNEL__
-#include <bmi160_math.h>
-#else
-#include <math.h>
-#include <stdlib.h>
-#include <string.h>
-#endif
+    #include "bmi160_defs.h"
+    #ifdef __KERNEL__
+        #include <bmi160_math.h>
+    #else
+        #include <math.h>
+        #include <stdlib.h>
+        #include <string.h>
+    #endif
 
 /*********************** User function prototypes ************************/
 
@@ -685,10 +685,12 @@ int8_t bmi160_get_int_status(
     struct bmi160_dev const* dev
 );
 
-/*************************** C++ guard macro *****************************/
-#ifdef __cplusplus
+int8_t bmi160_get_fifo_byte_counter(uint16_t* bytes_to_read, struct bmi160_dev const* dev);
+
+    /*************************** C++ guard macro *****************************/
+    #ifdef __cplusplus
 }
-#endif
+    #endif
 
 #endif /* BMI160_H_ */
 /** @}*/

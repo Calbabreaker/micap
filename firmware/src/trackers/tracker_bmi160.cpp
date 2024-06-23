@@ -93,9 +93,7 @@ void TrackerBMI160::setup() {
 }
 
 void TrackerBMI160::update() {
-    int8_t result = read_fifo();
-
-    if (result != BMI160_OK) {
+    if (!read_fifo()) {
         return;
     }
 
@@ -107,36 +105,33 @@ void TrackerBMI160::update() {
 void TrackerBMI160::calibrate() {
     LOG_INFO("Starting calibration");
 
-    // Use Fast Offset Compensation for accelerometer
-    struct bmi160_foc_conf foc_conf;
-    foc_conf.acc_off_en = BMI160_ENABLE;
-    foc_conf.foc_acc_x = BMI160_FOC_ACCEL_0G;
-    foc_conf.foc_acc_y = BMI160_FOC_ACCEL_0G;
-    foc_conf.foc_acc_z = BMI160_FOC_ACCEL_POSITIVE_G;
-
-    struct bmi160_offsets offset;
-    bmi160_start_foc(&foc_conf, &offset, &m_device);
-    m_accel_offsets[0] = (float)offset.off_acc_x;
-    m_accel_offsets[1] = (float)offset.off_acc_y;
-    m_accel_offsets[2] = (float)offset.off_acc_z;
-
-    // FOC doesn't work with gyro for some reason so do it by collecting samples
-    const float num_samples = 100;
     int32_t gyro_sum_xyz[3] = {0, 0, 0};
+    int32_t accel_sum_xyz[3] = {0, 0, 0};
 
-    for (int i = 0; i < num_samples; i++) {
+    for (int i = 0; i < BMI160_CALIBRATION_SAMPLES; i++) {
         struct bmi160_sensor_data raw_gyro;
-        bmi160_get_sensor_data(BMI160_GYRO_SEL, nullptr, &raw_gyro, &m_device);
+        struct bmi160_sensor_data raw_accel;
+        bmi160_get_sensor_data(
+            BMI160_GYRO_SEL | BMI160_ACCEL_SEL, &raw_accel, &raw_gyro, &m_device
+        );
         gyro_sum_xyz[0] += raw_gyro.x;
         gyro_sum_xyz[1] += raw_gyro.y;
         gyro_sum_xyz[2] += raw_gyro.z;
+        accel_sum_xyz[0] += raw_accel.x;
+        accel_sum_xyz[1] += raw_accel.y;
+        accel_sum_xyz[2] += raw_accel.z;
+
+        if (i % 4 == 0) {
+            g_internal_led.blink(20);
+        }
 
         delay(20);
     }
 
     // Calculate average offsets
     for (size_t i = 0; i < 3; i++) {
-        m_gyro_offsets[i] = (float)gyro_sum_xyz[i] / num_samples;
+        m_gyro_offsets[i] = (float)gyro_sum_xyz[i] / (float)BMI160_CALIBRATION_SAMPLES;
+        m_accel_offsets[i] = (float)accel_sum_xyz[i] / (float)BMI160_CALIBRATION_SAMPLES;
     }
 
     LOG_INFO("Finished calibration: ");
@@ -144,10 +139,15 @@ void TrackerBMI160::calibrate() {
     LOG_INFO("ACCEL: [%f, %f, %f]", m_accel_offsets[0], m_accel_offsets[1], m_accel_offsets[2]);
 }
 
-uint8_t TrackerBMI160::read_fifo() {
+bool TrackerBMI160::read_fifo() {
+    uint16_t fifo_bytes;
+    bmi160_get_fifo_byte_counter(&fifo_bytes, &m_device);
+    if (fifo_bytes < BMI160_FIFO_BUFFER_SIZE) {
+        return false;
+    }
+
     m_fifo.length = BMI160_FIFO_BUFFER_SIZE;
-    // Number of bytes read written into m_fifo.length
-    uint8_t result = bmi160_get_fifo_data(&m_device);
+    bmi160_get_fifo_data(&m_device);
 
     int16_t sensor_data[3];
 
@@ -184,7 +184,7 @@ uint8_t TrackerBMI160::read_fifo() {
         }
     }
 
-    return result;
+    return true;
 }
 
 // Takes out int16_ts into out based on index from the fifo buffer
@@ -211,6 +211,8 @@ void TrackerBMI160::handle_raw_accel(int16_t raw_accel[3]) {
         accel_xyz[i] = ((float)raw_accel[i] - m_accel_offsets[i]) * BMI160_ACCEL_CONVERSION;
     }
 
+    accel_xyz[2] += EARTH_GRAVITY;
+
     m_sensor_fusion.update_accel(accel_xyz);
 }
 
@@ -224,15 +226,16 @@ void TrackerBMI160::handle_raw_gyro(int16_t raw_gyro[3]) {
 }
 
 float TrackerBMI160::get_temperature() {
-    const float ZERO_OFFSET = 23;
-    const float TEMP_RANGE = 128. / 65535;
-    const uint8_t TEMP_REGISTER = 0x20;
+    // Constants defined in datasheet
+    const float BMI160_ZERO_OFFSET = 23;
+    const float BMI160_TEMP_RANGE = 128. / 65535;
+    const uint8_t BMI160_TEMP_REGISTER = 0x20;
 
     uint8_t buffer[2];
-    int result = bmi160_get_regs(TEMP_REGISTER, buffer, 2, &m_device);
+    int result = bmi160_get_regs(BMI160_TEMP_REGISTER, buffer, 2, &m_device);
     int16_t temp_raw = (((int16_t)buffer[1]) << 8) | buffer[0];
     if (result == BMI160_OK) {
-        return (temp_raw * TEMP_RANGE) + ZERO_OFFSET;
+        return (temp_raw * BMI160_TEMP_RANGE) + BMI160_ZERO_OFFSET;
     } else {
         return NAN;
     }

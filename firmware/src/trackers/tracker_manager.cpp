@@ -57,14 +57,6 @@ void TrackerManager::setup() {
     register_tracker(1, TrackerKind::BMI160, 0x69, false);
 }
 
-void TrackerManager::update() {
-    for (Tracker* tracker : m_trackers) {
-        if (tracker->status == TrackerStatus::Ok) {
-            tracker->update();
-        }
-    }
-}
-
 // Not currently used
 void TrackerManager::poll_tracker_status() {
     // Do polling every 5000 ms

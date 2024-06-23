@@ -1074,21 +1074,6 @@ enable_fifo_wtm_int(const struct bmi160_int_settg* int_config, const struct bmi1
 static void reset_fifo_data_structure(const struct bmi160_dev* dev);
 
 /*!
- *  @brief This API is used to read number of bytes filled
- *  currently in FIFO buffer.
- *
- *  @param[in] bytes_to_read  : Number of bytes available in FIFO at the
- *                              instant which is obtained from FIFO counter.
- *  @param[in] dev            : Structure instance of bmi160_dev.
- *
- *  @return Result of API execution status
- *  @retval zero -> Success / -ve value -> Error.
- *  @retval Any non zero value -> Fail
- *
- */
-static int8_t get_fifo_byte_counter(uint16_t* bytes_to_read, struct bmi160_dev const* dev);
-
-/*!
  *  @brief This API is used to compute the number of bytes of accel FIFO data
  *  which is to be parsed in header-less mode
  *
@@ -2072,8 +2057,8 @@ int8_t bmi160_perform_self_test(uint8_t select_sensor, struct bmi160_dev* dev) {
  */
 int8_t bmi160_get_fifo_data(struct bmi160_dev const* dev) {
     int8_t rslt = 0;
-    uint16_t bytes_to_read = 0;
-    uint16_t user_fifo_len = 0;
+    // uint16_t bytes_to_read = 0;
+    // uint16_t user_fifo_len = 0;
 
     /* check the bmi160 structure as NULL*/
     if ((dev == NULL) || (dev->fifo->data == NULL)) {
@@ -2082,23 +2067,23 @@ int8_t bmi160_get_fifo_data(struct bmi160_dev const* dev) {
         reset_fifo_data_structure(dev);
 
         /* get current FIFO fill-level*/
-        rslt = get_fifo_byte_counter(&bytes_to_read, dev);
-        if (rslt == BMI160_OK) {
-            user_fifo_len = dev->fifo->length;
-            if ((dev->fifo->length > bytes_to_read)) {
-                /* Handling the case where user requests
-                 * more data than available in FIFO */
-                dev->fifo->length = bytes_to_read;
-            }
-            if ((dev->fifo->fifo_time_enable == BMI160_FIFO_TIME_ENABLE) &&
-                (bytes_to_read + BMI160_FIFO_BYTES_OVERREAD <= user_fifo_len)) {
-                /* Handling case of sensor time availability*/
-                dev->fifo->length = dev->fifo->length + BMI160_FIFO_BYTES_OVERREAD;
-            }
+        // rslt = bmi160_get_fifo_byte_counter(&bytes_to_read, dev);
+        // if (rslt == BMI160_OK) {
+        // user_fifo_len = dev->fifo->length;
+        // if ((dev->fifo->length > bytes_to_read)) {
+        //     /* Handling the case where user requests
+        //      * more data than available in FIFO */
+        //     dev->fifo->length = bytes_to_read;
+        // }
+        // if ((dev->fifo->fifo_time_enable == BMI160_FIFO_TIME_ENABLE) &&
+        //     (bytes_to_read + BMI160_FIFO_BYTES_OVERREAD <= user_fifo_len)) {
+        //     /* Handling case of sensor time availability*/
+        //     dev->fifo->length = dev->fifo->length + BMI160_FIFO_BYTES_OVERREAD;
+        // }
 
-            /* read only the filled bytes in the FIFO Buffer */
-            rslt = bmi160_get_regs(BMI160_FIFO_DATA_ADDR, dev->fifo->data, dev->fifo->length, dev);
-        }
+        /* read only the filled bytes in the FIFO Buffer */
+        rslt = bmi160_get_regs(BMI160_FIFO_DATA_ADDR, dev->fifo->data, dev->fifo->length, dev);
+        // }
     }
 
     return rslt;
@@ -5008,7 +4993,7 @@ static void reset_fifo_data_structure(const struct bmi160_dev* dev) {
  *  @brief This API is used to read fifo_byte_counter value (i.e)
  *  current fill-level in Fifo buffer.
  */
-static int8_t get_fifo_byte_counter(uint16_t* bytes_to_read, struct bmi160_dev const* dev) {
+int8_t bmi160_get_fifo_byte_counter(uint16_t* bytes_to_read, struct bmi160_dev const* dev) {
     int8_t rslt = 0;
     uint8_t data[2];
     uint8_t addr = BMI160_FIFO_LENGTH_ADDR;

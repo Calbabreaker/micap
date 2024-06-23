@@ -10,7 +10,6 @@ public:
     ~TrackerManager();
     void register_tracker(uint8_t index, TrackerKind kind, uint8_t address, bool required);
     void setup();
-    void update();
     void poll_tracker_status();
 
     const std::array<Tracker*, MAX_TRACKER_COUNT>& get_trackers() const { return m_trackers; }

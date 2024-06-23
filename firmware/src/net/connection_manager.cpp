@@ -138,6 +138,10 @@ void ConnectionManager::send_tracker_data() {
     begin_packet(PACKET_TRACKER_DATA);
 
     for (Tracker* tracker : g_tracker_manager.get_trackers()) {
+        if (tracker->status == TrackerStatus::Ok) {
+            tracker->update();
+        }
+
         bool acked = m_tracker_statuses_on_server[tracker->get_index()] == tracker->status;
         if (tracker->has_new_data && acked) {
             m_udp.write(tracker->get_index());

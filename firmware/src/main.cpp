@@ -15,17 +15,16 @@ uint64_t delta_sum = 0;
 
 void setup() {
     Serial.begin(9600);
+    g_connection_manager.setup();
     g_config_manager.setup();
     g_internal_led.setup();
     g_internal_led.off();
     g_tracker_manager.setup();
-    g_connection_manager.setup();
 }
 
 void loop() {
     serial_manager.parse_incomming_command();
     g_connection_manager.update();
-    g_tracker_manager.update();
 
     if (g_connection_manager.is_connected()) {
         g_connection_manager.send_tracker_data();
