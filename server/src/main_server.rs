@@ -72,8 +72,8 @@ impl MainServer {
                     index: tracker.info.index,
                     data: tracker.data.clone(),
                 });
-            // // Reset acceleration to prevent drift in case tracker stop sending data
-            // tracker.data.acceleration = glam::Vec3A::ZERO;
+            // Reset acceleration to prevent drift in case tracker stop sending data
+            tracker.data.acceleration = glam::Vec3A::ZERO;
         }
     }
 
@@ -95,11 +95,11 @@ impl MainServer {
         index
     }
 
-    pub fn update_tracker_status(&mut self, index: usize, status: TrackerStatus) {
-        let info = &mut self.trackers[index].info;
-        info.status = status;
+    pub fn tracker_info_updated(&mut self, index: usize) {
         self.message_channels
-            .send_to_all(ServerMessage::TrackerInfo { info: info.clone() });
+            .send_to_all(ServerMessage::TrackerInfo {
+                info: self.trackers[index].clone().info,
+            });
     }
 
     pub fn update_tracker_data(

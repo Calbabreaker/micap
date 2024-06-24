@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 #[derive(Default, PartialEq, Debug, Clone, Copy, serde::Serialize)]
 #[repr(u8)]
@@ -22,10 +22,10 @@ pub enum TrackerLocation {
 
 #[derive(Clone, Default, serde::Serialize)]
 pub struct TrackerInfo {
-    pub id: String,
     pub index: usize,
     pub status: TrackerStatus,
     pub config: TrackerConfig,
+    pub latency_ms: Option<u32>,
 }
 
 #[derive(Clone, Default, serde::Serialize)]
@@ -38,6 +38,7 @@ pub struct TrackerData {
 
 #[derive(Clone)]
 pub struct Tracker {
+    pub id: String,
     pub info: TrackerInfo,
     pub data: TrackerData,
 }
@@ -46,19 +47,18 @@ impl Tracker {
     pub fn new(id: String, index: usize, config: TrackerConfig) -> Self {
         Self {
             info: TrackerInfo {
-                id,
                 index,
                 config,
                 status: TrackerStatus::default(),
+                latency_ms: None,
             },
+            id,
             data: TrackerData::default(),
         }
     }
 
     pub fn tick(&mut self, delta: Duration) {
-        let delta_secs = delta.as_secs_f32();
-        self.data.velocity += self.data.acceleration * delta_secs;
-        self.data.position += self.data.velocity * delta_secs;
+        self.data.position += self.data.velocity * delta.as_secs_f32();
     }
 }
 

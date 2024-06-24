@@ -8,14 +8,14 @@ use tokio::net::UdpSocket;
 use crate::{
     main_server::MainServer,
     tracker::{TrackerConfig, TrackerData, TrackerStatus},
-    udp_packet::{UdpPacket, UdpPacketHandshake, PACKET_HEARTBEAT},
+    udp_packet::{UdpPacket, UdpPacketHandshake, UdpPacketPingPong},
 };
 
 pub const UDP_PORT: u16 = 5828;
 pub const MULTICAST_IP: Ipv4Addr = Ipv4Addr::new(239, 255, 0, 123);
 
 const DEVICE_TIMEOUT: Duration = Duration::from_millis(4000);
-const UPKEEP_INTERVAL: Duration = Duration::from_millis(2000);
+const UPKEEP_INTERVAL: Duration = Duration::from_millis(1000);
 
 pub struct UdpDevice {
     pub(super) index: usize,
@@ -26,6 +26,8 @@ pub struct UdpDevice {
     timed_out: bool,
     mac: String,
     address: SocketAddr,
+    current_ping_start_time: Option<Instant>,
+    current_ping_id: u8,
 }
 
 impl UdpDevice {
@@ -38,6 +40,8 @@ impl UdpDevice {
             last_packet_received_time: Instant::now(),
             last_packet_number: 0,
             timed_out: false,
+            current_ping_id: 0,
+            current_ping_start_time: None,
         }
     }
 
@@ -77,15 +81,17 @@ impl UdpDevice {
 
         self.timed_out = timed_out;
 
-        for i in &self.tracker_indexs {
-            let info = &main.trackers[*i].info;
+        for global_index in &self.tracker_indexs {
+            let info = &main.trackers[*global_index].info;
 
             // Only allow changing status to TimedOut if tracker is Ok and vice-versa
             if timed_out && info.status == TrackerStatus::Ok {
-                main.update_tracker_status(*i, TrackerStatus::TimedOut);
+                main.trackers[*global_index].info.status = TrackerStatus::TimedOut;
+                main.tracker_info_updated(*global_index);
             } else if !timed_out && info.status == TrackerStatus::TimedOut {
-                main.update_tracker_status(*i, TrackerStatus::Ok);
-            }
+                main.trackers[*global_index].info.status = TrackerStatus::Ok;
+                main.tracker_info_updated(*global_index);
+            };
         }
     }
 }
@@ -150,13 +156,14 @@ impl UdpServer {
                 device.set_timed_out(main, false);
             }
 
-            // log::info!(
-            //     "{}fps",
-            //     1. / device.last_packet_received_time.elapsed().as_secs_f32()
-            // );
-            self.socket
-                .send_to(&[PACKET_HEARTBEAT], device.address)
-                .await?;
+            // Ping has been acknowledge so start a new ping id
+            if device.current_ping_start_time.is_none() {
+                device.current_ping_start_time = Some(Instant::now());
+                device.current_ping_id = device.current_ping_id.wrapping_add(1);
+            }
+
+            let ping_packet = UdpPacketPingPong::to_bytes(device.current_ping_id);
+            self.socket.send_to(&ping_packet, device.address).await?;
         }
 
         self.last_upkeep_time = Instant::now();
@@ -176,7 +183,9 @@ impl UdpServer {
             .and_then(|i| self.devices.get_mut(*i));
 
         match UdpPacket::parse(&mut byte_iter, device) {
-            Some(UdpPacket::Heartbeat) => {}
+            Some(UdpPacket::PingPong((packet, device))) => {
+                Self::handle_pong(main, packet, device);
+            }
             Some(UdpPacket::Handshake(packet)) => {
                 self.socket
                     .send_to(UdpPacketHandshake::RESPONSE, peer_addr)
@@ -196,9 +205,10 @@ impl UdpServer {
 
                 self.socket.send_to(&packet.to_bytes(), peer_addr).await?;
                 let global_index = device.get_global_tracker_index(main, packet.tracker_index);
-                main.update_tracker_status(global_index, packet.tracker_status);
 
+                main.trackers[global_index].info.status = packet.tracker_status;
                 main.trackers[global_index].data = TrackerData::default();
+                main.tracker_info_updated(global_index);
             }
             None => (),
         }
@@ -241,5 +251,21 @@ impl UdpServer {
         self.devices.push(device);
         log::info!("New device connected from {peer_addr}");
         self.devices.get_mut(index)
+    }
+
+    fn handle_pong(main: &mut MainServer, packet: UdpPacketPingPong, device: &mut UdpDevice) {
+        if packet.id != device.current_ping_id {
+            return;
+        }
+
+        if let Some(start_time) = device.current_ping_start_time {
+            for global_index in &device.tracker_indexs {
+                let latency = start_time.elapsed() / 2;
+                main.trackers[*global_index].info.latency_ms = Some(latency.as_millis() as u32);
+                main.tracker_info_updated(*global_index);
+            }
+
+            device.current_ping_start_time = None;
+        }
     }
 }

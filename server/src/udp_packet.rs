@@ -3,7 +3,7 @@ use std::time::Instant;
 use crate::tracker::TrackerStatus;
 use crate::udp_server::UdpDevice;
 
-pub const PACKET_HEARTBEAT: u8 = 0x00;
+pub const PACKET_PING_PONG: u8 = 0x00;
 pub const PACKET_HANDSHAKE: u8 = 0x01;
 pub const PACKET_TRACKER_STATUS: u8 = 0x02;
 pub const PACKET_TRACKER_DATA: u8 = 0x03;
@@ -12,7 +12,7 @@ pub enum UdpPacket<'a> {
     Handshake(UdpPacketHandshake),
     TrackerData((UdpPacketTrackerData<'a>, &'a mut UdpDevice)),
     TrackerStatus((UdpPacketTrackerStatus, &'a mut UdpDevice)),
-    Heartbeat,
+    PingPong((UdpPacketPingPong, &'a mut UdpDevice)),
 }
 
 impl<'a> UdpPacket<'a> {
@@ -22,23 +22,27 @@ impl<'a> UdpPacket<'a> {
     ) -> Option<Self> {
         let packet_type = *bytes.next()?;
 
-        // Handshake packet would always be the first packet
-        if packet_type != PACKET_HANDSHAKE {
-            // Get the packet number from the bytes
-            let packet_number = u32_parse(bytes)?;
-            if let Some(ref mut device) = device {
-                if packet_number <= device.last_packet_number {
-                    log::warn!("Received out of order packet {packet_number}");
-                    return None;
-                }
+        if let Some(ref mut device) = device {
+            match packet_type {
+                // These packets don't send a packet number so they will never be discarded
+                PACKET_HANDSHAKE | PACKET_PING_PONG => (),
+                _ => {
+                    // Discard the packet if not the latest
+                    let packet_number = u32_parse(bytes)?;
+                    if packet_number <= device.last_packet_number {
+                        log::warn!("Received out of order packet {packet_number}");
+                        return None;
+                    }
 
-                device.last_packet_number = packet_number;
-                device.last_packet_received_time = Instant::now();
-            }
+                    device.last_packet_number = packet_number;
+                }
+            };
+
+            device.last_packet_received_time = Instant::now();
         }
 
         Some(match packet_type {
-            PACKET_HEARTBEAT => Self::Heartbeat,
+            PACKET_PING_PONG => Self::PingPong((UdpPacketPingPong::from_bytes(bytes)?, device?)),
             PACKET_HANDSHAKE => Self::Handshake(UdpPacketHandshake::from_bytes(bytes)?),
             PACKET_TRACKER_DATA => {
                 Self::TrackerData((UdpPacketTrackerData::from_bytes(bytes)?, device?))
@@ -76,6 +80,20 @@ impl UdpPacketHandshake {
 
     // \u[1] here means packet handshake
     pub const RESPONSE: &'static [u8] = "\u{1}MYCAP-SERVER".as_bytes();
+}
+
+pub struct UdpPacketPingPong {
+    pub id: u8,
+}
+
+impl UdpPacketPingPong {
+    pub fn from_bytes(bytes: &mut std::slice::Iter<u8>) -> Option<Self> {
+        Some(Self { id: *bytes.next()? })
+    }
+
+    pub fn to_bytes(id: u8) -> [u8; 2] {
+        [PACKET_PING_PONG, id]
+    }
 }
 
 #[derive(Debug)]
@@ -131,13 +149,13 @@ impl<'a> UdpPacketTrackerData<'a> {
 
         Some(UdpTrackerData {
             tracker_index,
-            accleration: glam::Vec3A::new(
+            orientation: glam::Quat::from_xyzw(
+                f32_parse(self.bytes)?,
                 f32_parse(self.bytes)?,
                 f32_parse(self.bytes)?,
                 f32_parse(self.bytes)?,
             ),
-            orientation: glam::Quat::from_xyzw(
-                f32_parse(self.bytes)?,
+            accleration: glam::Vec3A::new(
                 f32_parse(self.bytes)?,
                 f32_parse(self.bytes)?,
                 f32_parse(self.bytes)?,

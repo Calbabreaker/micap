@@ -5,6 +5,7 @@
 #include "trackers/tracker.h"
 
 #include <ESP8266WiFi.h>
+#include <cstdint>
 
 void ConnectionManager::setup() {
     m_wifi.setup();
@@ -55,7 +56,7 @@ void ConnectionManager::receive_packets() {
     m_last_received_time = millis();
 
     switch (m_buffer[0]) {
-    case PACKET_HANDSHAKE:
+    case PACKET_HANDSHAKE: {
         // Check mycap header mark
         // MYCAP-SERVER indicates mycap server response
         if (strcmp((const char*)m_buffer + 1, "MYCAP-SERVER") != 0) {
@@ -78,6 +79,7 @@ void ConnectionManager::receive_packets() {
             LOG_WARN("Received handshake while already connected");
         }
         break;
+    }
     case PACKET_TRACKER_STATUS: {
         uint8_t id = m_buffer[1];
         if (id < m_tracker_statuses_on_server.size()) {
@@ -85,9 +87,9 @@ void ConnectionManager::receive_packets() {
         }
         break;
     }
-    case PACKET_HEARTBEAT:
-        // Ping back heartbeat
-        send_hearbeat();
+    case PACKET_PING_PONG:
+        // Pong back ping
+        send_pong(m_buffer[1]);
         break;
     default:
         LOG_WARN("Received invalid packet id %d", m_buffer[0]);
@@ -110,14 +112,14 @@ void ConnectionManager::send_handshake() {
 #ifdef SERVER_IP
     // Hardcoded server ip
     LOG_TRACE("Sending handshake hardcoded ip %s", SERVER_IP.toString().c_str());
-    m_udp.beginPacket(SERVER_IP, UDP_PORT);
+    begin_packet(PACKET_HANDSHAKE);
 #else
     // Start using multicast to find the server by sending handshake packets
     // After handshake use unicast
     LOG_TRACE("Sending handshake packet to multicast ip %s", MULTICAST_IP.toString().c_str());
     m_udp.beginPacketMulticast(MULTICAST_IP, UDP_PORT, WiFi.localIP());
-#endif
     m_udp.write(PACKET_HANDSHAKE);
+#endif
 
     write_str("MYCAP-DEVICE"); // mark as mycap handshake
 
@@ -128,14 +130,16 @@ void ConnectionManager::send_handshake() {
     m_last_sent_handshake_time = millis();
 }
 
-void ConnectionManager::send_hearbeat() {
-    begin_packet(PACKET_HEARTBEAT);
+void ConnectionManager::send_pong(uint8_t id) {
+    begin_packet(PACKET_PING_PONG);
+    m_udp.write(id);
     end_packet();
 }
 
 // Packs orientation and acceleration data for each tracker in a single packet
 void ConnectionManager::send_tracker_data() {
     begin_packet(PACKET_TRACKER_DATA);
+    write_packet_number();
 
     for (Tracker* tracker : g_tracker_manager.get_trackers()) {
         if (tracker->status == TrackerStatus::Ok) {
@@ -145,8 +149,8 @@ void ConnectionManager::send_tracker_data() {
         bool acked = m_tracker_statuses_on_server[tracker->get_index()] == tracker->status;
         if (tracker->has_new_data && acked) {
             m_udp.write(tracker->get_index());
-            m_udp.write(tracker->acceleration.as_bytes(), sizeof(Vector3));
             m_udp.write(tracker->orientation.as_bytes(), sizeof(Quaternion));
+            m_udp.write(tracker->acceleration.as_bytes(), sizeof(Vector3));
             tracker->has_new_data = false;
         }
     }
@@ -158,6 +162,7 @@ void ConnectionManager::send_tracker_data() {
 
 void ConnectionManager::send_tracker_status(uint8_t tracker_id, TrackerStatus tracker_state) {
     begin_packet(PACKET_TRACKER_STATUS);
+    write_packet_number();
     m_udp.write(tracker_id);
     m_udp.write((uint8_t)tracker_state);
     end_packet();
@@ -170,6 +175,9 @@ void ConnectionManager::write_str(const char* str) {
 void ConnectionManager::begin_packet(uint8_t packet_type) {
     m_udp.beginPacket(m_server_ip, UDP_PORT);
     m_udp.write(packet_type);
+}
+
+void ConnectionManager::write_packet_number() {
     m_udp.write((uint8_t*)&m_next_packet_number, sizeof(uint32_t));
     m_next_packet_number += 1;
 }

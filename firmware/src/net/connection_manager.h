@@ -7,10 +7,15 @@
 #include "net/wifi_manager.h"
 #include "trackers/tracker.h"
 
-const uint8_t PACKET_HEARTBEAT = 0x00;
-const uint8_t PACKET_HANDSHAKE = 0x01;
-const uint8_t PACKET_TRACKER_STATUS = 0x02;
-const uint8_t PACKET_TRACKER_DATA = 0x03;
+// A ping packet has two purposes, to ensure packets can still be send round trip,
+// and for caculating latency between server and device
+constexpr uint8_t PACKET_PING_PONG = 0x00;
+
+// Packet for establishing a connection between the server and the device
+// Will always be the first packet sent before any other packet
+constexpr uint8_t PACKET_HANDSHAKE = 0x01;
+constexpr uint8_t PACKET_TRACKER_STATUS = 0x02;
+constexpr uint8_t PACKET_TRACKER_DATA = 0x03;
 
 const IPAddress MULTICAST_IP = IPAddress(239, 255, 0, 123);
 
@@ -22,13 +27,14 @@ public:
     void send_tracker_data();
     void send_tracker_status(uint8_t tracker_id, TrackerStatus tracker_state);
     void send_handshake();
-    void send_hearbeat();
+    void send_pong(uint8_t id);
 
     WifiManager& get_wifi() { return m_wifi; }
     bool is_connected() { return m_connected; }
 
 private:
     void begin_packet(uint8_t packet_type);
+    void write_packet_number();
     void write_str(const char* str);
     void end_packet();
 

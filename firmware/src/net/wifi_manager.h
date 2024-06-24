@@ -3,7 +3,7 @@
 #include <ESP8266WiFi.h>
 #include <vector>
 
-#define WIFI_CONNECT_TIMEOUT_MS 12000
+constexpr uint64_t WIFI_CONNECT_TIMEOUT_MS = 12000;
 
 class WifiManager {
 public:

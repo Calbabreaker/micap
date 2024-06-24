@@ -9,6 +9,11 @@
 // Buffer to store temporary fifo data
 static uint8_t FIFO_BUFFER[BMI160_FIFO_BUFFER_SIZE];
 
+// Retrieves a int16_t from a byte array at index
+int16_t unpack_i16(uint8_t data[], size_t i) {
+    return (int16_t)((data[i + 1] << 8) | data[i]);
+}
+
 // Implementations for i2c read and write functions using Wire.h
 int8_t i2c_read(uint8_t dev_addr, uint8_t reg_addr, uint8_t* data, uint16_t len) {
     Wire.beginTransmission(dev_addr);
@@ -103,6 +108,7 @@ void TrackerBMI160::update() {
 }
 
 void TrackerBMI160::calibrate() {
+    delay(1000);
     LOG_INFO("Starting calibration");
 
     int32_t gyro_sum_xyz[3] = {0, 0, 0};
@@ -121,7 +127,7 @@ void TrackerBMI160::calibrate() {
         accel_sum_xyz[1] += raw_accel.y;
         accel_sum_xyz[2] += raw_accel.z;
 
-        if (i % 4 == 0) {
+        if (i % 2 == 0) {
             g_internal_led.blink(20);
         }
 
@@ -197,9 +203,7 @@ bool TrackerBMI160::fifo_unpack_i16(size_t* index, size_t count, int16_t* out) {
     }
 
     for (size_t i = 0; i < count; i++) {
-        uint16_t lsb = m_fifo.data[start_index + i * sizeof(int16_t) + 0];
-        uint16_t msb = m_fifo.data[start_index + i * sizeof(int16_t) + 1];
-        out[i] = (int16_t)((msb << 8) | lsb);
+        out[i] = unpack_i16(m_fifo.data, start_index + i * sizeof(int16_t));
     }
 
     return true;
@@ -233,9 +237,9 @@ float TrackerBMI160::get_temperature() {
 
     uint8_t buffer[2];
     int result = bmi160_get_regs(BMI160_TEMP_REGISTER, buffer, 2, &m_device);
-    int16_t temp_raw = (((int16_t)buffer[1]) << 8) | buffer[0];
     if (result == BMI160_OK) {
-        return (temp_raw * BMI160_TEMP_RANGE) + BMI160_ZERO_OFFSET;
+        int16_t temp_raw = unpack_i16(buffer, 0);
+        return temp_raw * BMI160_TEMP_RANGE + BMI160_ZERO_OFFSET;
     } else {
         return NAN;
     }

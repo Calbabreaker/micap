@@ -3,8 +3,8 @@
 #include "defines.h"
 #include <array>
 
-#define MAX_PASSWORD_LENGTH 64
-#define MAX_SSID_LENGTH 32
+constexpr size_t MAX_PASSWORD_LENGTH = 64;
+constexpr size_t MAX_SSID_LENGTH = 32;
 
 struct WifiEntry {
     char ssid[MAX_SSID_LENGTH];

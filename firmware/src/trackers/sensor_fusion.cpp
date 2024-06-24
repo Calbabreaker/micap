@@ -12,7 +12,6 @@ void SensorFusion::update_accel(float accel_xyz[3]) {
 }
 
 Quaternion SensorFusion::get_orientation() {
-
     float quat_wxyz[4];
     m_vqf.getQuat6D(quat_wxyz);
     m_quat = Quaternion(quat_wxyz[1], quat_wxyz[2], quat_wxyz[3], quat_wxyz[0]);

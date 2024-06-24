@@ -7,21 +7,21 @@
 #include "tracker.h"
 #include "trackers/sensor_fusion.h"
 
-const uint32_t BMI160_CALIBRATION_SAMPLES = 200;
-const size_t BMI160_FIFO_BUFFER_SIZE = 128;
+constexpr uint32_t BMI160_CALIBRATION_SAMPLES = 200;
+constexpr size_t BMI160_FIFO_BUFFER_SIZE = 128;
 
 // Change both HZ and FLAG when changing config
-const uint8_t BMI160_GYRO_ODR_FLAG = BMI160_GYRO_ODR_400HZ;
-const float BMI160_GYRO_ODR_HZ = 400.;
-const uint8_t BMI160_ACCEL_ODR_FLAG = BMI160_ACCEL_ODR_100HZ;
-const float BMI160_ACCEL_ODR_HZ = 100.;
+constexpr uint8_t BMI160_GYRO_ODR_FLAG = BMI160_GYRO_ODR_200HZ;
+constexpr float BMI160_GYRO_ODR_HZ = 200.;
+constexpr uint8_t BMI160_ACCEL_ODR_FLAG = BMI160_ACCEL_ODR_100HZ;
+constexpr float BMI160_ACCEL_ODR_HZ = 100.;
 
-const uint8_t BMI160_GYRO_RANGE_FLAG = BMI160_GYRO_RANGE_1000_DPS;
-const float BMI160_GYRO_SENSITIVITY = 16.4f * (1 << BMI160_GYRO_RANGE_FLAG);
-const uint8_t BMI160_ACCEL_RANGE_FLAG = BMI160_ACCEL_RANGE_4G;
-const float BMI160_ACCEL_RANGE = 4.;
+constexpr uint8_t BMI160_GYRO_RANGE_FLAG = BMI160_GYRO_RANGE_500_DPS;
+constexpr float BMI160_GYRO_SENSITIVITY = 16.4f * (1 << BMI160_GYRO_RANGE_FLAG); // 16.4 * 2^index
+constexpr uint8_t BMI160_ACCEL_RANGE_FLAG = BMI160_ACCEL_RANGE_4G;
+constexpr float BMI160_ACCEL_RANGE = 4.;
 
-// Makes gyro output scale from -500 to +500 °/s (sensor outputs a signed 16-bit integer)
+// Converts raw gyro output to radians based on sensitivity from datasheet
 // LSB/°/s -> radians/s/LSB
 const float BMI160_GYRO_CONVERSION = ((PI / 180.f) / BMI160_GYRO_SENSITIVITY);
 

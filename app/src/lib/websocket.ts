@@ -2,15 +2,17 @@ import { writable } from "svelte/store";
 
 const WEBSOCKET_PORT = 8298;
 
+export type TrackerStatus = "Ok" | "Error" | "Off" | "TimedOut";
+
 export interface TrackerConfig {
     name: string;
 }
 
 export interface TrackerInfo {
-    id: string;
     index: number;
-    status: "Ok" | "Error" | "Off" | "TimedOut";
+    status: TrackerStatus;
     config: TrackerConfig;
+    latency_ms: number;
 }
 
 export interface TrackerData {
@@ -22,7 +24,7 @@ export interface TrackerData {
 
 export interface Tracker {
     info: TrackerInfo;
-    data?: TrackerData;
+    data: TrackerData;
 }
 
 export const websocket = writable<WebSocket | undefined>();
@@ -70,11 +72,22 @@ function handleMessage(message: Record<string, any>) {
             break;
         case "TrackerInfo":
             trackers.update((trackers) => {
-                const tracker: Tracker = {
-                    info: message.info,
-                };
+                if (trackers[message.info.index]) {
+                    trackers[message.info.index].info = message.info;
+                } else {
+                    const tracker: Tracker = {
+                        info: message.info,
+                        data: {
+                            acceleration: [0, 0, 0],
+                            orientation: [0, 0, 0, 1],
+                            position: [0, 0, 0],
+                            velocity: [0, 0, 0],
+                        },
+                    };
 
-                trackers[message.info.index] = tracker;
+                    trackers[message.info.index] = tracker;
+                }
+
                 return trackers;
             });
 
