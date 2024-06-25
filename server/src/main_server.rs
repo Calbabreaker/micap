@@ -73,7 +73,7 @@ impl MainServer {
                     data: tracker.data.clone(),
                 });
             // Reset acceleration to prevent drift in case tracker stop sending data
-            tracker.data.acceleration = glam::Vec3A::ZERO;
+            // tracker.data.acceleration = glam::Vec3A::ZERO;
         }
     }
 

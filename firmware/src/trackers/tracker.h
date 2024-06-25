@@ -31,7 +31,7 @@ public:
     Vector3 acceleration;
     Quaternion orientation;
 
-    bool has_new_data;
+    bool has_new_data = false;
 
 protected:
     TrackerKind m_kind;

@@ -27,7 +27,10 @@ void loop() {
     g_connection_manager.update();
 
     if (g_connection_manager.is_connected()) {
-        g_connection_manager.send_tracker_data();
+        bool has_new_data = g_tracker_manager.update();
+        if (has_new_data) {
+            g_connection_manager.send_tracker_data();
+        }
     }
 
     uint64_t delta = millis() - last_loop_time;

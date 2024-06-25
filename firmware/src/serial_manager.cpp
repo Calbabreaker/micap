@@ -28,7 +28,7 @@ void SerialManager::parse_incomming_command() {
 
     // Set the end null byte
     m_buffer[bytes_read] = '\0';
-    LOG_TRACE("Got command %s with %zu chars", m_buffer, bytes_read);
+    LOG_TRACE("Got serial command %s with %zu chars", m_buffer, bytes_read);
 
     if (strcmp(m_buffer, "Wifi") == 0) {
         const char* ssid_ptr = next_arg(m_buffer, &bytes_read);

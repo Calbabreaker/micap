@@ -7,7 +7,7 @@
 #include "net/wifi_manager.h"
 #include "trackers/tracker.h"
 
-// A ping packet has two purposes, to ensure packets can still be send round trip,
+// A ping packet has two purposes, to ensure the device won't be timed out on the server,
 // and for caculating latency between server and device
 constexpr uint8_t PACKET_PING_PONG = 0x00;
 
@@ -25,9 +25,11 @@ public:
     void update();
 
     void send_tracker_data();
-    void send_tracker_status(uint8_t tracker_id, TrackerStatus tracker_state);
+    void send_tracker_status(Tracker* tracker);
     void send_handshake();
     void send_pong(uint8_t id);
+
+    bool has_acked_tracker(Tracker* tracker);
 
     WifiManager& get_wifi() { return m_wifi; }
     bool is_connected() { return m_connected; }

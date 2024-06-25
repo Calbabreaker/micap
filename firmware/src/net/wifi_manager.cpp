@@ -90,12 +90,11 @@ void WifiManager::try_populate_test_networks() {
         // Get network information
         const bss_info* info = WiFi.getScanInfoByIndex(i);
 
-        if (check_test_network_exists(info)) {
-            continue;
-        }
-
-        if (g_config_manager.wifi_entry_exists((const char*)info->ssid)) {
-            m_test_networks.push_back(info);
+        // Check if the test networks to see if it already exists (potential duplicate SSIDs)
+        if (!check_test_network_exists(info)) {
+            if (g_config_manager.wifi_entry_exists((const char*)info->ssid)) {
+                m_test_networks.push_back(info);
+            }
         }
     }
 
@@ -124,7 +123,6 @@ void WifiManager::try_populate_test_networks() {
 }
 
 bool WifiManager::check_test_network_exists(const bss_info* info) {
-    // Go through the test networks to see if it already exists (potential duplicate SSIDs)
     for (uint8_t i = 0; i < m_test_networks.size(); i++) {
         const char* test_ssid = (const char*)m_test_networks[i]->ssid;
         const char* ssid = (const char*)info->ssid;

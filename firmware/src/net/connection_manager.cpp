@@ -57,9 +57,8 @@ void ConnectionManager::receive_packets() {
 
     switch (m_buffer[0]) {
     case PACKET_HANDSHAKE: {
-        // Check mycap header mark
-        // MYCAP-SERVER indicates mycap server response
-        if (strcmp((const char*)m_buffer + 1, "MYCAP-SERVER") != 0) {
+        // MCSVR indicates mycap server response
+        if (strcmp((const char*)m_buffer + 1, "MCSVR") != 0) {
             break;
         }
 
@@ -100,7 +99,7 @@ void ConnectionManager::receive_packets() {
 void ConnectionManager::update_tracker_statuses() {
     for (Tracker* tracker : g_tracker_manager.get_trackers()) {
         if (tracker->status != m_tracker_statuses_on_server[tracker->get_index()]) {
-            send_tracker_status(tracker->get_index(), tracker->status);
+            send_tracker_status(tracker);
         }
     }
 
@@ -108,10 +107,10 @@ void ConnectionManager::update_tracker_statuses() {
 }
 
 void ConnectionManager::send_handshake() {
-
 #ifdef SERVER_IP
     // Hardcoded server ip
-    LOG_TRACE("Sending handshake hardcoded ip %s", SERVER_IP.toString().c_str());
+    LOG_TRACE("Sending handshake to hardcoded ip %s", SERVER_IP.toString().c_str());
+    m_server_ip = SERVER_IP;
     begin_packet(PACKET_HANDSHAKE);
 #else
     // Start using multicast to find the server by sending handshake packets
@@ -121,16 +120,18 @@ void ConnectionManager::send_handshake() {
     m_udp.write(PACKET_HANDSHAKE);
 #endif
 
-    write_str("MYCAP-DEVICE"); // mark as mycap handshake
+    write_str("MCDEV"); // mark as mycap handshake
 
+    // Send mac adresss as unique id
     uint8_t* mac = WiFi.macAddress(m_buffer);
-    m_udp.write(mac, 6); // mac adresss as unique id
+    m_udp.write(mac, 6);
     end_packet();
 
     m_last_sent_handshake_time = millis();
 }
 
 void ConnectionManager::send_pong(uint8_t id) {
+    g_internal_led.blink(20);
     begin_packet(PACKET_PING_PONG);
     m_udp.write(id);
     end_packet();
@@ -142,12 +143,7 @@ void ConnectionManager::send_tracker_data() {
     write_packet_number();
 
     for (Tracker* tracker : g_tracker_manager.get_trackers()) {
-        if (tracker->status == TrackerStatus::Ok) {
-            tracker->update();
-        }
-
-        bool acked = m_tracker_statuses_on_server[tracker->get_index()] == tracker->status;
-        if (tracker->has_new_data && acked) {
+        if (tracker->has_new_data) {
             m_udp.write(tracker->get_index());
             m_udp.write(tracker->orientation.as_bytes(), sizeof(Quaternion));
             m_udp.write(tracker->acceleration.as_bytes(), sizeof(Vector3));
@@ -160,12 +156,16 @@ void ConnectionManager::send_tracker_data() {
     end_packet();
 }
 
-void ConnectionManager::send_tracker_status(uint8_t tracker_id, TrackerStatus tracker_state) {
+void ConnectionManager::send_tracker_status(Tracker* tracker) {
     begin_packet(PACKET_TRACKER_STATUS);
     write_packet_number();
-    m_udp.write(tracker_id);
-    m_udp.write((uint8_t)tracker_state);
+    m_udp.write(tracker->get_index());
+    m_udp.write((uint8_t)tracker->status);
     end_packet();
+}
+
+bool ConnectionManager::has_acked_tracker(Tracker* tracker) {
+    return m_tracker_statuses_on_server[tracker->get_index()] == tracker->status;
 }
 
 void ConnectionManager::write_str(const char* str) {

@@ -2,6 +2,7 @@
 #include <i2c_clearbus.h>
 
 #include "defines.h"
+#include "globals.h"
 #include "log.h"
 #include "tracker_manager.h"
 #include "trackers/tracker.h"
@@ -12,27 +13,17 @@ bool test_i2c_connection(uint8_t address) {
     return Wire.endTransmission() == 0;
 }
 
-Tracker* make_tracker(TrackerKind kind, uint8_t index, uint8_t address) {
-    switch (kind) {
-    case TrackerKind::BMI160:
-        // Have to heap allocate to use polymorphism
-        return new TrackerBMI160(index, address);
-    default:
-        LOG_ERROR("Unknown tracker kind %d", (uint8_t)kind);
-        return nullptr;
-    }
-}
+template <typename TrackerClass> void register_tracker() {}
 
-void TrackerManager::register_tracker(
-    uint8_t index, TrackerKind kind, uint8_t address, bool required
-) {
+void TrackerManager::register_tracker(Tracker* tracker, bool required) {
+    uint8_t index = tracker->get_index();
     if (index >= MAX_TRACKER_COUNT) {
         LOG_ERROR("Index is greater than MAX_TRACKER_COUNT, please increase in defines.h");
         return;
     }
 
-    Tracker* tracker = make_tracker(kind, index, address);
     m_trackers[index] = tracker;
+    uint8_t address = tracker->get_address();
 
     if (test_i2c_connection(address)) {
         LOG_INFO("Tracker %d with address 0x%02x found", index, address);
@@ -53,8 +44,24 @@ void TrackerManager::setup() {
     I2C_ClearBus();
     Wire.begin();
 
-    register_tracker(0, TrackerKind::BMI160, 0x68, true);
-    register_tracker(1, TrackerKind::BMI160, 0x69, false);
+    // Use heap-allocation for polymorphism and to prevent stack overflow
+    register_tracker(new TrackerBMI160(0, 0x68), true);
+    register_tracker(new TrackerBMI160(1, 0x69), false);
+}
+
+bool TrackerManager::update() {
+    bool has_new_data = false;
+    for (Tracker* tracker : g_tracker_manager.get_trackers()) {
+        bool acked = g_connection_manager.has_acked_tracker(tracker);
+        if (acked && tracker->status == TrackerStatus::Ok) {
+            tracker->update();
+        }
+
+        if (tracker->has_new_data) {
+            has_new_data = true;
+        }
+    }
+    return has_new_data;
 }
 
 // Not currently used

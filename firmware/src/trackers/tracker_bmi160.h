@@ -7,7 +7,7 @@
 #include "tracker.h"
 #include "trackers/sensor_fusion.h"
 
-constexpr uint32_t BMI160_CALIBRATION_SAMPLES = 200;
+constexpr uint32_t BMI160_CALIBRATION_SAMPLES = 150;
 constexpr size_t BMI160_FIFO_BUFFER_SIZE = 128;
 
 // Change both HZ and FLAG when changing config
@@ -22,7 +22,7 @@ constexpr uint8_t BMI160_ACCEL_RANGE_FLAG = BMI160_ACCEL_RANGE_4G;
 constexpr float BMI160_ACCEL_RANGE = 4.;
 
 // Converts raw gyro output to radians based on sensitivity from datasheet
-// LSB/°/s -> radians/s/LSB
+// LSB/°/s -> radians/s
 const float BMI160_GYRO_CONVERSION = ((PI / 180.f) / BMI160_GYRO_SENSITIVITY);
 
 // Makes accel output scale from -4g to +4g
@@ -30,7 +30,6 @@ const float BMI160_GYRO_CONVERSION = ((PI / 180.f) / BMI160_GYRO_SENSITIVITY);
 const float BMI160_ACCEL_CONVERSION = EARTH_GRAVITY / ((float)0x8000 / BMI160_ACCEL_RANGE);
 
 class TrackerBMI160 : public Tracker {
-
 public:
     TrackerBMI160(uint8_t index, uint8_t address)
         : Tracker(TrackerKind::BMI160, index, address),

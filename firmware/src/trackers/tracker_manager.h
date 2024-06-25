@@ -8,9 +8,11 @@
 class TrackerManager {
 public:
     ~TrackerManager();
-    void register_tracker(uint8_t index, TrackerKind kind, uint8_t address, bool required);
+    void register_tracker(Tracker* tracker, bool required);
     void setup();
     void poll_tracker_status();
+    // Returns true if any tracker has new data
+    bool update();
 
     const std::array<Tracker*, MAX_TRACKER_COUNT>& get_trackers() const { return m_trackers; }
 

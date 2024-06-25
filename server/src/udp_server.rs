@@ -188,7 +188,7 @@ impl UdpServer {
             }
             Some(UdpPacket::Handshake(packet)) => {
                 self.socket
-                    .send_to(UdpPacketHandshake::RESPONSE, peer_addr)
+                    .send_to(&UdpPacketHandshake::to_bytes(), peer_addr)
                     .await?;
                 if let Some(device) = self.handle_handshake(packet, peer_addr) {
                     device.last_packet_number = 0;

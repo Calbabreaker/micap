@@ -61,25 +61,24 @@ pub struct UdpPacketHandshake {
 
 impl UdpPacketHandshake {
     fn from_bytes(bytes: &mut std::slice::Iter<u8>) -> Option<Self> {
-        if !next_equals(bytes, b"MYCAP-DEVICE") {
+        if !next_equals(bytes, b"MCDEV") {
             return None;
         }
 
+        #[rustfmt::skip]
         let mac_string = format!(
-            "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
-            bytes.next()?,
-            bytes.next()?,
-            bytes.next()?,
-            bytes.next()?,
-            bytes.next()?,
-            bytes.next()?,
+            "{:x}:{:x}:{:x}:{:x}:{:x}:{:x}",
+            bytes.next()?, bytes.next()?, bytes.next()?,
+            bytes.next()?, bytes.next()?, bytes.next()?,
         );
 
         Some(Self { mac_string })
     }
 
-    // \u[1] here means packet handshake
-    pub const RESPONSE: &'static [u8] = "\u{1}MYCAP-SERVER".as_bytes();
+    pub const fn to_bytes() -> [u8; 6] {
+        // PACKET_HANDSHAKE + MCSVR
+        [PACKET_HANDSHAKE, b'M', b'C', b'S', b'V', b'R']
+    }
 }
 
 pub struct UdpPacketPingPong {
@@ -91,7 +90,7 @@ impl UdpPacketPingPong {
         Some(Self { id: *bytes.next()? })
     }
 
-    pub fn to_bytes(id: u8) -> [u8; 2] {
+    pub const fn to_bytes(id: u8) -> [u8; 2] {
         [PACKET_PING_PONG, id]
     }
 }
