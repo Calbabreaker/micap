@@ -4,6 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use anyhow::Context;
 use tokio::sync::{
     mpsc::{UnboundedReceiver, UnboundedSender},
     RwLock,
@@ -124,8 +125,7 @@ const TARGET_LOOP_DELTA: Duration = Duration::from_millis(1000 / 50);
 
 pub async fn start_server(main: Arc<RwLock<MainServer>>) -> anyhow::Result<()> {
     let mut last_loop_time = Instant::now();
-
-    let mut udp_server = UdpServer::new().await?;
+    let mut sub_servers = SubServers::new().await?;
 
     loop {
         let delta = last_loop_time.elapsed();
@@ -135,7 +135,7 @@ pub async fn start_server(main: Arc<RwLock<MainServer>>) -> anyhow::Result<()> {
         {
             let mut main = main.write().await;
             main.tick(delta);
-            udp_server.tick(&mut main).await?;
+            sub_servers.tick(&mut main).await?;
         }
 
         let post_delta = last_loop_time.elapsed();
@@ -146,5 +146,23 @@ pub async fn start_server(main: Arc<RwLock<MainServer>>) -> anyhow::Result<()> {
                 "Main server loop took {post_delta:?} which is longer than target {TARGET_LOOP_DELTA:?}"
             );
         }
+    }
+}
+
+pub struct SubServers {
+    udp: UdpServer,
+}
+
+impl SubServers {
+    async fn new() -> anyhow::Result<Self> {
+        let udp = UdpServer::new()
+            .await
+            .context("Failed to start UDP server")?;
+        Ok(Self { udp })
+    }
+
+    async fn tick(&mut self, main: &mut MainServer) -> anyhow::Result<()> {
+        self.udp.tick(main).await?;
+        Ok(())
     }
 }

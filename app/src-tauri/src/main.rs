@@ -3,7 +3,11 @@
 
 fn main() {
     mycap_server::setup_log();
-    tauri::async_runtime::spawn(mycap_server::start_server());
+    tauri::async_runtime::spawn(async {
+        if let Err(error) = mycap_server::start_server().await {
+            log::error!("Server error: {error:?}");
+        }
+    });
 
     tauri::Builder::default()
         .setup(|app| Ok(()))

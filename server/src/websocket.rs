@@ -88,13 +88,13 @@ fn handle_websocket_message(message: &str) -> anyhow::Result<()> {
     match serde_json::from_str(message)? {
         WebsocketClientMessage::Wifi { ssid, password } => {
             if ssid.len() > 32 || password.len() > 64 {
-                return Err(anyhow::Error::msg("SSID or password too long"));
+                anyhow::bail!("SSID or password too long");
             }
 
-            write_serial(format!("Wifi\0{ssid}\0{password}").as_bytes())?;
+            write_serial(format!("Wifi\0{ssid}\0{password}\n").as_bytes())?;
         }
         WebsocketClientMessage::FactoryReset => {
-            write_serial(b"FactoryReset")?;
+            write_serial(b"FactoryReset\n")?;
         }
     }
 

@@ -1961,6 +1961,7 @@ dependencies = [
 name = "mycap-app"
 version = "0.1.0"
 dependencies = [
+ "log",
  "mycap-server",
  "serde",
  "tauri",
