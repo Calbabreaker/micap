@@ -1,4 +1,5 @@
-use std::time::Instant;
+use byteorder::{LittleEndian, ReadBytesExt};
+use std::{io::Read, time::Instant};
 
 use crate::tracker::TrackerStatus;
 use crate::udp_server::UdpDevice;
@@ -8,30 +9,28 @@ pub const PACKET_HANDSHAKE: u8 = 0x01;
 pub const PACKET_TRACKER_STATUS: u8 = 0x02;
 pub const PACKET_TRACKER_DATA: u8 = 0x03;
 
-pub enum UdpPacket<'a> {
+pub enum UdpPacket<'a, R: Read> {
     Handshake(UdpPacketHandshake),
-    TrackerData((UdpPacketTrackerData<'a>, &'a mut UdpDevice)),
+    TrackerData((UdpPacketTrackerData<'a, R>, &'a mut UdpDevice)),
     TrackerStatus((UdpPacketTrackerStatus, &'a mut UdpDevice)),
     PingPong((UdpPacketPingPong, &'a mut UdpDevice)),
 }
 
-impl<'a> UdpPacket<'a> {
-    pub fn parse(
-        bytes: &'a mut std::slice::Iter<'a, u8>,
-        mut device: Option<&'a mut UdpDevice>,
-    ) -> Option<Self> {
-        let packet_type = *bytes.next()?;
+impl<'a, R: Read> UdpPacket<'a, R> {
+    pub fn parse(bytes: &'a mut R, device: Option<&'a mut UdpDevice>) -> std::io::Result<Self> {
+        let packet_type = bytes.read_u8()?;
+        let mut device = device.ok_or(std::io::ErrorKind::InvalidData);
 
-        if let Some(ref mut device) = device {
+        if let Ok(ref mut device) = device {
             match packet_type {
                 // These packets don't send a packet number so they will never be discarded
                 PACKET_HANDSHAKE | PACKET_PING_PONG => (),
                 _ => {
                     // Discard the packet if not the latest
-                    let packet_number = u32_parse(bytes)?;
+                    let packet_number = bytes.read_u32::<LittleEndian>()?;
                     if packet_number <= device.last_packet_number {
                         log::warn!("Received out of order packet {packet_number}");
-                        return None;
+                        Err(std::io::ErrorKind::InvalidData)?
                     }
 
                     device.last_packet_number = packet_number;
@@ -41,16 +40,16 @@ impl<'a> UdpPacket<'a> {
             device.last_packet_received_time = Instant::now();
         }
 
-        Some(match packet_type {
-            PACKET_PING_PONG => Self::PingPong((UdpPacketPingPong::from_bytes(bytes)?, device?)),
+        Ok(match packet_type {
             PACKET_HANDSHAKE => Self::Handshake(UdpPacketHandshake::from_bytes(bytes)?),
+            PACKET_PING_PONG => Self::PingPong((UdpPacketPingPong::from_bytes(bytes)?, device?)),
             PACKET_TRACKER_DATA => {
                 Self::TrackerData((UdpPacketTrackerData::from_bytes(bytes)?, device?))
             }
             PACKET_TRACKER_STATUS => {
                 Self::TrackerStatus((UdpPacketTrackerStatus::from_bytes(bytes)?, device?))
             }
-            _ => return None,
+            _ => Err(std::io::ErrorKind::InvalidData)?,
         })
     }
 }
@@ -60,19 +59,16 @@ pub struct UdpPacketHandshake {
 }
 
 impl UdpPacketHandshake {
-    fn from_bytes(bytes: &mut std::slice::Iter<u8>) -> Option<Self> {
-        if !next_equals(bytes, b"MCDEV") {
-            return None;
+    fn from_bytes(bytes: &mut impl Read) -> std::io::Result<Self> {
+        if !bytes_equal(bytes, b"MCDEV") {
+            return Err(std::io::ErrorKind::InvalidData.into());
         }
 
-        #[rustfmt::skip]
-        let mac_string = format!(
-            "{:x}:{:x}:{:x}:{:x}:{:x}:{:x}",
-            bytes.next()?, bytes.next()?, bytes.next()?,
-            bytes.next()?, bytes.next()?, bytes.next()?,
-        );
+        let mut mac_bytes = [0_u8; 6];
+        bytes.read_exact(&mut mac_bytes)?;
+        let mac_string = mac_bytes.map(|b| format!("{b:02x}")).join(":");
 
-        Some(Self { mac_string })
+        Ok(Self { mac_string })
     }
 
     pub const fn to_bytes() -> [u8; 6] {
@@ -86,8 +82,10 @@ pub struct UdpPacketPingPong {
 }
 
 impl UdpPacketPingPong {
-    pub fn from_bytes(bytes: &mut std::slice::Iter<u8>) -> Option<Self> {
-        Some(Self { id: *bytes.next()? })
+    pub fn from_bytes(bytes: &mut impl Read) -> std::io::Result<Self> {
+        Ok(Self {
+            id: bytes.read_u8()?,
+        })
     }
 
     pub const fn to_bytes(id: u8) -> [u8; 2] {
@@ -102,16 +100,16 @@ pub struct UdpPacketTrackerStatus {
 }
 
 impl UdpPacketTrackerStatus {
-    fn from_bytes(bytes: &mut std::slice::Iter<u8>) -> Option<Self> {
-        Some(Self {
-            tracker_index: *bytes.next()?,
-            tracker_status: match bytes.next()? {
+    fn from_bytes(bytes: &mut impl Read) -> std::io::Result<Self> {
+        dbg!(Ok(Self {
+            tracker_index: bytes.read_u8()?,
+            tracker_status: match bytes.read_u8()? {
                 0 => TrackerStatus::Ok,
                 1 => TrackerStatus::Error,
                 2 => TrackerStatus::Off,
-                _ => return None,
+                _ => Err(std::io::ErrorKind::InvalidData)?,
             },
-        })
+        }))
     }
 
     pub const fn to_bytes(&self) -> [u8; 3] {
@@ -130,60 +128,42 @@ pub struct UdpTrackerData {
     pub accleration: glam::Vec3A,
 }
 
-pub struct UdpPacketTrackerData<'a> {
-    bytes: &'a mut std::slice::Iter<'a, u8>,
+pub struct UdpPacketTrackerData<'a, R: Read> {
+    bytes: &'a mut R,
 }
 
-impl<'a> UdpPacketTrackerData<'a> {
-    fn from_bytes(bytes: &'a mut std::slice::Iter<'a, u8>) -> Option<Self> {
-        Some(Self { bytes })
+impl<'a, R: Read> UdpPacketTrackerData<'a, R> {
+    fn from_bytes(bytes: &'a mut R) -> std::io::Result<Self> {
+        Ok(Self { bytes })
     }
 
-    pub fn next(&mut self) -> Option<UdpTrackerData> {
-        let tracker_index = *self.bytes.next()?;
+    pub fn next(&mut self) -> std::io::Result<UdpTrackerData> {
+        let tracker_index = self.bytes.read_u8()?;
         // 0xff where the tracker id would usually go signifies the end of the packet
         if tracker_index == 0xff {
-            return None;
+            return Err(std::io::ErrorKind::InvalidData)?;
         }
 
-        Some(UdpTrackerData {
+        Ok(UdpTrackerData {
             tracker_index,
             orientation: glam::Quat::from_xyzw(
-                f32_parse(self.bytes)?,
-                f32_parse(self.bytes)?,
-                f32_parse(self.bytes)?,
-                f32_parse(self.bytes)?,
+                self.bytes.read_f32::<LittleEndian>()?,
+                self.bytes.read_f32::<LittleEndian>()?,
+                self.bytes.read_f32::<LittleEndian>()?,
+                self.bytes.read_f32::<LittleEndian>()?,
             ),
             accleration: glam::Vec3A::new(
-                f32_parse(self.bytes)?,
-                f32_parse(self.bytes)?,
-                f32_parse(self.bytes)?,
+                self.bytes.read_f32::<LittleEndian>()?,
+                self.bytes.read_f32::<LittleEndian>()?,
+                self.bytes.read_f32::<LittleEndian>()?,
             ),
         })
     }
 }
 
-fn f32_parse(bytes: &mut std::slice::Iter<u8>) -> Option<f32> {
-    Some(f32::from_le_bytes([
-        *bytes.next()?,
-        *bytes.next()?,
-        *bytes.next()?,
-        *bytes.next()?,
-    ]))
-}
-
-fn u32_parse(bytes: &mut std::slice::Iter<u8>) -> Option<u32> {
-    Some(u32::from_le_bytes([
-        *bytes.next()?,
-        *bytes.next()?,
-        *bytes.next()?,
-        *bytes.next()?,
-    ]))
-}
-
-fn next_equals(bytes: &mut std::slice::Iter<u8>, slice: &[u8]) -> bool {
+fn bytes_equal(bytes: &mut impl Read, slice: &[u8]) -> bool {
     for expected in slice {
-        if bytes.next() != Some(expected) {
+        if bytes.read_u8().ok() != Some(*expected) {
             return false;
         }
     }

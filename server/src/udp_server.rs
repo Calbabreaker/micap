@@ -17,6 +17,7 @@ pub const MULTICAST_IP: Ipv4Addr = Ipv4Addr::new(239, 255, 0, 123);
 const DEVICE_TIMEOUT: Duration = Duration::from_millis(4000);
 const UPKEEP_INTERVAL: Duration = Duration::from_millis(1000);
 
+#[derive(Debug)]
 pub struct UdpDevice {
     pub(super) index: usize,
     pub(super) last_packet_received_time: Instant,
@@ -130,10 +131,10 @@ impl UdpServer {
             // Try and get all the packets that were received
             match self.socket.try_recv_from(&mut buffer) {
                 Ok((amount, peer_addr)) => {
-                    // log::trace!(
-                    //     "Received {amount} bytes from {peer_addr} ({:#02x})",
-                    //     buffer[0]
-                    // );
+                    log::trace!(
+                        "Received {amount} bytes from {peer_addr} (0x{:02x})",
+                        buffer[0]
+                    );
 
                     // Only pass through the amount received
                     self.handle_packet(&buffer[0..amount], peer_addr, main)
@@ -172,21 +173,20 @@ impl UdpServer {
 
     async fn handle_packet(
         &mut self,
-        bytes: &[u8],
+        mut bytes: &[u8],
         peer_addr: SocketAddr,
         main: &mut MainServer,
     ) -> tokio::io::Result<()> {
-        let mut byte_iter = bytes.iter();
         let device = self
             .address_to_device_index
             .get(&peer_addr)
             .and_then(|i| self.devices.get_mut(*i));
 
-        match UdpPacket::parse(&mut byte_iter, device) {
-            Some(UdpPacket::PingPong((packet, device))) => {
+        match UdpPacket::parse(&mut bytes, device) {
+            Ok(UdpPacket::PingPong((packet, device))) => {
                 Self::handle_pong(main, packet, device);
             }
-            Some(UdpPacket::Handshake(packet)) => {
+            Ok(UdpPacket::Handshake(packet)) => {
                 self.socket
                     .send_to(&UdpPacketHandshake::to_bytes(), peer_addr)
                     .await?;
@@ -194,13 +194,13 @@ impl UdpServer {
                     device.last_packet_number = 0;
                 }
             }
-            Some(UdpPacket::TrackerData((mut packet, device))) => {
-                while let Some(data) = packet.next() {
+            Ok(UdpPacket::TrackerData((mut packet, device))) => {
+                while let Ok(data) = packet.next() {
                     let global_index = device.get_global_tracker_index(main, data.tracker_index);
                     main.update_tracker_data(global_index, data.accleration, data.orientation);
                 }
             }
-            Some(UdpPacket::TrackerStatus((packet, device))) => {
+            Ok(UdpPacket::TrackerStatus((packet, device))) => {
                 log::trace!("Got status: {:?}", packet);
 
                 self.socket.send_to(&packet.to_bytes(), peer_addr).await?;
@@ -210,7 +210,7 @@ impl UdpServer {
                 main.trackers[global_index].data = TrackerData::default();
                 main.tracker_info_updated(global_index);
             }
-            None => (),
+            Err(_) => (),
         }
 
         Ok(())
