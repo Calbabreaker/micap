@@ -5,7 +5,7 @@
 #define UDP_PORT 5828
 
 #define TARGET_LOOP_DELTA_MS 8 // about 120hz
-// // #define TARGET_LOOP_DELTA_MS 16 // about 60hz
+// #define TARGET_LOOP_DELTA_MS 16 // about 60hz
 // #define TARGET_LOOP_DELTA_MS 64
 
 // Uncomment to define hardcoded ip
@@ -18,3 +18,9 @@
 #define MAX_WIFI_ENTRIES 4
 
 // #define CUSTOM_LED_PIN D8
+
+#define BATTERY_MONITOR_PIN A0
+#define BATTERY_MONITOR_INTERVAL_MS 8000
+
+#define CONNECTION_TIMEOUT_MS 5000
+#define CONNECTION_RESEND_INTERVAL_MS 2000

@@ -12,7 +12,8 @@ export interface TrackerInfo {
     index: number;
     status: TrackerStatus;
     config: TrackerConfig;
-    latency_ms: number;
+    latency_ms?: number;
+    level?: number;
 }
 
 export interface TrackerData {

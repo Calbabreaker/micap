@@ -10,7 +10,7 @@ use tokio::sync::{
     RwLock,
 };
 
-use crate::{tracker::*, udp_server::UdpServer};
+use crate::{tracker::*, udp::server::UdpServer};
 
 #[derive(Clone, serde::Serialize)]
 #[serde(tag = "type")]

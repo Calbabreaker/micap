@@ -24,19 +24,19 @@ void ConnectionManager::update() {
     }
 
     if (!m_connected) {
-        // Send handshake every 2000 ms
-        if (millis() > m_last_sent_handshake_time + 2000) {
+        // Send handshake every interval
+        if (millis() > m_last_important_send_time + CONNECTION_RESEND_INTERVAL_MS) {
             g_internal_led.blink(25);
             send_handshake();
         }
     } else {
-        // Try and send tracker statuses every 2000 ms
-        if (millis() > m_last_tracker_status_sent_time + 2000) {
+        // Try and send tracker statuses every interval
+        if (millis() > m_last_important_send_time + CONNECTION_RESEND_INTERVAL_MS) {
             update_tracker_statuses();
         }
 
         // If we haven't got a packet from the server for 5000ms, we can assume we got disconnected
-        if (millis() > m_last_received_time + 5000) {
+        if (millis() > m_last_packet_received_time + 5000) {
             LOG_WARN("Timed out and disconnected from server");
             m_connected = false;
         }
@@ -53,7 +53,7 @@ void ConnectionManager::receive_packets() {
 
     int len = m_udp.read(m_buffer, sizeof(m_buffer));
     LOG_TRACE("Received %d bytes from %s", len, m_udp.remoteIP().toString().c_str());
-    m_last_received_time = millis();
+    m_last_packet_received_time = millis();
 
     switch (m_buffer[0]) {
     case PACKET_HANDSHAKE: {
@@ -103,7 +103,7 @@ void ConnectionManager::update_tracker_statuses() {
         }
     }
 
-    m_last_tracker_status_sent_time = millis();
+    m_last_important_send_time = millis();
 }
 
 void ConnectionManager::send_handshake() {
@@ -127,13 +127,19 @@ void ConnectionManager::send_handshake() {
     m_udp.write(mac, 6);
     end_packet();
 
-    m_last_sent_handshake_time = millis();
+    m_last_important_send_time = millis();
 }
 
 void ConnectionManager::send_pong(uint8_t id) {
     g_internal_led.blink(20);
     begin_packet(PACKET_PING_PONG);
     m_udp.write(id);
+    end_packet();
+}
+void ConnectionManager::send_battery_level(float level) {
+    begin_packet(PACKET_BATTERY_LEVEL);
+    write_packet_number();
+    m_udp.write((uint8_t*)&level, sizeof(float));
     end_packet();
 }
 

@@ -26,6 +26,7 @@ pub struct TrackerInfo {
     pub status: TrackerStatus,
     pub config: TrackerConfig,
     pub latency_ms: Option<u32>,
+    pub level: Option<f32>,
 }
 
 #[derive(Clone, Default, serde::Serialize)]
@@ -51,6 +52,7 @@ impl Tracker {
                 config,
                 status: TrackerStatus::default(),
                 latency_ms: None,
+                level: None,
             },
             id,
             data: TrackerData::default(),

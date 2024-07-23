@@ -16,6 +16,7 @@ constexpr uint8_t PACKET_PING_PONG = 0x00;
 constexpr uint8_t PACKET_HANDSHAKE = 0x01;
 constexpr uint8_t PACKET_TRACKER_STATUS = 0x02;
 constexpr uint8_t PACKET_TRACKER_DATA = 0x03;
+constexpr uint8_t PACKET_BATTERY_LEVEL = 0x04;
 
 const IPAddress MULTICAST_IP = IPAddress(239, 255, 0, 123);
 
@@ -28,6 +29,7 @@ public:
     void send_tracker_status(Tracker* tracker);
     void send_handshake();
     void send_pong(uint8_t id);
+    void send_battery_level(float level);
 
     bool has_acked_tracker(Tracker* tracker);
 
@@ -53,7 +55,6 @@ private:
     std::array<TrackerStatus, MAX_TRACKER_COUNT> m_tracker_statuses_on_server;
 
     uint32_t m_next_packet_number = 0;
-    uint64_t m_last_sent_handshake_time = 0;
-    uint64_t m_last_received_time = 0;
-    uint64_t m_last_tracker_status_sent_time = 0;
+    uint64_t m_last_important_send_time = 0;
+    uint64_t m_last_packet_received_time = 0;
 };

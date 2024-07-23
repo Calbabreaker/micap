@@ -8,13 +8,20 @@
     <h1 class="text-xl">Trackers</h1>
     {#each $trackers as tracker}
         <div class="bg-neutral-600 p-4 rounded shadow mt-4">
+            <div class="text-sm text-slate-300">
+                <TrackerStatus status={tracker.info.status} />
+                {#if tracker.info.latency_ms}
+                    <span>
+                        {tracker.info.latency_ms}ms
+                    </span>
+                {/if}
+                {#if tracker.info.level != null}
+                    <span>
+                        {Math.round(tracker.info.level * 100)}%
+                    </span>
+                {/if}
+            </div>
             <span>{tracker.info.config.name}</span>
-            <TrackerStatus status={tracker.info.status} />
-            {#if tracker.info.latency_ms}
-                <span class="text-sm">
-                    {tracker.info.latency_ms}ms
-                </span>
-            {/if}
             <TrackerPreview data={tracker.data} />
         </div>
     {/each}

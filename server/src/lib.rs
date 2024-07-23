@@ -1,11 +1,10 @@
 mod main_server;
 mod serial;
 mod tracker;
-mod udp_packet;
-mod udp_server;
+mod udp;
 mod websocket;
 
-pub use udp_server::UDP_PORT;
+pub use udp::server::UDP_PORT;
 pub use websocket::WEBSOCKET_PORT;
 
 use std::sync::Arc;

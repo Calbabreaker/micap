@@ -2,17 +2,19 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use std::{io::Read, time::Instant};
 
 use crate::tracker::TrackerStatus;
-use crate::udp_server::UdpDevice;
+use crate::udp::device::UdpDevice;
 
 pub const PACKET_PING_PONG: u8 = 0x00;
 pub const PACKET_HANDSHAKE: u8 = 0x01;
 pub const PACKET_TRACKER_STATUS: u8 = 0x02;
 pub const PACKET_TRACKER_DATA: u8 = 0x03;
+pub const PACKET_BATTERY_LEVEL: u8 = 0x04;
 
 pub enum UdpPacket<'a, R: Read> {
     Handshake(UdpPacketHandshake),
     TrackerData((UdpPacketTrackerData<'a, R>, &'a mut UdpDevice)),
     TrackerStatus((UdpPacketTrackerStatus, &'a mut UdpDevice)),
+    BatteryLevel((UdpPacketBatteryLevel, &'a mut UdpDevice)),
     PingPong((UdpPacketPingPong, &'a mut UdpDevice)),
 }
 
@@ -28,12 +30,10 @@ impl<'a, R: Read> UdpPacket<'a, R> {
                 _ => {
                     // Discard the packet if not the latest
                     let packet_number = bytes.read_u32::<LittleEndian>()?;
-                    if packet_number <= device.last_packet_number {
+                    if !device.latest_packet_number(packet_number) {
                         log::warn!("Received out of order packet {packet_number}");
                         Err(std::io::ErrorKind::InvalidData)?
                     }
-
-                    device.last_packet_number = packet_number;
                 }
             };
 
@@ -48,6 +48,9 @@ impl<'a, R: Read> UdpPacket<'a, R> {
             }
             PACKET_TRACKER_STATUS => {
                 Self::TrackerStatus((UdpPacketTrackerStatus::from_bytes(bytes)?, device?))
+            }
+            PACKET_BATTERY_LEVEL => {
+                Self::BatteryLevel((UdpPacketBatteryLevel::from_bytes(bytes)?, device?))
             }
             _ => Err(std::io::ErrorKind::InvalidData)?,
         })
@@ -93,7 +96,6 @@ impl UdpPacketPingPong {
     }
 }
 
-#[derive(Debug)]
 pub struct UdpPacketTrackerStatus {
     pub tracker_index: u8,
     pub tracker_status: TrackerStatus,
@@ -101,7 +103,7 @@ pub struct UdpPacketTrackerStatus {
 
 impl UdpPacketTrackerStatus {
     fn from_bytes(bytes: &mut impl Read) -> std::io::Result<Self> {
-        dbg!(Ok(Self {
+        Ok(Self {
             tracker_index: bytes.read_u8()?,
             tracker_status: match bytes.read_u8()? {
                 0 => TrackerStatus::Ok,
@@ -109,7 +111,7 @@ impl UdpPacketTrackerStatus {
                 2 => TrackerStatus::Off,
                 _ => Err(std::io::ErrorKind::InvalidData)?,
             },
-        }))
+        })
     }
 
     pub const fn to_bytes(&self) -> [u8; 3] {
@@ -121,7 +123,6 @@ impl UdpPacketTrackerStatus {
     }
 }
 
-#[derive(Debug)]
 pub struct UdpTrackerData {
     pub tracker_index: u8,
     pub orientation: glam::Quat,
@@ -157,6 +158,18 @@ impl<'a, R: Read> UdpPacketTrackerData<'a, R> {
                 self.bytes.read_f32::<LittleEndian>()?,
                 self.bytes.read_f32::<LittleEndian>()?,
             ),
+        })
+    }
+}
+
+pub struct UdpPacketBatteryLevel {
+    pub level: f32,
+}
+
+impl UdpPacketBatteryLevel {
+    fn from_bytes(bytes: &mut impl Read) -> std::io::Result<Self> {
+        Ok(Self {
+            level: bytes.read_f32::<LittleEndian>()?,
         })
     }
 }

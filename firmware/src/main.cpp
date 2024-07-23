@@ -1,3 +1,4 @@
+#include "battery_manager.h"
 #include "defines.h"
 #include "globals.h"
 #include "log.h"
@@ -8,6 +9,7 @@ ConnectionManager g_connection_manager;
 ConfigManager g_config_manager;
 LedManager g_internal_led(INTERNAL_LED_PIN);
 TrackerManager g_tracker_manager;
+BatteryManager battery_manager(BATTERY_MONITOR_PIN);
 
 uint64_t last_loop_time = 0;
 uint32_t iterations = 0;
@@ -27,6 +29,7 @@ void loop() {
     g_connection_manager.update();
 
     if (g_connection_manager.is_connected()) {
+        battery_manager.update();
         bool has_new_data = g_tracker_manager.update();
         if (has_new_data) {
             g_connection_manager.send_tracker_data();
