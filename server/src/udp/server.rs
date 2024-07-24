@@ -7,7 +7,6 @@ use tokio::net::UdpSocket;
 
 use crate::{
     main_server::MainServer,
-    tracker::TrackerData,
     udp::{
         device::UdpDevice,
         packet::{UdpPacket, UdpPacketHandshake},
@@ -131,6 +130,7 @@ impl UdpServer {
         if let Some(index) = self.mac_index_map.get(&packet.mac_string) {
             let device = &mut self.devices[*index];
             device.check_address_handshake(peer_addr, &mut self.address_index_map);
+            return;
         }
 
         // Create a new udp device

@@ -9,7 +9,7 @@
 // #define TARGET_LOOP_DELTA_MS 64
 
 // Uncomment to define hardcoded ip
-// #define SERVER_IP IPAddress(10, 136, 41, 71)
+#define SERVER_IP IPAddress(10, 136, 41, 71)
 
 #define MAX_TRACKER_COUNT 2
 
@@ -20,7 +20,7 @@
 // #define CUSTOM_LED_PIN D8
 
 #define BATTERY_MONITOR_PIN A0
-#define BATTERY_MONITOR_INTERVAL_MS 8000
+#define BATTERY_MONITOR_INTERVAL_MS 1000
 
 #define CONNECTION_TIMEOUT_MS 5000
 #define CONNECTION_RESEND_INTERVAL_MS 2000

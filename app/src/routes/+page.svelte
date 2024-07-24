@@ -1,10 +1,10 @@
 <script lang="ts">
     import { websocket, websocketError } from "$lib/websocket";
     import WifiForm from "$lib/components/wifi_form.svelte";
-    import TrackerList from "$lib/components/tracker_list.svelte";
+    import TrackerGrid from "$lib/components/tracker_grid.svelte";
 </script>
 
-<TrackerList />
+<TrackerGrid />
 <WifiForm />
 <p class="text-red-300">{$websocketError}</p>
 <button

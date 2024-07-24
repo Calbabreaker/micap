@@ -10,7 +10,7 @@
         <div class="bg-neutral-600 p-4 rounded shadow mt-4">
             <div class="text-sm text-slate-300">
                 <TrackerStatus status={tracker.info.status} />
-                {#if tracker.info.latency_ms}
+                {#if tracker.info.latency_ms != null}
                     <span>
                         {tracker.info.latency_ms}ms
                     </span>
