@@ -10,7 +10,7 @@ use tokio::sync::{
     RwLock,
 };
 
-use crate::{tracker::*, udp::server::UdpServer};
+use crate::{tracker::*, udp::server::UdpServer, vmc::connector::VmcConnector};
 
 #[derive(Clone, serde::Serialize)]
 #[serde(tag = "type")]
@@ -44,6 +44,11 @@ impl MessageChannelManager {
     }
 }
 
+pub struct SubModules {
+    udp_server: UdpServer,
+    vmc_connector: VmcConnector,
+}
+
 #[derive(Default)]
 pub struct MainServer {
     pub trackers: Vec<Tracker>,
@@ -65,7 +70,13 @@ impl MainServer {
         }
     }
 
-    pub fn tick(&mut self, delta: Duration) {
+    pub async fn update(
+        &mut self,
+        delta: Duration,
+        modules: &mut SubModules,
+    ) -> anyhow::Result<()> {
+        modules.udp_server.update(self).await?;
+
         for tracker in &mut self.trackers {
             tracker.tick(delta);
             self.message_channels
@@ -73,9 +84,11 @@ impl MainServer {
                     index: tracker.info.index,
                     data: tracker.data.clone(),
                 });
-            // Reset acceleration to prevent drift in case tracker stop sending data
-            // tracker.data.acceleration = glam::Vec3A::ZERO;
         }
+
+        modules.vmc_connector.update(self).await?;
+
+        Ok(())
     }
 
     // Register a tracker to get its index and use that to access it later since using strings with
@@ -125,7 +138,12 @@ const TARGET_LOOP_DELTA: Duration = Duration::from_millis(1000 / 50);
 
 pub async fn start_server(main: Arc<RwLock<MainServer>>) -> anyhow::Result<()> {
     let mut last_loop_time = Instant::now();
-    let mut sub_servers = SubServers::new().await?;
+    let mut sub_servers = SubModules {
+        udp_server: UdpServer::new()
+            .await
+            .context("Failed to start UDP server")?,
+        vmc_connector: VmcConnector::new().await?,
+    };
 
     loop {
         let delta = last_loop_time.elapsed();
@@ -134,8 +152,7 @@ pub async fn start_server(main: Arc<RwLock<MainServer>>) -> anyhow::Result<()> {
         // Tick all the servers
         {
             let mut main = main.write().await;
-            main.tick(delta);
-            sub_servers.tick(&mut main).await?;
+            main.update(delta, &mut sub_servers).await?;
         }
 
         let post_delta = last_loop_time.elapsed();
@@ -146,23 +163,5 @@ pub async fn start_server(main: Arc<RwLock<MainServer>>) -> anyhow::Result<()> {
                 "Main server loop took {post_delta:?} which is longer than target {TARGET_LOOP_DELTA:?}"
             );
         }
-    }
-}
-
-pub struct SubServers {
-    udp: UdpServer,
-}
-
-impl SubServers {
-    async fn new() -> anyhow::Result<Self> {
-        let udp = UdpServer::new()
-            .await
-            .context("Failed to start UDP server")?;
-        Ok(Self { udp })
-    }
-
-    async fn tick(&mut self, main: &mut MainServer) -> anyhow::Result<()> {
-        self.udp.tick(main).await?;
-        Ok(())
     }
 }

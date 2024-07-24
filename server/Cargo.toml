@@ -15,3 +15,4 @@ serde = { version = "1.0", features = ["derive"] }
 anyhow = "1"
 glam = { version = "0.28", features = ["serde"] }
 byteorder = "1"
+rosc = "0.10"

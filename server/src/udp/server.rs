@@ -43,7 +43,7 @@ impl UdpServer {
         })
     }
 
-    pub async fn tick(&mut self, main: &mut MainServer) -> anyhow::Result<()> {
+    pub async fn update(&mut self, main: &mut MainServer) -> anyhow::Result<()> {
         if self.last_upkeep_time.elapsed() > UPKEEP_INTERVAL {
             self.upkeep(main).await?;
         }

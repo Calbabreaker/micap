@@ -10,14 +10,56 @@ pub enum TrackerStatus {
     TimedOut,
 }
 
-#[derive(Default, Clone, Copy, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub enum TrackerLocation {
-    /// Not attached to any body part, free to move anywhere
-    #[default]
-    Free,
+    Hip,
+    LeftUpperLeg,
+    RightUpperLeg,
+    LeftLowerLeg,
+    RightLowerLeg,
+    LeftFoot,
+    RightFoot,
+    Waist,
+    Chest,
+    Neck,
     Head,
-    Hand,
-    // TODO: add more locations
+    LeftShoulder,
+    RightShoulder,
+    LeftUpperArm,
+    RightUpperArm,
+    LeftLowerArm,
+    RightLowerArm,
+    LeftHand,
+    RightHand,
+}
+
+impl TrackerLocation {
+    // Maps to bone names used in unity, this is also what VRM uses
+    // https://docs.unity3d.com/ScriptReference/HumanBodyBones.html
+    pub fn to_unity_bone(&self) -> String {
+        match self {
+            Self::Hip => "Hips",
+            Self::LeftUpperLeg => "LeftUpperLeg",
+            Self::RightUpperLeg => "RightUpperLeg",
+            Self::LeftLowerLeg => "LeftLowerLeg",
+            Self::RightLowerLeg => "RightLowerLeg",
+            Self::LeftFoot => "LeftFoot",
+            Self::RightFoot => "RightFoot",
+            Self::Waist => "Waist",
+            Self::Chest => "Chest",
+            Self::Neck => "Neck",
+            Self::Head => "Head",
+            Self::LeftShoulder => "LeftShoulder",
+            Self::RightShoulder => "RightShoulder",
+            Self::LeftUpperArm => "LeftUpperArm",
+            Self::RightUpperArm => "RightUpperArm",
+            Self::LeftLowerArm => "LeftLowerArm",
+            Self::RightLowerArm => "RightLowerArm",
+            Self::LeftHand => "LeftHand",
+            Self::RightHand => "RightHand",
+        }
+        .to_string()
+    }
 }
 
 #[derive(Clone, Default, serde::Serialize)]
@@ -68,5 +110,5 @@ impl Tracker {
 #[derive(Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct TrackerConfig {
     pub name: String,
-    pub location: TrackerLocation,
+    pub location: Option<TrackerLocation>,
 }

@@ -2,6 +2,7 @@ mod main_server;
 mod serial;
 mod tracker;
 mod udp;
+mod vmc;
 mod websocket;
 
 pub use udp::server::UDP_PORT;
