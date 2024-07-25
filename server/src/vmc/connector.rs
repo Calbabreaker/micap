@@ -27,7 +27,7 @@ impl VmcConnector {
             .filter_map(|tracker| {
                 Some(rosc::OscPacket::Message(
                     VmcBoneTransformPacket {
-                        bone: tracker.info.config.location?.to_unity_bone(),
+                        bone: tracker.info.config.location?.as_unity_bone(),
                         position: tracker.data.position,
                         orientation: tracker.data.orientation,
                     }
@@ -35,7 +35,7 @@ impl VmcConnector {
                 ))
             })
             .collect();
-        self.send_osc_bundle(osc_messages).await?;
+        self.send_osc_bundle(osc_messages).await.ok();
 
         Ok(())
     }

@@ -721,6 +721,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "dummy-client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "mycap-server",
+ "rand 0.8.5",
+ "tokio",
+]
+
+[[package]]
 name = "dunce"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"

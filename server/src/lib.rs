@@ -1,11 +1,10 @@
 mod main_server;
 mod serial;
 mod tracker;
-mod udp;
+pub mod udp;
 mod vmc;
 mod websocket;
 
-pub use udp::server::UDP_PORT;
 pub use websocket::WEBSOCKET_PORT;
 
 use std::sync::Arc;
@@ -17,7 +16,8 @@ pub fn setup_log() {
     env_logger::builder()
         .format_timestamp(None)
         .filter_level(log::LevelFilter::Warn)
-        .filter_module("mycap", log::LevelFilter::Trace)
+        .filter_module("mycap", log::LevelFilter::Info)
+        .parse_env("RUST_LOG")
         .init();
 }
 

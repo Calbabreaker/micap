@@ -13,7 +13,7 @@ export interface TrackerInfo {
     status: TrackerStatus;
     config: TrackerConfig;
     latency_ms?: number;
-    level?: number;
+    battery_level?: number;
 }
 
 export interface TrackerData {
@@ -30,7 +30,6 @@ export interface Tracker {
 
 export const websocket = writable<WebSocket | undefined>();
 export const trackers = writable<Tracker[]>([]);
-export const websocketError = writable("");
 
 function connectWebsocket() {
     if (typeof window !== "undefined") {
@@ -69,7 +68,7 @@ websocket.subscribe((ws) => {
 function handleMessage(message: Record<string, any>) {
     switch (message.type) {
         case "Error":
-            websocketError.set(message.error);
+            alert(message.error);
             break;
         case "TrackerInfo":
             trackers.update((trackers) => {

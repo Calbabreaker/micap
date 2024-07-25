@@ -108,7 +108,7 @@ impl UdpServer {
                 self.handle_handshake(packet, peer_addr);
             }
             Ok(UdpPacket::TrackerData((mut packet, device))) => {
-                while let Ok(data) = packet.next() {
+                while let Ok(data) = packet.next_data() {
                     device.update_tracker_data(main, data);
                 }
             }

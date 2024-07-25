@@ -158,7 +158,7 @@ impl UdpDevice {
 
     pub fn update_battery_level(&self, main: &mut MainServer, packet: UdpPacketBatteryLevel) {
         for global_index in &self.tracker_indexs {
-            main.trackers[*global_index].info.level = Some(packet.level);
+            main.trackers[*global_index].info.battery_level = Some(packet.battery_level);
             main.tracker_info_updated(*global_index);
         }
     }

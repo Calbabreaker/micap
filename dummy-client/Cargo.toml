@@ -1,0 +1,10 @@
+[package]
+name = "dummy-client"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"] }
+mycap-server = { path = "../server" }
+anyhow = "1.0.86"
+rand = "0.8.5"

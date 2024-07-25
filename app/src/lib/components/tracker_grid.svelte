@@ -3,9 +3,11 @@
     import TrackerCard from "./tracker_card.svelte";
 </script>
 
-<div class="bg-neutral-700 p-4 shadow rounded mb-4">
-    <h1 class="text-xl">Trackers</h1>
-    {#each $trackers as tracker}
-        <TrackerCard {tracker} />
-    {/each}
+<div class="bg-neutral-700 p-4 shadow rounded mb-4 w-full">
+    <h1 class="text-xl text-center">Trackers</h1>
+    <div class="flex flex-wrap gap-2 mt-4 justify-center">
+        {#each $trackers as tracker}
+            <TrackerCard {tracker} />
+        {/each}
+    </div>
 </div>

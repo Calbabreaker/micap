@@ -42,6 +42,12 @@ impl MessageChannelManager {
             self.channels.swap_remove(to_remove);
         }
     }
+
+    pub fn new_channel(&mut self) -> UnboundedReceiver<ServerMessage> {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        self.channels.push(tx);
+        rx
+    }
 }
 
 pub struct SubModules {
@@ -53,16 +59,10 @@ pub struct SubModules {
 pub struct MainServer {
     pub trackers: Vec<Tracker>,
     tracker_id_to_index: HashMap<String, usize>,
-    message_channels: MessageChannelManager,
+    pub message_channels: MessageChannelManager,
 }
 
 impl MainServer {
-    pub fn new_message_channel(&mut self) -> UnboundedReceiver<ServerMessage> {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        self.message_channels.channels.push(tx);
-        rx
-    }
-
     pub fn load_config(&mut self) {
         let tracker_configs = HashMap::<String, TrackerConfig>::new();
         for (id, config) in tracker_configs {
@@ -70,15 +70,11 @@ impl MainServer {
         }
     }
 
-    pub async fn update(
-        &mut self,
-        delta: Duration,
-        modules: &mut SubModules,
-    ) -> anyhow::Result<()> {
+    pub async fn update(&mut self, modules: &mut SubModules) -> anyhow::Result<()> {
         modules.udp_server.update(self).await?;
 
         for tracker in &mut self.trackers {
-            tracker.tick(delta);
+            tracker.tick();
             self.message_channels
                 .send_to_all(ServerMessage::TrackerData {
                     index: tracker.info.index,
@@ -122,9 +118,10 @@ impl MainServer {
         acceleration: glam::Vec3A,
         orientation: glam::Quat,
     ) {
-        let data = &mut self.trackers[index].data;
-        data.orientation = orientation;
-        data.acceleration = acceleration;
+        let tracker = &mut self.trackers[index];
+        tracker.data.orientation = orientation;
+        tracker.data.acceleration = acceleration;
+        tracker.time_data_received = Instant::now();
     }
 
     pub fn notify_error(&mut self, error: &str) {
@@ -137,8 +134,7 @@ impl MainServer {
 const TARGET_LOOP_DELTA: Duration = Duration::from_millis(1000 / 50);
 
 pub async fn start_server(main: Arc<RwLock<MainServer>>) -> anyhow::Result<()> {
-    let mut last_loop_time = Instant::now();
-    let mut sub_servers = SubModules {
+    let mut modules = SubModules {
         udp_server: UdpServer::new()
             .await
             .context("Failed to start UDP server")?,
@@ -146,16 +142,15 @@ pub async fn start_server(main: Arc<RwLock<MainServer>>) -> anyhow::Result<()> {
     };
 
     loop {
-        let delta = last_loop_time.elapsed();
-        last_loop_time = Instant::now();
+        let tick_start_time = Instant::now();
 
         // Tick all the servers
         {
             let mut main = main.write().await;
-            main.update(delta, &mut sub_servers).await?;
+            main.update(&mut modules).await?;
         }
 
-        let post_delta = last_loop_time.elapsed();
+        let post_delta = tick_start_time.elapsed();
         if let Some(sleep_duration) = TARGET_LOOP_DELTA.checked_sub(post_delta) {
             tokio::time::sleep(sleep_duration).await;
         } else {

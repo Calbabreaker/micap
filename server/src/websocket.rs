@@ -42,7 +42,7 @@ async fn on_connect(ws: WebSocket, main: Arc<RwLock<MainServer>>) {
     log::info!("Websocket client connected");
     let (mut ws_tx, mut ws_rx) = ws.split();
 
-    let mut server_rx = main.write().await.new_message_channel();
+    let mut server_rx = main.write().await.message_channels.new_channel();
 
     for tracker in &main.read().await.trackers {
         send_websocket_message(

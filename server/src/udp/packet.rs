@@ -138,7 +138,7 @@ impl<'a, R: Read> UdpPacketTrackerData<'a, R> {
         Ok(Self { bytes })
     }
 
-    pub fn next(&mut self) -> std::io::Result<UdpTrackerData> {
+    pub fn next_data(&mut self) -> std::io::Result<UdpTrackerData> {
         let tracker_index = self.bytes.read_u8()?;
         // 0xff where the tracker id would usually go signifies the end of the packet
         if tracker_index == 0xff {
@@ -163,13 +163,13 @@ impl<'a, R: Read> UdpPacketTrackerData<'a, R> {
 }
 
 pub struct UdpPacketBatteryLevel {
-    pub level: f32,
+    pub battery_level: f32,
 }
 
 impl UdpPacketBatteryLevel {
     fn from_bytes(bytes: &mut impl Read) -> std::io::Result<Self> {
         Ok(Self {
-            level: bytes.read_f32::<LittleEndian>()?,
+            battery_level: bytes.read_f32::<LittleEndian>()?,
         })
     }
 }

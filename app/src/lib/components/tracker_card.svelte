@@ -1,28 +1,24 @@
 <script lang="ts">
     import type { Tracker } from "$lib/websocket";
     import TrackerPreview from "./tracker_preview.svelte";
-    import TrackerStatus from "./tracker_status.svelte";
+    import TrackerInfoDisplay from "./tracker_info_display.svelte";
 
     export let tracker: Tracker;
+
+    let showPreview = false;
 </script>
 
-<div class="bg-neutral-600 p-4 rounded shadow mt-4 w-fit">
-    <div class="text-sm text-slate-300">
-        <TrackerStatus status={tracker.info.status} />
-        {#if tracker.info.latency_ms}
-            <span>
-                {tracker.info.latency_ms}ms
-            </span>
-        {/if}
-        {#if tracker.info.level}
-            <span>
-                {Math.round(tracker.info.level * 100)}%
-            </span>
-        {:else}
-            <span>No battery</span>
-        {/if}
-    </div>
-    <span>{tracker.info.config.name}</span>
-    <button>Show Preview</button>
-    <TrackerPreview data={tracker.data} />
+<div class="bg-neutral-600 p-4 rounded shadow w-fit border border-neutral-900">
+    <TrackerInfoDisplay info={tracker.info} />
+    <p>{tracker.info.config.name}</p>
+    <button
+        class="btn btn-small mt-2 w-full"
+        on:click={() => (showPreview = !showPreview)}
+    >
+        Toggle Preview
+    </button>
+    {#if showPreview}
+        <hr class="my-4" />
+        <TrackerPreview data={tracker.data} />
+    {/if}
 </div>

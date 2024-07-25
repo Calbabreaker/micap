@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 #[derive(Default, PartialEq, Debug, Clone, Copy, serde::Serialize)]
 #[repr(u8)]
@@ -36,7 +36,7 @@ pub enum TrackerLocation {
 impl TrackerLocation {
     // Maps to bone names used in unity, this is also what VRM uses
     // https://docs.unity3d.com/ScriptReference/HumanBodyBones.html
-    pub fn to_unity_bone(&self) -> String {
+    pub fn as_unity_bone(&self) -> String {
         match self {
             Self::Hip => "Hips",
             Self::LeftUpperLeg => "LeftUpperLeg",
@@ -45,7 +45,7 @@ impl TrackerLocation {
             Self::RightLowerLeg => "RightLowerLeg",
             Self::LeftFoot => "LeftFoot",
             Self::RightFoot => "RightFoot",
-            Self::Waist => "Waist",
+            Self::Waist => "Spine",
             Self::Chest => "Chest",
             Self::Neck => "Neck",
             Self::Head => "Head",
@@ -68,13 +68,14 @@ pub struct TrackerInfo {
     pub status: TrackerStatus,
     pub config: TrackerConfig,
     pub latency_ms: Option<u32>,
-    pub level: Option<f32>,
+    pub battery_level: Option<f32>,
 }
 
 #[derive(Clone, Default, serde::Serialize)]
 pub struct TrackerData {
     pub orientation: glam::Quat,
     pub acceleration: glam::Vec3A,
+    #[serde(skip)]
     pub velocity: glam::Vec3A,
     pub position: glam::Vec3A,
 }
@@ -84,6 +85,7 @@ pub struct Tracker {
     pub id: String,
     pub info: TrackerInfo,
     pub data: TrackerData,
+    pub time_data_received: Instant,
 }
 
 impl Tracker {
@@ -94,15 +96,24 @@ impl Tracker {
                 config,
                 status: TrackerStatus::default(),
                 latency_ms: None,
-                level: None,
+                battery_level: None,
             },
             id,
             data: TrackerData::default(),
+            time_data_received: Instant::now(),
         }
     }
 
-    pub fn tick(&mut self, delta: Duration) {
-        self.data.position += self.data.velocity * delta.as_secs_f32();
+    /// Returns true if data was updated
+    pub fn tick(&mut self) -> bool {
+        if self.info.status == TrackerStatus::Ok && self.data.acceleration.length() > 3. {
+            return false;
+        }
+
+        let delta = self.time_data_received.elapsed().as_secs_f32();
+        self.data.velocity += self.data.acceleration * delta;
+        self.data.position += self.data.velocity * delta;
+        true
     }
 }
 
