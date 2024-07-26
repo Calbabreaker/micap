@@ -9,5 +9,8 @@
         {#each $trackers as tracker}
             <TrackerCard {tracker} />
         {/each}
+        {#if $trackers.length == 0}
+            <span class="text-neutral-400">No trackers connected yet.</span>
+        {/if}
     </div>
 </div>

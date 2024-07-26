@@ -1,4 +1,4 @@
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 #[derive(Default, PartialEq, Debug, Clone, Copy, serde::Serialize)]
 #[repr(u8)]
@@ -36,7 +36,7 @@ pub enum TrackerLocation {
 impl TrackerLocation {
     // Maps to bone names used in unity, this is also what VRM uses
     // https://docs.unity3d.com/ScriptReference/HumanBodyBones.html
-    pub fn as_unity_bone(&self) -> String {
+    pub const fn as_unity_bone(&self) -> &'static str {
         match self {
             Self::Hip => "Hips",
             Self::LeftUpperLeg => "LeftUpperLeg",
@@ -58,7 +58,6 @@ impl TrackerLocation {
             Self::LeftHand => "LeftHand",
             Self::RightHand => "RightHand",
         }
-        .to_string()
     }
 }
 
