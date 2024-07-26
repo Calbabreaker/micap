@@ -2,6 +2,7 @@
 #include "globals.h"
 #include "log.h"
 #include "math.h"
+#include "trackers/tracker.h"
 
 #include <Wire.h>
 #include <bmi160.h>
@@ -88,12 +89,12 @@ void TrackerBMI160::setup() {
         BMI160_FIFO_ACCEL | BMI160_FIFO_HEADER | BMI160_FIFO_GYRO, BMI160_ENABLE, &m_device
     );
 
+    result = calibrate();
     if (result != BMI160_OK) {
         LOG_ERROR("Failed to initialize BMI160 with address 0x%02x", m_address);
         this->status = TrackerStatus::Error;
     }
 
-    calibrate();
     LOG_INFO("TEMP: %f", get_temperature());
 }
 
@@ -107,7 +108,7 @@ void TrackerBMI160::update() {
     this->has_new_data = true;
 }
 
-void TrackerBMI160::calibrate() {
+bool TrackerBMI160::calibrate() {
     delay(1000);
     LOG_INFO("Starting calibration");
 
@@ -117,9 +118,14 @@ void TrackerBMI160::calibrate() {
     for (int i = 0; i < BMI160_CALIBRATION_SAMPLES; i++) {
         struct bmi160_sensor_data raw_gyro;
         struct bmi160_sensor_data raw_accel;
-        bmi160_get_sensor_data(
+
+        uint8_t result = bmi160_get_sensor_data(
             BMI160_GYRO_SEL | BMI160_ACCEL_SEL, &raw_accel, &raw_gyro, &m_device
         );
+        if (result != BMI160_OK) {
+            return result;
+        }
+
         gyro_sum_xyz[0] += raw_gyro.x;
         gyro_sum_xyz[1] += raw_gyro.y;
         gyro_sum_xyz[2] += raw_gyro.z;
@@ -143,11 +149,17 @@ void TrackerBMI160::calibrate() {
     LOG_INFO("Finished calibration: ");
     LOG_INFO("GYRO: [%f, %f, %f]", m_gyro_offsets[0], m_gyro_offsets[1], m_gyro_offsets[2]);
     LOG_INFO("ACCEL: [%f, %f, %f]", m_accel_offsets[0], m_accel_offsets[1], m_accel_offsets[2]);
+    return BMI160_OK;
 }
 
 bool TrackerBMI160::read_fifo() {
     uint16_t fifo_bytes;
-    bmi160_get_fifo_byte_counter(&fifo_bytes, &m_device);
+    int result = bmi160_get_fifo_byte_counter(&fifo_bytes, &m_device);
+    if (result != BMI160_OK) {
+        this->status = TrackerStatus::Error;
+        return false;
+    }
+
     if (fifo_bytes < BMI160_FIFO_BUFFER_SIZE) {
         return false;
     }

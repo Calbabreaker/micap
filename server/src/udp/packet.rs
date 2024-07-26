@@ -96,6 +96,7 @@ impl UdpPacketPingPong {
     }
 }
 
+#[derive(Debug)]
 pub struct UdpPacketTrackerStatus {
     pub tracker_index: u8,
     pub tracker_status: TrackerStatus,
@@ -162,6 +163,7 @@ impl<'a, R: Read> UdpPacketTrackerData<'a, R> {
     }
 }
 
+#[derive(Debug)]
 pub struct UdpPacketBatteryLevel {
     pub battery_level: f32,
 }

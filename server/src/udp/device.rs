@@ -53,7 +53,7 @@ impl UdpDevice {
             None => {
                 // Register the tracker and add the index into the udp device array to know
                 let id = format!("{}/{}", self.mac, local_index);
-                let name = format!("UDP Tracker {}", self.address);
+                let name = format!("UDP {}/{}", self.address, self.index);
                 let index = main.register_tracker(
                     id,
                     TrackerConfig {
@@ -135,13 +135,13 @@ impl UdpDevice {
             address_index_map.remove(&self.address);
             address_index_map.insert(peer_addr, self.index);
             self.address = peer_addr;
-            self.last_packet_number = 0;
         } else if self.timed_out {
             log::info!("Reconnected from {peer_addr}");
-            self.last_packet_number = 0;
         } else {
             log::warn!("Received handshake packet while already connected");
         }
+
+        self.last_packet_number = 0;
     }
 
     pub fn update_tracker_data(&mut self, main: &mut MainServer, data: UdpTrackerData) {

@@ -18,9 +18,9 @@
             {info.latency_ms}ms
         </span>
     {/if}
-    {#if info.level}
+    {#if info.battery_level}
         <span>
-            {Math.round(info.level * 100)}%
+            {Math.round(info.battery_level * 100)}%
         </span>
     {:else}
         <span>No battery</span>

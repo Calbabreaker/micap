@@ -16,11 +16,10 @@ class Tracker {
 public:
     Tracker(TrackerKind kind, uint8_t index, uint8_t address)
         : m_kind(kind), m_index(index), m_address(address) {}
-    virtual ~Tracker(){};
+    virtual ~Tracker() {};
 
-    virtual void setup(){};
-    virtual void update(){};
-    virtual void calibrate(){};
+    virtual void setup() {};
+    virtual void update() {};
 
     uint8_t get_index() { return m_index; }
     uint8_t get_address() { return m_address; }

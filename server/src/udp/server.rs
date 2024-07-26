@@ -119,7 +119,7 @@ impl UdpServer {
             Ok(UdpPacket::BatteryLevel((packet, device))) => {
                 device.update_battery_level(main, packet);
             }
-            Err(_) => (),
+            Err(_) => log::warn!("Received invalid packet {}", bytes[0]),
         }
 
         Ok(())

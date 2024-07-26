@@ -37,9 +37,9 @@ public:
 
     void setup() override final;
     void update() override final;
-    void calibrate() override final;
 
 private:
+    bool calibrate();
     bool read_fifo();
     bool fifo_unpack_i16(size_t* index, size_t count, int16_t* out);
 
