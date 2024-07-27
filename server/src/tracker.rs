@@ -81,14 +81,13 @@ pub struct TrackerData {
 
 #[derive(Clone)]
 pub struct Tracker {
-    pub id: String,
     pub info: TrackerInfo,
     pub data: TrackerData,
     pub time_data_received: Instant,
 }
 
 impl Tracker {
-    pub fn new(id: String, index: usize, config: TrackerConfig) -> Self {
+    pub fn new(index: usize, config: TrackerConfig) -> Self {
         Self {
             info: TrackerInfo {
                 index,
@@ -97,7 +96,6 @@ impl Tracker {
                 latency_ms: None,
                 battery_level: None,
             },
-            id,
             data: TrackerData::default(),
             time_data_received: Instant::now(),
         }

@@ -95,7 +95,7 @@ impl MainServer {
         }
 
         let index = self.trackers.len();
-        let tracker = Tracker::new(id.clone(), index, config);
+        let tracker = Tracker::new(index, config);
         self.tracker_id_to_index.insert(id, index);
         self.message_channels
             .send_to_all(ServerMessage::TrackerInfo {
