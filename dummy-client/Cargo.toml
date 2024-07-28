@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"] }
-mycap-server = { path = "../server" }
-anyhow = "1.0.86"
-rand = "0.8.5"
+micap-server = { path = "../server" }
+anyhow = "1"
+rand = "0.8"
+glam = "0.28"

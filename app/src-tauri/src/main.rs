@@ -6,10 +6,10 @@ use std::time::Duration;
 const RESTART_WAIT_TIME: Duration = Duration::from_secs(3);
 
 fn main() {
-    mycap_server::setup_log();
+    micap_server::setup_log();
     tauri::async_runtime::spawn(async {
         loop {
-            if let Err(error) = mycap_server::start_server().await {
+            if let Err(error) = micap_server::start_server().await {
                 log::error!("Server error: {error:?}");
                 log::error!("Restarting in {RESTART_WAIT_TIME:?}...");
                 tokio::time::sleep(RESTART_WAIT_TIME).await;

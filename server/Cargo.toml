@@ -1,5 +1,5 @@
 [package]
-name = "mycap-server"
+name = "micap-server"
 version = "0.1.0"
 edition = "2021"
 

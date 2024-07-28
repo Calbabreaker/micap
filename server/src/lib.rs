@@ -16,7 +16,7 @@ pub fn setup_log() {
     env_logger::builder()
         .format_timestamp(None)
         .filter_level(log::LevelFilter::Warn)
-        .filter_module("mycap", log::LevelFilter::Info)
+        .filter_module("micap", log::LevelFilter::Info)
         .parse_env("RUST_LOG")
         .init();
 }

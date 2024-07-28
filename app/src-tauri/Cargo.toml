@@ -1,8 +1,8 @@
 [package]
-name = "mycap-app"
+name = "micap-app"
 version = "0.1.0"
 description = "A Tauri App"
-default-run = "mycap-app"
+default-run = "micap-app"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -13,7 +13,7 @@ tauri-build = { version = "2.0.0-beta", features = [] }
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 tauri = { version = "2.0.0-beta", features = [] }
-mycap-server = { path = "../../server" }
+micap-server = { path = "../../server" }
 log = "0.4.21"
 tokio = { version = "1" }
 

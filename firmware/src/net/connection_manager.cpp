@@ -57,7 +57,7 @@ void ConnectionManager::receive_packets() {
 
     switch (m_buffer[0]) {
     case PACKET_HANDSHAKE: {
-        // MCSVR indicates mycap server response
+        // MCSVR indicates micap server response
         if (strcmp((const char*)m_buffer + 1, "MCSVR") != 0) {
             break;
         }
@@ -120,7 +120,7 @@ void ConnectionManager::send_handshake() {
     m_udp.write(PACKET_HANDSHAKE);
 #endif
 
-    write_str("MCDEV"); // mark as mycap handshake
+    write_str("MCDEV"); // mark as micap handshake
 
     // Send mac adresss as unique id
     uint8_t* mac = WiFi.macAddress(m_buffer);

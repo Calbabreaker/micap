@@ -33,7 +33,7 @@ export const trackers = writable<Tracker[]>([]);
 
 function connectWebsocket() {
     if (typeof window !== "undefined") {
-        const protocol = location.protocol === "https" ? "wss" : "ws";
+        const protocol = location.protocol === "https:" ? "wss" : "ws";
         websocket.set(new WebSocket(`${protocol}://localhost:${WEBSOCKET_PORT}`));
     }
 }
@@ -46,6 +46,7 @@ websocket.subscribe((ws) => {
 
         ws.onclose = () => {
             console.log("Websocket connection closed");
+            trackers.set([]);
             websocket.set(undefined);
         };
 

@@ -1,6 +1,6 @@
-use std::{net::Ipv4Addr, time::Duration};
+use std::{f32::consts::PI, net::Ipv4Addr, time::Duration};
 
-use mycap_server::udp::{
+use micap_server::udp::{
     packet::{PACKET_HANDSHAKE, PACKET_TRACKER_DATA, PACKET_TRACKER_STATUS},
     server::UDP_PORT,
 };
@@ -46,7 +46,13 @@ async fn task(id: u8) -> anyhow::Result<()> {
         buffer.extend(count.to_le_bytes());
         buffer.push(0x00);
 
-        for _ in 0..7 {
+        let quat =
+            glam::Quat::from_axis_angle(glam::Vec3::Y, rand::thread_rng().gen_range((0.)..PI));
+        for float in quat.to_array() {
+            buffer.extend(float.to_le_bytes());
+        }
+
+        for _ in 0..3 {
             let float: f32 = rand::thread_rng().gen_range((0.)..5.);
             buffer.extend(float.to_le_bytes());
         }

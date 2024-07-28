@@ -53,7 +53,7 @@ impl UdpDevice {
             None => {
                 // Register the tracker and add the index into the udp device array to know
                 let id = format!("{}/{}", self.mac, local_index);
-                let name = format!("UDP {}/{}", self.address, self.index);
+                let name = format!("UDP {}/{}", self.address, local_index);
                 let index = main.register_tracker(
                     id,
                     TrackerConfig {
