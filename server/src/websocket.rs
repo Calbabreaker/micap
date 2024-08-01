@@ -6,7 +6,7 @@ use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 use crate::{
     main_server::MainServer,
     serial::write_serial,
-    tracker::{TrackerData, TrackerInfo},
+    tracker::{TrackerConfig, TrackerData, TrackerInfo},
 };
 
 pub const WEBSOCKET_PORT: u16 = 8298;
@@ -14,7 +14,7 @@ pub const WEBSOCKET_PORT: u16 = 8298;
 #[derive(Clone, serde::Serialize)]
 #[serde(tag = "type")]
 pub enum WebsocketServerMessage {
-    TrackerInfo { info: TrackerInfo },
+    TrackerInfo { index: usize, info: TrackerInfo },
     TrackerData { index: usize, data: TrackerData },
     Error { error: String },
 }
@@ -24,6 +24,8 @@ pub enum WebsocketServerMessage {
 enum WebsocketClientMessage {
     Wifi { ssid: String, password: String },
     FactoryReset,
+    RemoveTracker { index: usize },
+    UpdateTrackerConfig { index: usize, config: TrackerConfig },
 }
 
 pub struct WebsocketServer {
@@ -58,7 +60,7 @@ impl WebsocketServer {
             match ws.next().now_or_never() {
                 Some(Some(Ok(message))) => {
                     if let Ok(text) = message.to_text() {
-                        if let Err(error) = handle_websocket_message(text) {
+                        if let Err(error) = handle_websocket_message(text, main) {
                             log::error!("Failed to handle websocket message: {error}");
                             main.new_errors.push(error.to_string());
                         }
@@ -88,13 +90,14 @@ impl WebsocketServer {
             }))
             .chain(main.tracker_info_updated_indexs.iter().map(|index| {
                 WebsocketServerMessage::TrackerInfo {
+                    index: *index,
                     info: main.trackers[*index].info.clone(),
                 }
             }))
-            .chain(main.trackers.iter().map(|tracker| {
+            .chain(main.trackers.iter().enumerate().map(|(index, tracker)| {
                 // Data from trackers
                 WebsocketServerMessage::TrackerData {
-                    index: tracker.info.index,
+                    index,
                     data: tracker.data.clone(),
                 }
             }))
@@ -119,8 +122,9 @@ impl WebsocketServer {
         mut ws_stream: WebSocketStream<TcpStream>,
         main: &mut MainServer,
     ) -> anyhow::Result<()> {
-        for tracker in main.trackers.iter() {
+        for (index, tracker) in main.trackers.iter().enumerate() {
             let string = serde_json::to_string(&WebsocketServerMessage::TrackerInfo {
+                index,
                 info: tracker.info.clone(),
             })?;
             ws_stream.feed(Message::text(string)).await?;
@@ -132,7 +136,7 @@ impl WebsocketServer {
     }
 }
 
-fn handle_websocket_message(message: &str) -> anyhow::Result<()> {
+fn handle_websocket_message(message: &str, main: &mut MainServer) -> anyhow::Result<()> {
     if message.is_empty() {
         return Ok(());
     }
@@ -147,6 +151,14 @@ fn handle_websocket_message(message: &str) -> anyhow::Result<()> {
         }
         WebsocketClientMessage::FactoryReset => {
             write_serial(b"FactoryReset\n")?;
+        }
+        WebsocketClientMessage::RemoveTracker { index } => {
+            main.trackers[index].info.removed = true;
+            main.tracker_info_updated(index);
+        }
+        WebsocketClientMessage::UpdateTrackerConfig { index, config } => {
+            main.trackers[index].info.config = config;
+            main.tracker_info_updated(index);
         }
     }
 

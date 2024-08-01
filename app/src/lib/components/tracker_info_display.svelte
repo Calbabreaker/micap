@@ -4,7 +4,7 @@
     export let info: TrackerInfo;
 </script>
 
-<div class="text-sm text-slate-300">
+<div class="text-sm text-neutral-300">
     <span
         class:text-red-400={info.status == "Error"}
         class:text-green-400={info.status == "Ok"}

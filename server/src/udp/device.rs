@@ -1,9 +1,9 @@
-use std::{collections::HashMap, net::SocketAddr, time::Instant};
+use std::{net::SocketAddr, time::Instant};
 use tokio::net::UdpSocket;
 
 use crate::{
     main_server::MainServer,
-    tracker::{TrackerConfig, TrackerData, TrackerStatus},
+    tracker::{Tracker, TrackerConfig, TrackerData, TrackerStatus},
     udp::packet::{
         UdpPacketBatteryLevel, UdpPacketPingPong, UdpPacketTrackerStatus, UdpTrackerData,
     },
@@ -11,23 +11,21 @@ use crate::{
 
 #[derive(Debug)]
 pub struct UdpDevice {
-    index: usize,
     pub(super) last_packet_received_time: Instant,
-    last_packet_number: u32,
+    pub(super) last_packet_number: u32,
     /// Maps the udp device's tracker index to the tracker's global index
-    tracker_indexs: Vec<usize>,
-    timed_out: bool,
+    pub(super) tracker_indexs: Vec<usize>,
+    pub(super) timed_out: bool,
     mac: String,
-    address: SocketAddr,
+    pub(super) address: SocketAddr,
     current_ping_start_time: Option<Instant>,
     current_ping_id: u8,
 }
 
 impl UdpDevice {
-    pub fn new(index: usize, address: SocketAddr, mac: String) -> Self {
+    pub fn new(address: SocketAddr, mac: String) -> Self {
         Self {
             tracker_indexs: Vec::default(),
-            index,
             address,
             mac,
             last_packet_received_time: Instant::now(),
@@ -54,13 +52,8 @@ impl UdpDevice {
                 // Register the tracker and add the index into the udp device array to know
                 let id = format!("{}/{}", self.mac, local_index);
                 let name = format!("UDP {}/{}", self.address, local_index);
-                let index = main.register_tracker(
-                    id,
-                    TrackerConfig {
-                        name,
-                        ..Default::default()
-                    },
-                );
+                let config = TrackerConfig::new(name);
+                let index = main.register_tracker(id, Tracker::new(config));
                 self.set_global_tracker_index(local_index, index);
                 index
             }
@@ -122,26 +115,6 @@ impl UdpDevice {
 
             self.current_ping_start_time = None;
         }
-    }
-
-    pub fn check_address_handshake(
-        &mut self,
-        peer_addr: SocketAddr,
-        address_index_map: &mut HashMap<SocketAddr, usize>,
-    ) {
-        // Move over to the new address if the device has a new ip
-        if self.address != peer_addr {
-            log::info!("Reconnected from {peer_addr} from old: {}", self.address);
-            address_index_map.remove(&self.address);
-            address_index_map.insert(peer_addr, self.index);
-            self.address = peer_addr;
-        } else if self.timed_out {
-            log::info!("Reconnected from {peer_addr}");
-        } else {
-            log::warn!("Received handshake packet while already connected");
-        }
-
-        self.last_packet_number = 0;
     }
 
     pub fn update_tracker_data(&mut self, main: &mut MainServer, data: UdpTrackerData) {

@@ -1,18 +1,16 @@
 <script lang="ts">
-    import { websocket } from "$lib/websocket";
+    import { sendWebsocket } from "$lib/websocket";
 
     let ssid = "";
     let password = "";
 
     function setWifi(e: SubmitEvent) {
         e.preventDefault();
-        $websocket.send(
-            JSON.stringify({
-                type: "Wifi",
-                ssid,
-                password,
-            }),
-        );
+        sendWebsocket({
+            type: "Wifi",
+            ssid,
+            password,
+        });
     }
 </script>
 

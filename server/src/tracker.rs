@@ -10,7 +10,7 @@ pub enum TrackerStatus {
     TimedOut,
 }
 
-#[derive(Clone, Copy, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub enum TrackerLocation {
     Hip,
     LeftUpperLeg,
@@ -61,16 +61,16 @@ impl TrackerLocation {
     }
 }
 
-#[derive(Clone, Default, serde::Serialize)]
+#[derive(Debug, Clone, Default, serde::Serialize)]
 pub struct TrackerInfo {
-    pub index: usize,
     pub status: TrackerStatus,
     pub config: TrackerConfig,
     pub latency_ms: Option<u32>,
     pub battery_level: Option<f32>,
+    pub removed: bool,
 }
 
-#[derive(Clone, Default, serde::Serialize)]
+#[derive(Debug, Clone, Default, serde::Serialize)]
 pub struct TrackerData {
     pub orientation: glam::Quat,
     pub acceleration: glam::Vec3A,
@@ -79,7 +79,7 @@ pub struct TrackerData {
     pub position: glam::Vec3A,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Tracker {
     pub info: TrackerInfo,
     pub data: TrackerData,
@@ -87,14 +87,14 @@ pub struct Tracker {
 }
 
 impl Tracker {
-    pub fn new(index: usize, config: TrackerConfig) -> Self {
+    pub fn new(config: TrackerConfig) -> Self {
         Self {
             info: TrackerInfo {
-                index,
                 config,
                 status: TrackerStatus::default(),
                 latency_ms: None,
                 battery_level: None,
+                removed: false,
             },
             data: TrackerData::default(),
             time_data_received: Instant::now(),
@@ -115,8 +115,17 @@ impl Tracker {
 }
 
 /// Seperate from TrackerInfo to be used to save to a file
-#[derive(Clone, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct TrackerConfig {
     pub name: String,
     pub location: Option<TrackerLocation>,
+}
+
+impl TrackerConfig {
+    pub fn new(name: String) -> Self {
+        Self {
+            name,
+            ..Default::default()
+        }
+    }
 }

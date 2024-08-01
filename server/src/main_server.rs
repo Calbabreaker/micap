@@ -1,4 +1,8 @@
-use std::{collections::HashMap, time::Instant};
+use std::{
+    collections::{HashMap, HashSet},
+    net::SocketAddr,
+    time::Instant,
+};
 
 use anyhow::Context;
 
@@ -30,17 +34,20 @@ impl SubModules {
 pub struct MainServer {
     pub trackers: Vec<Tracker>,
     tracker_id_to_index: HashMap<String, usize>,
-    // Contains list of indexs of trackers who's info has been updated in the middle of a frame
+    /// Contains list of indexs of trackers who's info has been updated in the middle of a frame
     pub tracker_info_updated_indexs: Vec<usize>,
-    // Contains list of errors emiited in the middle of a frame
+    /// Contains list of errors emited in the middle of a frame
     pub new_errors: Vec<String>,
+    /// Set of address that should not be allowed to connect
+    /// This is to allow for servers to ignore ignored trackers that are trying to connect
+    pub address_blacklist: HashSet<SocketAddr>,
 }
 
 impl MainServer {
     pub fn load_config(&mut self) {
         let tracker_configs = HashMap::<String, TrackerConfig>::new();
         for (id, config) in tracker_configs {
-            self.register_tracker(id, config);
+            self.register_tracker(id, Tracker::new(config));
         }
     }
 
@@ -49,6 +56,10 @@ impl MainServer {
         modules.websocket_server.update(self).await?;
 
         for tracker in &mut self.trackers {
+            if tracker.info.removed {
+                continue;
+            }
+
             tracker.tick();
         }
 
@@ -59,15 +70,13 @@ impl MainServer {
         Ok(())
     }
 
-    // Register a tracker to get its index and use that to access it later since using strings with
-    // hashmaps is a bit slow
-    pub fn register_tracker(&mut self, id: String, config: TrackerConfig) -> usize {
+    /// Register a tracker to get its index and use that to access it later since using strings with hashmaps is a bit slow
+    pub fn register_tracker(&mut self, id: String, tracker: Tracker) -> usize {
         if let Some(index) = self.tracker_id_to_index.get(&id) {
             return *index;
         }
 
         let index = self.trackers.len();
-        let tracker = Tracker::new(index, config);
         self.tracker_id_to_index.insert(id, index);
         self.tracker_info_updated_indexs.push(index);
         self.trackers.push(tracker);

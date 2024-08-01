@@ -1,4 +1,4 @@
-import { writable } from "svelte/store";
+import { get, writable } from "svelte/store";
 
 const WEBSOCKET_PORT = 8298;
 
@@ -9,11 +9,11 @@ export interface TrackerConfig {
 }
 
 export interface TrackerInfo {
-    index: number;
     status: TrackerStatus;
     config: TrackerConfig;
     latency_ms?: number;
     battery_level?: number;
+    removed: boolean;
 }
 
 export interface TrackerData {
@@ -25,11 +25,18 @@ export interface TrackerData {
 
 export interface Tracker {
     info: TrackerInfo;
-    data: TrackerData;
+    data?: TrackerData;
 }
 
 export const websocket = writable<WebSocket | undefined>();
 export const trackers = writable<Tracker[]>([]);
+
+export function sendWebsocket(object: Record<string, any>) {
+    let ws = get(websocket);
+    if (ws) {
+        ws.send(JSON.stringify(object));
+    }
+}
 
 function connectWebsocket() {
     if (typeof window !== "undefined") {
@@ -73,20 +80,10 @@ function handleMessage(message: Record<string, any>) {
             break;
         case "TrackerInfo":
             trackers.update((trackers) => {
-                if (trackers[message.info.index]) {
-                    trackers[message.info.index].info = message.info;
+                if (trackers[message.index]) {
+                    trackers[message.index].info = message.info;
                 } else {
-                    const tracker: Tracker = {
-                        info: message.info,
-                        data: {
-                            acceleration: [0, 0, 0],
-                            orientation: [0, 0, 0, 1],
-                            position: [0, 0, 0],
-                            velocity: [0, 0, 0],
-                        },
-                    };
-
-                    trackers[message.info.index] = tracker;
+                    trackers[message.index] = { info: message.info };
                 }
 
                 return trackers;
