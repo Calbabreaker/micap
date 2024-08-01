@@ -27,6 +27,10 @@ pub async fn start_server() -> anyhow::Result<()> {
     let mut main = MainServer::default();
     let mut modules = SubModules::new().await?;
 
+    if let Err(error) = main.load_config() {
+        log::error!("{error:?}");
+    }
+
     loop {
         let tick_start_time = Instant::now();
 

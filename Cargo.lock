@@ -1790,6 +1790,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "byteorder",
+ "dirs",
  "env_logger",
  "futures-util",
  "glam",

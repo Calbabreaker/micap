@@ -118,6 +118,7 @@ impl Tracker {
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct TrackerConfig {
     pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub location: Option<TrackerLocation>,
 }
 

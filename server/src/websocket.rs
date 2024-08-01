@@ -157,8 +157,7 @@ fn handle_websocket_message(message: &str, main: &mut MainServer) -> anyhow::Res
             main.tracker_info_updated(index);
         }
         WebsocketClientMessage::UpdateTrackerConfig { index, config } => {
-            main.trackers[index].info.config = config;
-            main.tracker_info_updated(index);
+            main.update_tracker_config(index, config)?;
         }
     }
 

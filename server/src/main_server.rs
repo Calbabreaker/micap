@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     net::SocketAddr,
+    path::PathBuf,
     time::Instant,
 };
 
@@ -30,6 +31,11 @@ impl SubModules {
     }
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
+struct Config {
+    trackers: HashMap<String, TrackerConfig>,
+}
+
 #[derive(Default)]
 pub struct MainServer {
     pub trackers: Vec<Tracker>,
@@ -44,11 +50,41 @@ pub struct MainServer {
 }
 
 impl MainServer {
-    pub fn load_config(&mut self) {
-        let tracker_configs = HashMap::<String, TrackerConfig>::new();
-        for (id, config) in tracker_configs {
-            self.register_tracker(id, Tracker::new(config));
+    pub fn load_config(&mut self) -> anyhow::Result<()> {
+        let path = get_config_dir()?.join("config.json");
+        log::trace!("Loading from {path:?}");
+        let text = std::fs::read_to_string(path).context("Failed to load config")?;
+        let config: Config = serde_json::from_str(&text)?;
+
+        for (id, config) in config.trackers {
+            self.add_tracker(id, Tracker::new(config));
         }
+
+        Ok(())
+    }
+
+    pub fn save_config(&mut self) -> anyhow::Result<()> {
+        let trackers = self
+            .tracker_id_to_index
+            .iter()
+            .filter_map(|(id, index)| {
+                let tracker = &self.trackers[*index];
+                if tracker.info.removed {
+                    None
+                } else {
+                    Some((id.clone(), tracker.info.config.clone()))
+                }
+            })
+            .collect::<HashMap<String, TrackerConfig>>();
+
+        let config = Config { trackers };
+
+        let path = get_config_dir()?.join("config.json");
+        log::trace!("Saving to {path:?}");
+        let text = serde_json::to_string_pretty(&config)?;
+        std::fs::write(path, text).context("Failed to save config")?;
+
+        Ok(())
     }
 
     pub async fn update(&mut self, modules: &mut SubModules) -> anyhow::Result<()> {
@@ -76,6 +112,12 @@ impl MainServer {
             return *index;
         }
 
+        let index = self.add_tracker(id, tracker);
+        self.save_config().ok();
+        index
+    }
+
+    fn add_tracker(&mut self, id: String, tracker: Tracker) -> usize {
         let index = self.trackers.len();
         self.tracker_id_to_index.insert(id, index);
         self.tracker_info_updated_indexs.push(index);
@@ -98,4 +140,25 @@ impl MainServer {
         tracker.data.acceleration = acceleration;
         tracker.time_data_received = Instant::now();
     }
+
+    pub fn update_tracker_config(
+        &mut self,
+        index: usize,
+        config: TrackerConfig,
+    ) -> anyhow::Result<()> {
+        self.trackers[index].info.config = config;
+        self.tracker_info_updated(index);
+        self.save_config()
+    }
+}
+
+pub fn get_config_dir() -> anyhow::Result<PathBuf> {
+    let config_folder = dirs::config_dir()
+        .ok_or_else(|| anyhow::anyhow!("Failed to get a data directory"))?
+        .join("Micap");
+
+    if !config_folder.is_dir() {
+        std::fs::create_dir_all(&config_folder)?;
+    }
+    Ok(config_folder)
 }
