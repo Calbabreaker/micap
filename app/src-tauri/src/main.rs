@@ -11,6 +11,10 @@ fn main() {
         loop {
             if let Err(error) = micap_server::start_server().await {
                 log::error!("Server error: {error:?}");
+                if !matches!(std::env::var("RUST_BACKTRACE"), Ok(1)) {
+                    log::error!("  Note: set RUST_BACKTRACE=1 to see the error backtrace")
+                }
+
                 log::error!("Restarting in {RESTART_WAIT_TIME:?}...");
                 tokio::time::sleep(RESTART_WAIT_TIME).await;
             }

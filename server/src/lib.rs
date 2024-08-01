@@ -7,10 +7,9 @@ mod websocket;
 
 pub use websocket::WEBSOCKET_PORT;
 
-use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::time::{Duration, Instant};
 
-use crate::main_server::MainServer;
+use crate::main_server::{MainServer, SubModules};
 
 pub fn setup_log() {
     env_logger::builder()
@@ -21,17 +20,25 @@ pub fn setup_log() {
         .init();
 }
 
+const TARGET_LOOP_DELTA: Duration = Duration::from_millis(1000 / 50);
+
 pub async fn start_server() -> anyhow::Result<()> {
-    let main = Arc::new(RwLock::new(MainServer::default()));
+    // Seperate out  main and modules to prevent multiple borrow
+    let mut main = MainServer::default();
+    let mut modules = SubModules::new().await?;
 
-    tokio::try_join!(
-        flatten(tokio::spawn(websocket::start_server(main.clone()))),
-        flatten(tokio::spawn(main_server::start_server(main)))
-    )?;
+    loop {
+        let tick_start_time = Instant::now();
 
-    Ok(())
-}
+        main.update(&mut modules).await?;
 
-async fn flatten(handle: tokio::task::JoinHandle<anyhow::Result<()>>) -> anyhow::Result<()> {
-    handle.await?
+        let post_delta = tick_start_time.elapsed();
+        if let Some(sleep_duration) = TARGET_LOOP_DELTA.checked_sub(post_delta) {
+            tokio::time::sleep(sleep_duration).await;
+        } else {
+            log::warn!(
+                "Main server loop took {post_delta:?} which is longer than target {TARGET_LOOP_DELTA:?}"
+            );
+        }
+    }
 }

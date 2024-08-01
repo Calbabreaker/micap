@@ -1,9 +1,9 @@
+use futures_util::FutureExt;
 use std::{
     collections::HashMap,
     net::{Ipv4Addr, SocketAddr},
     time::{Duration, Instant},
 };
-use tokio::net::UdpSocket;
 
 use crate::{
     main_server::MainServer,
@@ -24,13 +24,13 @@ pub struct UdpServer {
     mac_index_map: HashMap<String, usize>,
     address_index_map: HashMap<SocketAddr, usize>,
 
-    socket: UdpSocket,
+    socket: tokio::net::UdpSocket,
     last_upkeep_time: Instant,
 }
 
 impl UdpServer {
     pub async fn new() -> anyhow::Result<Self> {
-        let socket = tokio::net::UdpSocket::bind(("0.0.0.0", UDP_PORT)).await?;
+        let socket = tokio::net::UdpSocket::bind((Ipv4Addr::UNSPECIFIED, UDP_PORT)).await?;
         socket.join_multicast_v4(MULTICAST_IP, Ipv4Addr::UNSPECIFIED)?;
         log::info!("Started UDP server on {}", socket.local_addr()?);
 
@@ -51,8 +51,8 @@ impl UdpServer {
         let mut buffer = [0_u8; 256];
         loop {
             // Try and get all the packets that were received
-            match self.socket.try_recv_from(&mut buffer) {
-                Ok((amount, peer_addr)) => {
+            match self.socket.recv_from(&mut buffer).now_or_never() {
+                Some(Ok((amount, peer_addr))) => {
                     log::trace!(
                         "Received {amount} bytes from {peer_addr} (0x{:02x})",
                         buffer[0]
@@ -63,10 +63,10 @@ impl UdpServer {
                         .await?;
                 }
                 // No more packets
-                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                None => {
                     return Ok(());
                 }
-                Err(e) => Err(e)?,
+                Some(Err(e)) => Err(e)?,
             }
         }
     }
@@ -119,7 +119,7 @@ impl UdpServer {
             Ok(UdpPacket::BatteryLevel((packet, device))) => {
                 device.update_battery_level(main, packet);
             }
-            Err(_) => log::warn!("Received invalid packet {}", bytes[0]),
+            Err(_) => log::warn!("Received invalid packet with id 0x{:02x}", bytes[0]),
         }
 
         Ok(())

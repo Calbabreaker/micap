@@ -31,7 +31,7 @@ impl<'a, R: Read> UdpPacket<'a, R> {
                     // Discard the packet if not the latest
                     let packet_number = bytes.read_u32::<LittleEndian>()?;
                     if !device.latest_packet_number(packet_number) {
-                        log::warn!("Received out of order packet {packet_number}");
+                        log::warn!("Received out of order packet #{packet_number}");
                         Err(std::io::ErrorKind::InvalidData)?
                     }
                 }

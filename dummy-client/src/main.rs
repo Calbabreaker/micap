@@ -39,7 +39,7 @@ async fn task(id: u8) -> anyhow::Result<()> {
     socket.send(&[PACKET_TRACKER_STATUS, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00]).await?;
     tokio::time::sleep(Duration::from_secs(1)).await;
 
-    let mut count = 1_u32;
+    let mut count = 2_u32;
     let mut buffer = Vec::new();
     loop {
         buffer.push(PACKET_TRACKER_DATA);

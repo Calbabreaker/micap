@@ -1,15 +1,23 @@
-use futures_util::{stream::SplitSink, SinkExt, StreamExt};
-use std::{
-    net::{Ipv4Addr, SocketAddr},
-    sync::Arc,
-};
-use tokio::sync::RwLock;
-use warp::{filters::ws::WebSocket, Filter};
+use futures_util::{FutureExt, SinkExt, StreamExt};
+use std::net::{Ipv4Addr, SocketAddr};
+use tokio::net::{TcpListener, TcpStream};
+use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 
-use crate::{main_server::ServerMessage, serial::write_serial, MainServer};
+use crate::{
+    main_server::MainServer,
+    serial::write_serial,
+    tracker::{TrackerData, TrackerInfo},
+};
 
 pub const WEBSOCKET_PORT: u16 = 8298;
 
+#[derive(Clone, serde::Serialize)]
+#[serde(tag = "type")]
+pub enum WebsocketServerMessage {
+    TrackerInfo { info: TrackerInfo },
+    TrackerData { index: usize, data: TrackerData },
+    Error { error: String },
+}
 // Receieved from client
 #[derive(Clone, serde::Deserialize)]
 #[serde(tag = "type")]
@@ -18,73 +26,117 @@ enum WebsocketClientMessage {
     FactoryReset,
 }
 
-async fn send_websocket_message(
-    ws_tx: &mut SplitSink<WebSocket, warp::ws::Message>,
-    message: ServerMessage,
-) {
-    if let Ok(string) = serde_json::to_string(&message) {
-        ws_tx.send(warp::ws::Message::text(string)).await.ok();
+pub struct WebsocketServer {
+    listener: TcpListener,
+    ws_streams: Vec<WebSocketStream<TcpStream>>,
+}
+
+impl WebsocketServer {
+    pub async fn new() -> anyhow::Result<Self> {
+        let address = SocketAddr::from((Ipv4Addr::LOCALHOST, WEBSOCKET_PORT));
+        log::info!("Started websocket server on {address}");
+        let listener = TcpListener::bind(address).await?;
+        Ok(Self {
+            listener,
+            ws_streams: Vec::new(),
+        })
     }
-}
 
-pub async fn start_server(main: Arc<RwLock<MainServer>>) -> anyhow::Result<()> {
-    let websocket = warp::ws()
-        .and(warp::any().map(move || main.clone()))
-        .map(|ws: warp::ws::Ws, main| ws.on_upgrade(|ws| on_connect(ws, main)));
+    pub async fn update(&mut self, main: &mut MainServer) -> anyhow::Result<()> {
+        match self.listener.accept().now_or_never() {
+            Some(Ok((stream, peer_addr))) => {
+                let ws_stream = tokio_tungstenite::accept_async(stream).await?;
+                log::info!("Websocket client connected at {peer_addr}");
+                self.on_connect(ws_stream, main).await?;
+            }
+            Some(Err(e)) => Err(e)?,
+            None => (),
+        }
 
-    let address = SocketAddr::from((Ipv4Addr::LOCALHOST, WEBSOCKET_PORT));
-    log::info!("Started websocket server on {address}");
-    warp::serve(websocket).run(address).await;
-    Ok(())
-}
+        self.ws_streams.retain_mut(|ws| {
+            // Use retain_mut to remove ws_streams when they are closed (returning false removes it)
+            match ws.next().now_or_never() {
+                Some(Some(Ok(message))) => {
+                    if let Ok(text) = message.to_text() {
+                        if let Err(error) = handle_websocket_message(text) {
+                            log::error!("Failed to handle websocket message: {error}");
+                            main.new_errors.push(error.to_string());
+                        }
+                    }
 
-async fn on_connect(ws: WebSocket, main: Arc<RwLock<MainServer>>) {
-    log::info!("Websocket client connected");
-    let (mut ws_tx, mut ws_rx) = ws.split();
+                    true
+                }
+                Some(Some(Err(e))) => {
+                    log::error!("Websocket error: {e:?}");
+                    false
+                }
+                Some(None) => {
+                    log::info!("Websocket disconnected");
+                    false
+                }
+                None => true,
+            }
+        });
 
-    let mut server_rx = main.write().await.message_channels.new_channel();
+        // Get list of messages to send
+        let new_messages = std::iter::empty()
+            .chain(main.new_errors.iter().map(|error| {
+                // Errors emmited
+                WebsocketServerMessage::Error {
+                    error: error.clone(),
+                }
+            }))
+            .chain(main.tracker_info_updated_indexs.iter().map(|index| {
+                WebsocketServerMessage::TrackerInfo {
+                    info: main.trackers[*index].info.clone(),
+                }
+            }))
+            .chain(main.trackers.iter().map(|tracker| {
+                // Data from trackers
+                WebsocketServerMessage::TrackerData {
+                    index: tracker.info.index,
+                    data: tracker.data.clone(),
+                }
+            }))
+            .map(|message| serde_json::to_string(&message).unwrap())
+            .collect::<Vec<_>>();
 
-    for tracker in &main.read().await.trackers {
-        send_websocket_message(
-            &mut ws_tx,
-            ServerMessage::TrackerInfo {
+        for ws_stream in self.ws_streams.iter_mut() {
+            for message in new_messages.iter() {
+                ws_stream.feed(Message::text(message)).await.ok();
+            }
+
+            if !new_messages.is_empty() {
+                ws_stream.flush().await?;
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn on_connect(
+        &mut self,
+        mut ws_stream: WebSocketStream<TcpStream>,
+        main: &mut MainServer,
+    ) -> anyhow::Result<()> {
+        for tracker in main.trackers.iter() {
+            let string = serde_json::to_string(&WebsocketServerMessage::TrackerInfo {
                 info: tracker.info.clone(),
-            },
-        )
-        .await;
-    }
-
-    // Spawn seperate task for listening to server messages
-    let server_messages_task = tokio::spawn(async move {
-        while let Some(message) = server_rx.recv().await {
-            send_websocket_message(&mut ws_tx, message).await;
+            })?;
+            ws_stream.feed(Message::text(string)).await?;
         }
-    });
 
-    while let Some(ws_result) = ws_rx.next().await {
-        let msg = match ws_result {
-            Ok(msg) => msg,
-            Err(e) => {
-                log::error!("Websocket error: {e}");
-                break;
-            }
-        };
-
-        if let Ok(string) = msg.to_str() {
-            log::info!("Got from websocket: {string}");
-            if let Err(error) = handle_websocket_message(string) {
-                log::error!("{error}");
-                main.write().await.notify_error(&error.to_string());
-            }
-        }
+        ws_stream.flush().await?;
+        self.ws_streams.push(ws_stream);
+        Ok(())
     }
-
-    log::info!("Websocket client disconnected");
-    server_messages_task.abort();
-    server_messages_task.await.ok();
 }
 
 fn handle_websocket_message(message: &str) -> anyhow::Result<()> {
+    if message.is_empty() {
+        return Ok(());
+    }
+
     match serde_json::from_str(message)? {
         WebsocketClientMessage::Wifi { ssid, password } => {
             if ssid.len() > 32 || password.len() > 64 {
