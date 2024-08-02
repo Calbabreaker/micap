@@ -1,10 +1,10 @@
 <script lang="ts">
     import { type Tracker } from "$lib/websocket";
-    import TrackerPreview from "./tracker_preview.svelte";
-    import TrackerInfoDisplay from "./tracker_info_display.svelte";
-    import TrashIcon from "./icons/trash_icon.svelte";
-    import MangnifyingGlassIcon from "./icons/mangnifying_glass_icon.svelte";
-    import PencilIcon from "./icons/pencil_icon.svelte";
+    import TrackerPreview from "./TrackerPreview.svelte";
+    import TrackerInfoDisplay from "./TrackerInfoDisplay.svelte";
+    import TrashIcon from "./icons/TrashIcon.svelte";
+    import MangnifyingGlassIcon from "./icons/MangnifyingGlassIcon.svelte";
+    import PencilIcon from "./icons/PencilIcon.svelte";
 
     export let tracker: Tracker;
     export let onRemove: () => void;

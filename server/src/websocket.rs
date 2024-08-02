@@ -155,6 +155,7 @@ fn handle_websocket_message(message: &str, main: &mut MainServer) -> anyhow::Res
         WebsocketClientMessage::RemoveTracker { index } => {
             main.trackers[index].info.removed = true;
             main.tracker_info_updated(index);
+            main.save_config()?;
         }
         WebsocketClientMessage::UpdateTrackerConfig { index, config } => {
             main.update_tracker_config(index, config)?;

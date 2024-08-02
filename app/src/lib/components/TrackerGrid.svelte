@@ -1,6 +1,6 @@
 <script lang="ts">
     import { trackers, sendWebsocket } from "$lib/websocket";
-    import TrackerCard from "./tracker_card.svelte";
+    import TrackerCard from "./TrackerCard.svelte";
 
     function removeTracker(index: number) {
         if (
