@@ -1,6 +1,6 @@
 <script lang="ts">
     import { websocket } from "$lib/websocket";
-    import WifiForm from "$lib/components/wifi_form.svelte";
+    import WifiForm from "$lib/components/WifiForm.svelte";
 </script>
 
 <WifiForm />
