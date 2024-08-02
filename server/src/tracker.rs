@@ -66,7 +66,7 @@ pub struct TrackerInfo {
     pub status: TrackerStatus,
     pub config: TrackerConfig,
     pub latency_ms: Option<u32>,
-    pub battery_level: Option<f32>,
+    pub battery_level: f32,
     pub removed: bool,
 }
 
@@ -93,7 +93,7 @@ impl Tracker {
                 config,
                 status: TrackerStatus::default(),
                 latency_ms: None,
-                battery_level: None,
+                battery_level: 0.0,
                 removed: false,
             },
             data: TrackerData::default(),

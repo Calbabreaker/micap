@@ -19,12 +19,12 @@
         @apply hover:bg-neutral-300/40 p-1;
     }
 
-    .icon {
+    .btn-icon > .icon {
         @apply w-4 h-4;
     }
 
-    .icon-small {
-        @apply w-2 h-2;
+    .icon {
+        @apply w-5 h-5;
     }
 }
 

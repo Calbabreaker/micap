@@ -12,7 +12,7 @@ export interface TrackerInfo {
     status: TrackerStatus;
     config: TrackerConfig;
     latency_ms?: number;
-    battery_level?: number;
+    battery_level: number;
     removed: boolean;
 }
 
