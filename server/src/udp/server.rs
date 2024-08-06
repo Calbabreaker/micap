@@ -16,7 +16,7 @@ use crate::{
 pub const UDP_PORT: u16 = 5828;
 pub const MULTICAST_IP: Ipv4Addr = Ipv4Addr::new(239, 255, 0, 123);
 
-const DEVICE_TIMEOUT: Duration = Duration::from_millis(4000);
+const DEVICE_TIMEOUT: Duration = Duration::from_millis(3000);
 const UPKEEP_INTERVAL: Duration = Duration::from_millis(1000);
 
 pub struct UdpServer {

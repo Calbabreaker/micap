@@ -112,6 +112,11 @@ impl Tracker {
         self.data.position += self.data.velocity * delta;
         true
     }
+
+    pub fn set_removed(&mut self) {
+        self.info.removed = true;
+        self.info.status = TrackerStatus::Off;
+    }
 }
 
 /// Seperate from TrackerInfo to be used to save to a file

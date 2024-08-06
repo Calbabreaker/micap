@@ -153,7 +153,7 @@ fn handle_websocket_message(message: &str, main: &mut MainServer) -> anyhow::Res
             write_serial(b"FactoryReset\n")?;
         }
         WebsocketClientMessage::RemoveTracker { index } => {
-            main.trackers[index].info.removed = true;
+            main.trackers[index].set_removed();
             main.tracker_info_updated(index);
             main.save_config()?;
         }

@@ -2,10 +2,36 @@ import { get, writable } from "svelte/store";
 
 const WEBSOCKET_PORT = 8298;
 
+// Copied from server
+export const trackerLocations = [
+    "Hip",
+    "LeftUpperLeg",
+    "RightUpperLeg",
+    "LeftLowerLeg",
+    "RightLowerLeg",
+    "LeftFoot",
+    "RightFoot",
+    "Waist",
+    "Chest",
+    "Neck",
+    "Head",
+    "LeftShoulder",
+    "RightShoulder",
+    "LeftUpperArm",
+    "RightUpperArm",
+    "LeftLowerArm",
+    "RightLowerArm",
+    "LeftHand",
+    "RightHand",
+];
+
+export type TrackerLocation = (typeof trackerLocations)[number];
+
 export type TrackerStatus = "Ok" | "Error" | "Off" | "TimedOut";
 
 export interface TrackerConfig {
     name: string;
+    location?: TrackerLocation;
 }
 
 export interface TrackerInfo {

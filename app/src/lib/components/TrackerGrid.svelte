@@ -1,5 +1,9 @@
 <script lang="ts">
-    import { trackers, sendWebsocket } from "$lib/websocket";
+    import {
+        trackers,
+        sendWebsocket,
+        type TrackerConfig,
+    } from "$lib/websocket";
     import TrackerCard from "./TrackerCard.svelte";
 
     function removeTracker(index: number) {
@@ -17,19 +21,11 @@
         });
     }
 
-    function editConfig(index: number) {
-        const name = prompt("Enter the new name: ");
-        if (!name) {
-            return;
-        }
-
+    function editConfig(index: number, config: TrackerConfig) {
         sendWebsocket({
             type: "UpdateTrackerConfig",
             index,
-            config: {
-                ...$trackers[index].info.config,
-                name,
-            },
+            config,
         });
     }
 </script>
@@ -42,7 +38,7 @@
                 <TrackerCard
                     {tracker}
                     onRemove={() => removeTracker(index)}
-                    onConfigEdit={() => editConfig(index)}
+                    onConfigEdit={(config) => editConfig(index, config)}
                 />
             {/if}
         {/each}

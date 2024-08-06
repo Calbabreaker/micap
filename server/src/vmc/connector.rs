@@ -4,6 +4,7 @@ use tokio::net::UdpSocket;
 
 use crate::{
     main_server::MainServer,
+    tracker::TrackerStatus,
     vmc::packet::{IntoOscMessage, VmcBoneTransformPacket},
 };
 
@@ -25,6 +26,10 @@ impl VmcConnector {
             .trackers
             .iter()
             .filter_map(|tracker| {
+                if tracker.info.status != TrackerStatus::Ok {
+                    return None;
+                }
+
                 Some(rosc::OscPacket::Message(
                     VmcBoneTransformPacket {
                         bone: tracker.info.config.location?.as_unity_bone().to_string(),
