@@ -706,7 +706,6 @@ dependencies = [
  "anyhow",
  "glam",
  "micap-server",
- "rand 0.8.5",
  "tokio",
 ]
 

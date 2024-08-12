@@ -1,4 +1,4 @@
 [workspace]
 resolver = "2"
 members = ["app/src-tauri", "dummy-client", "server"]
-default-members = []
+default-members = ["server"]

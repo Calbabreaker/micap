@@ -101,18 +101,6 @@ impl Tracker {
         }
     }
 
-    /// Returns true if data was updated
-    pub fn tick(&mut self) -> bool {
-        if self.info.status == TrackerStatus::Ok && self.data.acceleration.length() > 3. {
-            return false;
-        }
-
-        let delta = self.time_data_received.elapsed().as_secs_f32();
-        self.data.velocity += self.data.acceleration * delta;
-        self.data.position += self.data.velocity * delta;
-        true
-    }
-
     pub fn set_removed(&mut self) {
         self.info.removed = true;
         self.info.status = TrackerStatus::Off;

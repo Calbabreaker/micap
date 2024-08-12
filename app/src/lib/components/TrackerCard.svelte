@@ -13,11 +13,23 @@
     export let tracker: Tracker;
     export let onRemove: () => void;
     export let onConfigEdit: (config: TrackerConfig) => void;
+    let brightness: number;
+
+    $: if (tracker.data) {
+        // Show when there is movement
+        brightness = Math.min(
+            Math.hypot(...tracker.data?.acceleration) * 50,
+            50,
+        );
+    }
 
     let showPreview = false;
 </script>
 
-<div class="bg-neutral-600 p-4 rounded shadow w-fit border border-neutral-900">
+<div
+    style:border-color={`hsl(0, 0%, ${brightness}%)`}
+    class="bg-neutral-600 p-4 rounded shadow w-fit border"
+>
     <TrackerInfoDisplay info={tracker.info} />
     <p>{tracker.info.config.name}</p>
     <div class="flex gap-1 mt-2">

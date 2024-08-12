@@ -45,7 +45,6 @@ export interface TrackerInfo {
 export interface TrackerData {
     orientation: [number, number, number, number];
     acceleration: [number, number, number];
-    velocity: [number, number, number];
     position: [number, number, number];
 }
 

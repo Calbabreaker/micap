@@ -6,6 +6,7 @@ use std::{
 };
 
 use anyhow::Context;
+use glam::Vec3Swizzles;
 
 use crate::{
     tracker::*, udp::server::UdpServer, vmc::connector::VmcConnector, websocket::WebsocketServer,
@@ -26,7 +27,9 @@ impl SubModules {
             udp_server: UdpServer::new()
                 .await
                 .context("Failed to start UDP server")?,
-            vmc_connector: VmcConnector::new().await?,
+            vmc_connector: VmcConnector::new()
+                .await
+                .context("Failed to connect to VMC")?,
         })
     }
 }
@@ -91,13 +94,9 @@ impl MainServer {
         modules.udp_server.update(self).await?;
         modules.websocket_server.update(self).await?;
 
-        for tracker in &mut self.trackers {
-            if tracker.info.removed {
-                continue;
-            }
-
-            tracker.tick();
-        }
+        // for tracker in &mut self.trackers {
+        //     // tracker.tick();
+        // }
 
         modules.vmc_connector.update(self).await?;
         self.tracker_info_updated_indexs.clear();
@@ -135,9 +134,17 @@ impl MainServer {
         acceleration: glam::Vec3A,
         orientation: glam::Quat,
     ) {
+        let acceleration = acceleration.xzy();
         let tracker = &mut self.trackers[index];
         tracker.data.orientation = orientation;
         tracker.data.acceleration = acceleration;
+
+        if tracker.info.status == TrackerStatus::Ok && acceleration.length() > 3. {
+            let delta = tracker.time_data_received.elapsed().as_secs_f32();
+            tracker.data.velocity += tracker.data.acceleration * delta;
+            tracker.data.position += tracker.data.velocity * delta;
+        }
+
         tracker.time_data_received = Instant::now();
     }
 
@@ -154,8 +161,8 @@ impl MainServer {
 
 pub fn get_config_dir() -> anyhow::Result<PathBuf> {
     let config_folder = dirs::config_dir()
-        .ok_or_else(|| anyhow::anyhow!("Failed to get a data directory"))?
-        .join("Micap");
+        .ok_or_else(|| anyhow::anyhow!("Failed to get a config directory"))?
+        .join("micap");
 
     if !config_folder.is_dir() {
         std::fs::create_dir_all(&config_folder)?;

@@ -2,7 +2,22 @@ pub trait IntoOscMessage {
     fn into_osc_message(self) -> rosc::OscMessage;
 }
 
-/// VMC/Ext/Bone/Pos (string){name} (float){p.x} (float){p.y} (float){p.z} (float){q.x} (float){q.y} (float){q.z} (float){q.w}  
+// /VMC/Ext/OK (int){loaded}
+pub struct VmcStatePacket {
+    pub loaded: bool,
+}
+
+impl IntoOscMessage for VmcStatePacket {
+    fn into_osc_message(self) -> rosc::OscMessage {
+        use rosc::OscType::*;
+        rosc::OscMessage {
+            addr: "/VMC/Ext/OK".to_string(),
+            args: vec![Int(self.loaded as i32)],
+        }
+    }
+}
+
+/// /VMC/Ext/Bone/Pos (string){name} (float){p.x} (float){p.y} (float){p.z} (float){q.x} (float){q.y} (float){q.z} (float){q.w}  
 // p=Position
 // q=Orientation
 pub struct VmcBoneTransformPacket {

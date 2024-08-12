@@ -1,14 +1,13 @@
-use std::{f32::consts::PI, net::Ipv4Addr, time::Duration};
+use std::{net::Ipv4Addr, time::Duration};
 
 use micap_server::udp::{
     packet::{PACKET_HANDSHAKE, PACKET_TRACKER_DATA, PACKET_TRACKER_STATUS},
     server::UDP_PORT,
 };
-use rand::Rng;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let count: u32 = std::env::args()
+    let count: u8 = std::env::args()
         .nth(1)
         .and_then(|c| c.parse().ok())
         .unwrap_or(1);
@@ -16,12 +15,19 @@ async fn main() -> anyhow::Result<()> {
     println!("Spawning {count} tasks");
 
     let mut handles = Vec::new();
+
     for i in 0..count {
-        handles.push(tokio::spawn(task(i as u8)));
+        handles.push(tokio::spawn(async move {
+            loop {
+                if let Err(err) = task(i).await {
+                    eprintln!("{err}, reconnecting");
+                }
+            }
+        }));
     }
 
     for handle in handles {
-        handle.await??;
+        handle.await?;
     }
 
     Ok(())
@@ -46,16 +52,11 @@ async fn task(id: u8) -> anyhow::Result<()> {
         buffer.extend(count.to_le_bytes());
         buffer.push(0x00);
 
-        let quat =
-            glam::Quat::from_axis_angle(glam::Vec3::Y, rand::thread_rng().gen_range((0.)..PI));
-        for float in quat.to_array() {
-            buffer.extend(float.to_le_bytes());
-        }
+        let quat = glam::Quat::from_axis_angle(glam::Vec3::Y, f32::sin(count as f32 / 100.));
+        buffer.extend(quat.to_array().iter().flat_map(|x| x.to_le_bytes()));
 
-        for _ in 0..3 {
-            let float: f32 = rand::thread_rng().gen_range((0.)..5.);
-            buffer.extend(float.to_le_bytes());
-        }
+        let vec = glam::Vec3::new(0., 0., f32::sin(count as f32 / 100.) * 10.);
+        buffer.extend(vec.to_array().iter().flat_map(|x| x.to_le_bytes()));
 
         socket.send(&buffer).await?;
         count += 1;

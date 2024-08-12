@@ -1,11 +1,9 @@
 <script lang="ts">
-    import { Canvas } from "@threlte/core";
     import { T } from "@threlte/core";
     import type { TrackerData } from "$lib/websocket";
-    import { ArrowHelper, Vector3, Object3D } from "three";
+    import { ArrowHelper, Vector3 } from "three";
+    import PreviewCanvas from "./PreviewCanvas.svelte";
     import { OrbitControls } from "@threlte/extras";
-
-    Object3D.DEFAULT_UP = new Vector3(0, 0, 1);
 
     export let data: TrackerData;
 
@@ -36,33 +34,17 @@
     <div class="mb-2 text-sm text-neutral-300">
         <p>Orientation: {formatArray(data.orientation)}</p>
         <p>Acceleration: {formatArray(data.acceleration)}</p>
+        <p>Position: {formatArray(data.position)}</p>
     </div>
-    <div class="w-96 h-96 bg-black">
-        <Canvas>
-            <T.PerspectiveCamera
-                makeDefault
-                position={[10, 10, 10]}
-                on:create={({ ref }) => {
-                    ref.lookAt(0, 1, 0);
-                }}
-            >
-                <OrbitControls />
-            </T.PerspectiveCamera>
-            <T.DirectionalLight args={[0xffffff, 1]} position={[1, 1, 1]} />
-            <T.AmbientLight args={[0xffffff, 0.5]} />
-            <T.GridHelper
-                args={[10, 10]}
-                on:create={({ ref }) => {
-                    ref.rotateX(Math.PI / 2);
-                }}
-            />
-
-            <T.Mesh quaternion={data.orientation} scale={[1.5, 1.5, 1.5]}>
-                <T.AxesHelper args={[5]} />
-                <T.BoxGeometry />
-                <T.MeshLambertMaterial color={0xffffff} />
-            </T.Mesh>
-            <T.ArrowHelper bind:ref={arrowRef} />
-        </Canvas>
-    </div>
+    <PreviewCanvas>
+        <T.PerspectiveCamera makeDefault position={[10, 10, 10]}>
+            <OrbitControls />
+        </T.PerspectiveCamera>
+        <T.Mesh quaternion={data.orientation} scale={[1.5, 1.5, 1.5]}>
+            <T.AxesHelper args={[5]} />
+            <T.BoxGeometry />
+            <T.MeshLambertMaterial color={0xffffff} />
+        </T.Mesh>
+        <T.ArrowHelper bind:ref={arrowRef} />
+    </PreviewCanvas>
 </div>

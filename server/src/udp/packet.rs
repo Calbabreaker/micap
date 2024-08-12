@@ -58,23 +58,25 @@ impl<'a, R: Read> UdpPacket<'a, R> {
 }
 
 pub struct UdpPacketHandshake {
-    pub mac_string: String,
+    pub mac_address: String,
 }
 
 impl UdpPacketHandshake {
     fn from_bytes(bytes: &mut impl Read) -> std::io::Result<Self> {
         if !bytes_equal(bytes, b"MCDEV") {
-            return Err(std::io::ErrorKind::InvalidData.into());
+            Err(std::io::ErrorKind::InvalidData)?;
         }
 
         let mut mac_bytes = [0_u8; 6];
         bytes.read_exact(&mut mac_bytes)?;
         let mac_string = mac_bytes.map(|b| format!("{b:02x}")).join(":");
 
-        Ok(Self { mac_string })
+        Ok(Self {
+            mac_address: mac_string,
+        })
     }
 
-    pub const fn to_bytes() -> [u8; 6] {
+    pub const fn to_bytes(&self) -> [u8; 6] {
         // PACKET_HANDSHAKE + MCSVR
         [PACKET_HANDSHAKE, b'M', b'C', b'S', b'V', b'R']
     }
@@ -143,7 +145,7 @@ impl<'a, R: Read> UdpPacketTrackerData<'a, R> {
         let tracker_index = self.bytes.read_u8()?;
         // 0xff where the tracker id would usually go signifies the end of the packet
         if tracker_index == 0xff {
-            return Err(std::io::ErrorKind::InvalidData)?;
+            Err(std::io::ErrorKind::InvalidData)?;
         }
 
         Ok(UdpTrackerData {

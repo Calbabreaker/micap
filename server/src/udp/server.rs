@@ -120,9 +120,7 @@ impl UdpServer {
                 device.handle_pong(main, packet);
             }
             Ok(UdpPacket::Handshake(packet)) => {
-                self.socket
-                    .send_to(&UdpPacketHandshake::to_bytes(), peer_addr)
-                    .await?;
+                self.socket.send_to(&packet.to_bytes(), peer_addr).await?;
                 self.handle_handshake(packet, peer_addr);
             }
             Ok(UdpPacket::TrackerData((mut packet, device))) => {
@@ -137,7 +135,7 @@ impl UdpServer {
             Ok(UdpPacket::BatteryLevel((packet, device))) => {
                 device.update_battery_level(main, packet);
             }
-            Err(_) => log::warn!("Received invalid packet with id 0x{:02x}", bytes[0]),
+            Err(_) => log::warn!("Received invalid packet 0x{:02x}", bytes[0]),
         }
 
         Ok(())
@@ -145,7 +143,7 @@ impl UdpServer {
 
     fn handle_handshake(&mut self, packet: UdpPacketHandshake, peer_addr: SocketAddr) {
         // Check if the device already has connected with a mac address
-        if let Some(index) = self.mac_index_map.get(&packet.mac_string) {
+        if let Some(index) = self.mac_index_map.get(&packet.mac_address) {
             let device = &mut self.devices[*index];
             // Move over to the new address if the device has a new ip
             if device.address != peer_addr {
@@ -165,8 +163,8 @@ impl UdpServer {
 
         // Create a new udp device
         let index = self.devices.len();
-        let device = UdpDevice::new(peer_addr, packet.mac_string.clone());
-        self.mac_index_map.insert(packet.mac_string, index);
+        let device = UdpDevice::new(peer_addr, packet.mac_address.clone());
+        self.mac_index_map.insert(packet.mac_address, index);
         self.address_index_map.insert(peer_addr, index);
         self.devices.push(device);
         log::info!("New device connected from {peer_addr}");
