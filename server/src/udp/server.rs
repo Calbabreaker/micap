@@ -20,9 +20,9 @@ const DEVICE_TIMEOUT: Duration = Duration::from_millis(3000);
 const UPKEEP_INTERVAL: Duration = Duration::from_millis(1000);
 
 pub struct UdpServer {
-    devices: Vec<UdpDevice>,
-    mac_index_map: HashMap<String, usize>,
-    address_index_map: HashMap<SocketAddr, usize>,
+    // Maps a mac address to a device
+    devices_mac_map: HashMap<String, UdpDevice>,
+    address_to_mac_map: HashMap<SocketAddr, String>,
 
     socket: tokio::net::UdpSocket,
     last_upkeep_time: Instant,
@@ -35,9 +35,8 @@ impl UdpServer {
         log::info!("Started UDP server on {}", socket.local_addr()?);
 
         Ok(Self {
-            devices: Default::default(),
-            mac_index_map: Default::default(),
-            address_index_map: Default::default(),
+            devices_mac_map: HashMap::new(),
+            address_to_mac_map: HashMap::new(),
             last_upkeep_time: Instant::now(),
             socket,
         })
@@ -76,19 +75,16 @@ impl UdpServer {
     }
 
     async fn upkeep(&mut self, main: &mut MainServer) -> anyhow::Result<()> {
-        for device in self.devices.iter_mut() {
-            if main.address_blacklist.contains(&device.address) {
-                continue;
-            }
+        let mut to_remove = None;
 
-            if !device.tracker_indexs.is_empty() {
-                // When the user has removed every tracker from the device prevent it from connecting anymore
-                let all_removed = device.tracker_indexs.iter().all(|index| {
-                    main.trackers[*index].info.removed //
-                });
-                if all_removed {
-                    main.address_blacklist.insert(device.address);
-                }
+        for device in self.devices_mac_map.values_mut() {
+            // When the user has removed every tracker from the device prevent it from connecting anymore
+            let still_exists = device
+                .tracker_ids
+                .iter()
+                .any(|id| main.trackers.contains_key(id));
+            if !device.tracker_ids.is_empty() && !still_exists {
+                to_remove = Some((device.mac.clone(), device.address))
             }
 
             if device.last_packet_received_time.elapsed() > DEVICE_TIMEOUT {
@@ -98,6 +94,12 @@ impl UdpServer {
             }
 
             device.check_send_new_ping(&self.socket).await?;
+        }
+
+        if let Some((mac, address)) = to_remove {
+            self.devices_mac_map.remove(&mac);
+            self.address_to_mac_map.remove(&address);
+            main.address_blacklist.insert(address);
         }
 
         self.last_upkeep_time = Instant::now();
@@ -111,9 +113,9 @@ impl UdpServer {
         main: &mut MainServer,
     ) -> tokio::io::Result<()> {
         let device = self
-            .address_index_map
+            .address_to_mac_map
             .get(&peer_addr)
-            .and_then(|i| self.devices.get_mut(*i));
+            .and_then(|a| self.devices_mac_map.get_mut(a));
 
         match UdpPacket::parse(&mut bytes, device) {
             Ok(UdpPacket::PingPong((packet, device))) => {
@@ -143,13 +145,13 @@ impl UdpServer {
 
     fn handle_handshake(&mut self, packet: UdpPacketHandshake, peer_addr: SocketAddr) {
         // Check if the device already has connected with a mac address
-        if let Some(index) = self.mac_index_map.get(&packet.mac_address) {
-            let device = &mut self.devices[*index];
+        if let Some(device) = self.devices_mac_map.get_mut(&packet.mac_address) {
             // Move over to the new address if the device has a new ip
             if device.address != peer_addr {
                 log::info!("Reconnected from {peer_addr} from old: {}", device.address);
-                self.address_index_map.remove(&device.address);
-                self.address_index_map.insert(peer_addr, *index);
+                self.address_to_mac_map.remove(&device.address);
+                self.address_to_mac_map
+                    .insert(peer_addr, packet.mac_address);
                 device.address = peer_addr;
             } else if device.timed_out {
                 log::info!("Reconnected from {peer_addr}");
@@ -162,11 +164,11 @@ impl UdpServer {
         }
 
         // Create a new udp device
-        let index = self.devices.len();
         let device = UdpDevice::new(peer_addr, packet.mac_address.clone());
-        self.mac_index_map.insert(packet.mac_address, index);
-        self.address_index_map.insert(peer_addr, index);
-        self.devices.push(device);
+        self.devices_mac_map
+            .insert(packet.mac_address.clone(), device);
+        self.address_to_mac_map
+            .insert(peer_addr, packet.mac_address);
         log::info!("New device connected from {peer_addr}");
     }
 }

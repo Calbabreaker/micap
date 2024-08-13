@@ -39,14 +39,18 @@ struct Config {
     trackers: HashMap<String, TrackerConfig>,
 }
 
+pub enum UpdateEvent {
+    TrackerInfoUpdate(String),
+    TrackerRemove(String),
+    NewError(String),
+}
+
 #[derive(Default)]
 pub struct MainServer {
-    pub trackers: Vec<Tracker>,
-    tracker_id_to_index: HashMap<String, usize>,
-    /// Contains list of indexs of trackers who's info has been updated in the middle of a frame
-    pub tracker_info_updated_indexs: Vec<usize>,
-    /// Contains list of errors emited in the middle of a frame
-    pub new_errors: Vec<String>,
+    // Maps a tracker id to a tracker
+    pub trackers: HashMap<String, Tracker>,
+    /// Contains list of update event emited in the middle of a frame
+    pub updates: Vec<UpdateEvent>,
     /// Set of address that should not be allowed to connect
     /// This is to allow for servers to ignore ignored trackers that are trying to connect
     pub address_blacklist: HashSet<SocketAddr>,
@@ -68,16 +72,9 @@ impl MainServer {
 
     pub fn save_config(&mut self) -> anyhow::Result<()> {
         let trackers = self
-            .tracker_id_to_index
+            .trackers
             .iter()
-            .filter_map(|(id, index)| {
-                let tracker = &self.trackers[*index];
-                if tracker.info.removed {
-                    None
-                } else {
-                    Some((id.clone(), tracker.info.config.clone()))
-                }
-            })
+            .map(|(id, tracker)| (id.clone(), tracker.info.config.clone()))
             .collect::<HashMap<String, TrackerConfig>>();
 
         let config = Config { trackers };
@@ -99,63 +96,48 @@ impl MainServer {
         // }
 
         modules.vmc_connector.update(self).await?;
-        self.tracker_info_updated_indexs.clear();
-        self.new_errors.clear();
+        self.updates.clear();
 
         Ok(())
     }
 
-    /// Register a tracker to get its index and use that to access it later since using strings with hashmaps is a bit slow
-    pub fn register_tracker(&mut self, id: String, tracker: Tracker) -> usize {
-        if let Some(index) = self.tracker_id_to_index.get(&id) {
-            return *index;
+    pub fn add_tracker(&mut self, id: String, tracker: Tracker) {
+        self.trackers.insert(id.clone(), tracker);
+        self.updates.push(UpdateEvent::TrackerInfoUpdate(id));
+    }
+
+    pub fn tracker_info_update(&mut self, id: &String) -> Option<&mut Tracker> {
+        let tracker = self.trackers.get_mut(id)?;
+        self.updates
+            .push(UpdateEvent::TrackerInfoUpdate(id.clone()));
+        Some(tracker)
+    }
+
+    pub fn remove_tracker(&mut self, id: &String) {
+        if self.trackers.remove(id).is_some() {
+            self.updates.push(UpdateEvent::TrackerRemove(id.clone()));
         }
-
-        let index = self.add_tracker(id, tracker);
-        self.save_config().ok();
-        index
-    }
-
-    fn add_tracker(&mut self, id: String, tracker: Tracker) -> usize {
-        let index = self.trackers.len();
-        self.tracker_id_to_index.insert(id, index);
-        self.tracker_info_updated_indexs.push(index);
-        self.trackers.push(tracker);
-        index
-    }
-
-    pub fn tracker_info_updated(&mut self, index: usize) {
-        self.tracker_info_updated_indexs.push(index);
     }
 
     pub fn update_tracker_data(
         &mut self,
-        index: usize,
+        id: &String,
         acceleration: glam::Vec3A,
         orientation: glam::Quat,
     ) {
-        let acceleration = acceleration.xzy();
-        let tracker = &mut self.trackers[index];
-        tracker.data.orientation = orientation;
-        tracker.data.acceleration = acceleration;
+        if let Some(tracker) = self.trackers.get_mut(id) {
+            let acceleration = acceleration.xzy();
+            tracker.data.orientation = orientation;
+            tracker.data.acceleration = acceleration;
 
-        if tracker.info.status == TrackerStatus::Ok && acceleration.length() > 3. {
-            let delta = tracker.time_data_received.elapsed().as_secs_f32();
-            tracker.data.velocity += tracker.data.acceleration * delta;
-            tracker.data.position += tracker.data.velocity * delta;
+            if tracker.info.status == TrackerStatus::Ok && acceleration.length() > 3. {
+                let delta = tracker.time_data_received.elapsed().as_secs_f32();
+                tracker.data.velocity += tracker.data.acceleration * delta;
+                tracker.data.position += tracker.data.velocity * delta;
+            }
+
+            tracker.time_data_received = Instant::now();
         }
-
-        tracker.time_data_received = Instant::now();
-    }
-
-    pub fn update_tracker_config(
-        &mut self,
-        index: usize,
-        config: TrackerConfig,
-    ) -> anyhow::Result<()> {
-        self.trackers[index].info.config = config;
-        self.tracker_info_updated(index);
-        self.save_config()
     }
 }
 

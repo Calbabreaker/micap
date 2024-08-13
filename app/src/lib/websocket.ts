@@ -39,7 +39,6 @@ export interface TrackerInfo {
     config: TrackerConfig;
     latency_ms?: number;
     battery_level: number;
-    removed: boolean;
 }
 
 export interface TrackerData {
@@ -54,7 +53,7 @@ export interface Tracker {
 }
 
 export const websocket = writable<WebSocket | undefined>();
-export const trackers = writable<Tracker[]>([]);
+export const trackers = writable<Map<string, Tracker>>(new Map());
 
 export function sendWebsocket(object: Record<string, any>) {
     let ws = get(websocket);
@@ -78,7 +77,7 @@ websocket.subscribe((ws) => {
 
         ws.onclose = () => {
             console.log("Websocket connection closed");
-            trackers.set([]);
+            trackers.set(new Map());
             websocket.set(undefined);
         };
 
@@ -105,10 +104,14 @@ function handleMessage(message: Record<string, any>) {
             break;
         case "TrackerInfo":
             trackers.update((trackers) => {
-                if (trackers[message.index]) {
-                    trackers[message.index].info = message.info;
+                const tracker = trackers.get(message.id);
+
+                if (!message.info) {
+                    trackers.delete(message.id);
+                } else if (tracker) {
+                    tracker.info = message.info;
                 } else {
-                    trackers[message.index] = { info: message.info };
+                    trackers.set(message.id, { info: message.info });
                 }
 
                 return trackers;
@@ -117,7 +120,10 @@ function handleMessage(message: Record<string, any>) {
             break;
         case "TrackerData":
             trackers.update((trackers) => {
-                trackers[message.index].data = message.data;
+                const tracker = trackers.get(message.id);
+                if (tracker) {
+                    tracker.data = message.data;
+                }
                 return trackers;
             });
 

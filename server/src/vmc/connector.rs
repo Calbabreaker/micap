@@ -1,6 +1,5 @@
 use std::{net::Ipv4Addr, time::SystemTime};
 
-use anyhow::Context;
 use futures_util::FutureExt;
 use tokio::net::UdpSocket;
 
@@ -26,7 +25,7 @@ impl VmcConnector {
 
     pub async fn update(&mut self, main: &mut MainServer) -> anyhow::Result<()> {
         let osc_messages = std::iter::empty()
-            .chain(main.trackers.iter().filter_map(|tracker| {
+            .chain(main.trackers.iter().filter_map(|(_, tracker)| {
                 if tracker.info.status != TrackerStatus::Ok {
                     return None;
                 }

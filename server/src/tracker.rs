@@ -67,7 +67,6 @@ pub struct TrackerInfo {
     pub config: TrackerConfig,
     pub latency_ms: Option<u32>,
     pub battery_level: f32,
-    pub removed: bool,
 }
 
 #[derive(Debug, Clone, Default, serde::Serialize)]
@@ -94,16 +93,10 @@ impl Tracker {
                 status: TrackerStatus::default(),
                 latency_ms: None,
                 battery_level: 0.0,
-                removed: false,
             },
             data: TrackerData::default(),
             time_data_received: Instant::now(),
         }
-    }
-
-    pub fn set_removed(&mut self) {
-        self.info.removed = true;
-        self.info.status = TrackerStatus::Off;
     }
 }
 
