@@ -55,7 +55,7 @@ async fn task(id: u8) -> anyhow::Result<()> {
         let quat = glam::Quat::from_axis_angle(glam::Vec3::Y, f32::sin(count as f32 / 100.));
         buffer.extend(quat.to_array().iter().flat_map(|x| x.to_le_bytes()));
 
-        let vec = glam::Vec3::new(0., 0., f32::sin(count as f32 / 100.) * 10.);
+        let vec = glam::Vec3::new(0., 0., -f32::sin(count as f32 / 10.) * 2.);
         buffer.extend(vec.to_array().iter().flat_map(|x| x.to_le_bytes()));
 
         socket.send(&buffer).await?;

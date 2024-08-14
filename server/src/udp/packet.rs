@@ -12,18 +12,20 @@ pub const PACKET_BATTERY_LEVEL: u8 = 0x04;
 
 pub enum UdpPacket<'a, R: Read> {
     Handshake(UdpPacketHandshake),
-    TrackerData((UdpPacketTrackerData<'a, R>, &'a mut UdpDevice)),
-    TrackerStatus((UdpPacketTrackerStatus, &'a mut UdpDevice)),
-    BatteryLevel((UdpPacketBatteryLevel, &'a mut UdpDevice)),
-    PingPong((UdpPacketPingPong, &'a mut UdpDevice)),
+    TrackerData(UdpPacketTrackerData<'a, R>),
+    TrackerStatus(UdpPacketTrackerStatus),
+    BatteryLevel(UdpPacketBatteryLevel),
+    PingPong(UdpPacketPingPong),
 }
 
 impl<'a, R: Read> UdpPacket<'a, R> {
-    pub fn parse(bytes: &'a mut R, device: Option<&'a mut UdpDevice>) -> std::io::Result<Self> {
+    pub fn parse(
+        bytes: &'a mut R,
+        device: &mut anyhow::Result<&mut UdpDevice>,
+    ) -> std::io::Result<Self> {
         let packet_type = bytes.read_u8()?;
-        let mut device = device.ok_or(std::io::ErrorKind::InvalidData);
 
-        if let Ok(ref mut device) = device {
+        if let Ok(device) = device {
             match packet_type {
                 // These packets don't send a packet number so they will never be discarded
                 PACKET_HANDSHAKE | PACKET_PING_PONG => (),
@@ -42,16 +44,12 @@ impl<'a, R: Read> UdpPacket<'a, R> {
 
         Ok(match packet_type {
             PACKET_HANDSHAKE => Self::Handshake(UdpPacketHandshake::from_bytes(bytes)?),
-            PACKET_PING_PONG => Self::PingPong((UdpPacketPingPong::from_bytes(bytes)?, device?)),
-            PACKET_TRACKER_DATA => {
-                Self::TrackerData((UdpPacketTrackerData::from_bytes(bytes)?, device?))
-            }
+            PACKET_PING_PONG => Self::PingPong(UdpPacketPingPong::from_bytes(bytes)?),
+            PACKET_TRACKER_DATA => Self::TrackerData(UdpPacketTrackerData::from_bytes(bytes)?),
             PACKET_TRACKER_STATUS => {
-                Self::TrackerStatus((UdpPacketTrackerStatus::from_bytes(bytes)?, device?))
+                Self::TrackerStatus(UdpPacketTrackerStatus::from_bytes(bytes)?)
             }
-            PACKET_BATTERY_LEVEL => {
-                Self::BatteryLevel((UdpPacketBatteryLevel::from_bytes(bytes)?, device?))
-            }
+            PACKET_BATTERY_LEVEL => Self::BatteryLevel(UdpPacketBatteryLevel::from_bytes(bytes)?),
             _ => Err(std::io::ErrorKind::InvalidData)?,
         })
     }

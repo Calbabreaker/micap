@@ -130,7 +130,7 @@ impl MainServer {
             tracker.data.orientation = orientation;
             tracker.data.acceleration = acceleration;
 
-            if tracker.info.status == TrackerStatus::Ok && acceleration.length() > 3. {
+            if tracker.info.status == TrackerStatus::Ok {
                 let delta = tracker.time_data_received.elapsed().as_secs_f32();
                 tracker.data.velocity += tracker.data.acceleration * delta;
                 tracker.data.position += tracker.data.velocity * delta;

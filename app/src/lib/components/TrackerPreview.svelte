@@ -11,11 +11,11 @@
 
     let arrowRef: ArrowHelper;
 
-    // $: positionLooped = [
-    //     data.position[0] % 6,
-    //     data.position[1] % 6,
-    //     data.position[2] % 6,
-    // ];
+    $: positionLooped = [
+        data.position[0] % 6,
+        data.position[1] % 6,
+        data.position[2] % 6,
+    ];
 
     function updateArrow(vector: Vector3) {
         if (arrowRef) {
@@ -40,11 +40,15 @@
         <T.PerspectiveCamera makeDefault position={[10, 10, 10]}>
             <OrbitControls />
         </T.PerspectiveCamera>
-        <T.Mesh quaternion={data.orientation} scale={[1.5, 1.5, 1.5]}>
+        <T.Mesh
+            quaternion={data.orientation}
+            position={positionLooped}
+            scale={[1.5, 1.5, 1.5]}
+        >
             <T.AxesHelper args={[5]} />
             <T.BoxGeometry />
             <T.MeshLambertMaterial color={0xffffff} />
+            <T.ArrowHelper bind:ref={arrowRef} />
         </T.Mesh>
-        <T.ArrowHelper bind:ref={arrowRef} />
     </PreviewCanvas>
 </div>
