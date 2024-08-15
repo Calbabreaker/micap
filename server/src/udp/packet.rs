@@ -22,7 +22,7 @@ impl<'a, R: Read> UdpPacket<'a, R> {
     pub fn parse(
         bytes: &'a mut R,
         device: &mut anyhow::Result<&mut UdpDevice>,
-    ) -> std::io::Result<Self> {
+    ) -> anyhow::Result<Self> {
         let packet_type = bytes.read_u8()?;
 
         if let Ok(device) = device {
@@ -33,8 +33,7 @@ impl<'a, R: Read> UdpPacket<'a, R> {
                     // Discard the packet if not the latest
                     let packet_number = bytes.read_u32::<LittleEndian>()?;
                     if !device.latest_packet_number(packet_number) {
-                        log::warn!("Received out of order packet #{packet_number}");
-                        Err(std::io::ErrorKind::InvalidData)?
+                        anyhow::bail!("Out of order #{packet_number}");
                     }
                 }
             };
@@ -50,7 +49,7 @@ impl<'a, R: Read> UdpPacket<'a, R> {
                 Self::TrackerStatus(UdpPacketTrackerStatus::from_bytes(bytes)?)
             }
             PACKET_BATTERY_LEVEL => Self::BatteryLevel(UdpPacketBatteryLevel::from_bytes(bytes)?),
-            _ => Err(std::io::ErrorKind::InvalidData)?,
+            _ => anyhow::bail!("Invalid packet id"),
         })
     }
 }

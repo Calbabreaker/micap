@@ -18,9 +18,9 @@ Quaternion SensorFusion::get_orientation() {
     return m_quat;
 }
 
-// Gets the acceleration relative to surface of earth
+// Gets the acceleration relative to surface of earth with 1g removed
 Vector3 SensorFusion::get_acceleration() const {
-    // Taken from:
+    // Gets the unit vector of gravity based on the orientation Taken from:
     // https://github.com/jrowberg/i2cdevlib/blob/master/Arduino/MPU6050/MPU6050_6Axis_MotionApps20.cpp#L522
     Vector3 gravity_unit(
         2 * (m_quat.x * m_quat.z - m_quat.w * m_quat.y),

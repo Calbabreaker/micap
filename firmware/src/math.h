@@ -5,7 +5,7 @@
 class Vector3 {
 public:
     Vector3() = default;
-    Vector3(float x, float y, float z) : x(x), y(y), z(z){};
+    Vector3(float x, float y, float z) : x(x), y(y), z(z) {};
 
     uint8_t* as_bytes() { return (uint8_t*)this; }
 
@@ -21,10 +21,12 @@ public:
     float z = 0.0f;
 };
 
+#define LOG_VECTOR(v) LOG_TRACE("[%f, %f, %f]", v.x, v.y, v.z)
+
 class Quaternion {
 public:
     Quaternion() = default;
-    Quaternion(float x, float y, float z, float w) : x(x), y(y), z(z), w(w){};
+    Quaternion(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {};
 
     uint8_t* as_bytes() { return (uint8_t*)this; }
 
