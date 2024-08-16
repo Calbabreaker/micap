@@ -40,15 +40,11 @@
         <T.PerspectiveCamera makeDefault position={[10, 10, 10]}>
             <OrbitControls />
         </T.PerspectiveCamera>
-        <T.Mesh
-            quaternion={data.orientation}
-            position={positionLooped}
-            scale={[1.5, 1.5, 1.5]}
-        >
+        <T.Mesh quaternion={data.orientation} scale={[1.5, 1.5, 1.5]}>
             <T.AxesHelper args={[5]} />
             <T.BoxGeometry />
             <T.MeshLambertMaterial color={0xffffff} />
-            <T.ArrowHelper bind:ref={arrowRef} />
         </T.Mesh>
+        <T.ArrowHelper bind:ref={arrowRef} />
     </PreviewCanvas>
 </div>

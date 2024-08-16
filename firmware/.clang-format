@@ -7,8 +7,9 @@ AllowShortIfStatementsOnASingleLine: Never
 AllowShortLambdasOnASingleLine: All
 AllowShortLoopsOnASingleLine: false
 AlwaysBreakAfterReturnType: None
+AlwaysBreakTemplateDeclarations: true
 ColumnLimit: 100
+IndentPPDirectives: BeforeHash
 IndentWidth: 4
 NamespaceIndentation: All
 PointerAlignment: Left
-IndentPPDirectives: BeforeHash

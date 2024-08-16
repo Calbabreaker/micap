@@ -7,6 +7,7 @@ constexpr size_t MAX_PASSWORD_LENGTH = 64;
 constexpr size_t MAX_SSID_LENGTH = 32;
 
 struct WifiEntry {
+    // Note these strings will not be null terminated when at max length
     char ssid[MAX_SSID_LENGTH];
     char password[MAX_PASSWORD_LENGTH];
 };

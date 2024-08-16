@@ -47,6 +47,7 @@ impl UdpDevice {
         let name = format!("UDP {}/{}", self.address, local_index);
         let config = TrackerConfig::new(name);
         main.add_tracker(id.clone(), Tracker::new(config));
+        main.save_config().ok();
         self.tracker_ids[local_index as usize] = id;
     }
 
@@ -60,12 +61,18 @@ impl UdpDevice {
         self.tracker_ids.iter().filter(|id| !id.is_empty())
     }
 
-    pub fn latest_packet_number(&mut self, packet_number: u32) -> bool {
-        if packet_number <= self.last_packet_number {
-            return false;
+    pub fn is_latest_packet_number(&mut self, packet_number: u32) -> bool {
+        // Pass through packet with 0 packet number (eg. handshakes)
+        if packet_number == 0 {
+            return true;
         }
-        self.last_packet_number = packet_number;
-        true
+
+        if packet_number <= self.last_packet_number {
+            false
+        } else {
+            self.last_packet_number = packet_number;
+            true
+        }
     }
 
     pub fn set_timed_out(&mut self, main: &mut MainServer, timed_out: bool) {

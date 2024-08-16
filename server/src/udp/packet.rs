@@ -24,21 +24,15 @@ impl<'a, R: Read> UdpPacket<'a, R> {
         device: &mut anyhow::Result<&mut UdpDevice>,
     ) -> anyhow::Result<Self> {
         let packet_type = bytes.read_u8()?;
+        let packet_number = bytes.read_u32::<LittleEndian>()?;
 
         if let Ok(device) = device {
-            match packet_type {
-                // These packets don't send a packet number so they will never be discarded
-                PACKET_HANDSHAKE | PACKET_PING_PONG => (),
-                _ => {
-                    // Discard the packet if not the latest
-                    let packet_number = bytes.read_u32::<LittleEndian>()?;
-                    if !device.latest_packet_number(packet_number) {
-                        anyhow::bail!("Out of order #{packet_number}");
-                    }
-                }
-            };
-
             device.last_packet_received_time = Instant::now();
+
+            // Discard the packet if not the latest
+            if !device.is_latest_packet_number(packet_number) {
+                anyhow::bail!("Out of order #{packet_number}");
+            }
         }
 
         Ok(match packet_type {
@@ -145,19 +139,17 @@ impl<'a, R: Read> UdpPacketTrackerData<'a, R> {
             Err(std::io::ErrorKind::InvalidData)?;
         }
 
+        let mut quat = [0_f32; 4];
+        self.bytes.read_f32_into::<LittleEndian>(&mut quat)?;
+
+        let mut vec = [0_f32; 3];
+        self.bytes.read_f32_into::<LittleEndian>(&mut vec)?;
+
         Ok(UdpTrackerData {
             tracker_index,
-            orientation: glam::Quat::from_xyzw(
-                self.bytes.read_f32::<LittleEndian>()?,
-                self.bytes.read_f32::<LittleEndian>()?,
-                self.bytes.read_f32::<LittleEndian>()?,
-                self.bytes.read_f32::<LittleEndian>()?,
-            ),
-            accleration: glam::Vec3A::new(
-                self.bytes.read_f32::<LittleEndian>()?,
-                self.bytes.read_f32::<LittleEndian>()?,
-                self.bytes.read_f32::<LittleEndian>()?,
-            ),
+            // Swap y and z to make y up
+            orientation: glam::Quat::from_xyzw(quat[0], quat[2], quat[1], quat[3]),
+            accleration: glam::Vec3A::new(vec[0], vec[2], vec[1]),
         })
     }
 }

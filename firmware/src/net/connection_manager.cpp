@@ -35,7 +35,8 @@ void ConnectionManager::update() {
             update_tracker_statuses();
         }
 
-        // If we haven't got a packet from the server for 5000ms, we can assume we got disconnected
+        // If we haven't got a packet from the server for 5000ms, we can assume we
+        // got disconnected
         if (millis() > m_last_packet_received_time + 5000) {
             LOG_WARN("Timed out and disconnected from server");
             m_connected = false;
@@ -57,12 +58,12 @@ void ConnectionManager::receive_packets() {
 
     switch (m_buffer[0]) {
     case PACKET_HANDSHAKE: {
-        // MCSVR indicates micap server response
-        if (strcmp((const char*)m_buffer + 1, "MCSVR") != 0) {
-            break;
-        }
-
         if (!m_connected) {
+            // MCSVR indicates micap server response
+            if (strcmp((const char*)m_buffer + 1, "MCSVR") != 0) {
+                break;
+            }
+
             LOG_INFO("Successfully handshaked with %s", m_udp.remoteIP().toString().c_str());
             m_connected = true;
             m_server_ip = m_udp.remoteIP();
@@ -120,9 +121,10 @@ void ConnectionManager::send_handshake() {
     m_udp.write(PACKET_HANDSHAKE);
 #endif
 
-    write_str("MCDEV"); // mark as micap handshake
+    write_value<uint32_t>(0); // Write packet number as 0
+    write_str("MCDEV");       // mark as micap handshake
 
-    // Send mac adresss as unique id
+    // Send mac adresss for unique id
     uint8_t* mac = WiFi.macAddress(m_buffer);
     m_udp.write(mac, 6);
     end_packet();
@@ -133,13 +135,14 @@ void ConnectionManager::send_handshake() {
 void ConnectionManager::send_pong(uint8_t id) {
     g_internal_led.blink(20);
     begin_packet(PACKET_PING_PONG);
+    write_value<uint32_t>(0);
     m_udp.write(id);
     end_packet();
 }
 void ConnectionManager::send_battery_level(float level) {
     begin_packet(PACKET_BATTERY_LEVEL);
     write_packet_number();
-    m_udp.write((uint8_t*)&level, sizeof(float));
+    write_value<float>(level);
     end_packet();
 }
 
@@ -157,7 +160,8 @@ void ConnectionManager::send_tracker_data() {
         }
     }
 
-    // 0xff where the tracker index would usually go signifies the end of the packet
+    // 0xff where the tracker index would usually go signifies the end of the
+    // packet
     m_udp.write(0xff);
     end_packet();
 }

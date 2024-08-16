@@ -37,27 +37,38 @@ async fn task(id: u8) -> anyhow::Result<()> {
     let socket = tokio::net::UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).await?;
     socket.connect((Ipv4Addr::LOCALHOST, UDP_PORT)).await?;
 
-    #[rustfmt::skip]
-    socket.send(&[PACKET_HANDSHAKE, b'M', b'C', b'D', b'E', b'V', id, 0xff, 0xff, 0xff, 0xff, 0xff]).await?;
+    let mut buffer = Vec::new();
+    buffer.push(PACKET_HANDSHAKE);
+    buffer.extend(0_u32.to_le_bytes());
+    buffer.extend(b"MCDEV");
+    buffer.extend(&[id, 0, 0, 0, 0, 0]);
+    socket.send(&buffer).await?;
+    buffer.clear();
     tokio::time::sleep(Duration::from_secs(1)).await;
 
-    #[rustfmt::skip]
-    socket.send(&[PACKET_TRACKER_STATUS, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00]).await?;
+    buffer.push(PACKET_TRACKER_STATUS);
+    buffer.extend(1_u32.to_le_bytes());
+    buffer.extend(&[0, 0]);
+    socket.send(&buffer).await?;
+    buffer.clear();
     tokio::time::sleep(Duration::from_secs(1)).await;
 
     let mut count = 2_u32;
-    let mut buffer = Vec::new();
     loop {
         buffer.push(PACKET_TRACKER_DATA);
         buffer.extend(count.to_le_bytes());
         buffer.push(0x00);
 
-        let quat = glam::Quat::from_axis_angle(glam::Vec3::Y, f32::sin(count as f32 / 100.));
+        let quat = glam::Quat::from_axis_angle(
+            glam::Vec3::new(1., 0., 1.).normalize(),
+            f32::sin(count as f32 / 100.),
+        );
         buffer.extend(quat.to_array().iter().flat_map(|x| x.to_le_bytes()));
 
         let vec = glam::Vec3::new(0., 0., -f32::sin(count as f32 / 10.) * 2.);
         buffer.extend(vec.to_array().iter().flat_map(|x| x.to_le_bytes()));
 
+        buffer.push(0xff);
         socket.send(&buffer).await?;
         count += 1;
         buffer.clear();

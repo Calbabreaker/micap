@@ -6,7 +6,6 @@ use std::{
 };
 
 use anyhow::Context;
-use glam::Vec3Swizzles;
 
 use crate::{
     tracker::*, udp::server::UdpServer, vmc::connector::VmcConnector, websocket::WebsocketServer,
@@ -126,7 +125,6 @@ impl MainServer {
         orientation: glam::Quat,
     ) {
         if let Some(tracker) = self.trackers.get_mut(id) {
-            let acceleration = acceleration.xzy();
             tracker.data.orientation = orientation;
             tracker.data.acceleration = acceleration;
 

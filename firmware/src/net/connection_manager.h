@@ -7,8 +7,8 @@
 #include "net/wifi_manager.h"
 #include "trackers/tracker.h"
 
-// A ping packet has two purposes, to ensure the device won't be timed out on the server,
-// and for caculating latency between server and device
+// A ping packet has two purposes, to ensure the device won't be timed out on
+// the server, and for caculating latency between server and device
 constexpr uint8_t PACKET_PING_PONG = 0x00;
 
 // Packet for establishing a connection between the server and the device
@@ -41,6 +41,11 @@ private:
     void write_packet_number();
     void write_str(const char* str);
     void end_packet();
+
+    template <typename T>
+    void write_value(T value) {
+        m_udp.write((uint8_t*)&value, sizeof(T));
+    }
 
     void receive_packets();
     void update_tracker_statuses();
