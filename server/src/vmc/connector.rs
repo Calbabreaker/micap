@@ -39,7 +39,7 @@ impl VmcConnector {
                     .into_osc_message(),
                 )
             }))
-            .chain([VmcStatePacket { loaded: false }.into_osc_message()])
+            .chain([VmcStatePacket { loaded: true }.into_osc_message()])
             .map(rosc::OscPacket::Message)
             .collect();
         self.send_osc_bundle(osc_messages).await.ok();

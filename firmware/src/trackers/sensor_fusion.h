@@ -1,14 +1,15 @@
 #pragma once
 
-#include <vqf.h>
+#include <Fusion/Fusion.h>
 
-#include "math.h"
+#include "maths.h"
 
 class SensorFusion {
 public:
-    SensorFusion(float gyro_hz, float accel_hz) : m_vqf(1. / gyro_hz, 1. / accel_hz) {}
+    // Gyro hz muse be greater than accel hz
+    SensorFusion(float gyro_hz, float gyro_range);
 
-    void update_gyro(float gyro_xyz[3]);
+    void update_gyro(float gyro_xyz[3], float deltatime);
 
     // Updates with the proper acceleration from the accelerometer
     void update_accel(float accel_xyz[3]);
@@ -18,8 +19,8 @@ public:
     Quaternion get_orientation();
 
 private:
-    VQF m_vqf;
-
-    Vector3 m_proper_accel;
+    FusionVector m_proper_accel = {.array = {0, 0, 0}};
     Quaternion m_quat;
+    FusionOffset offset;
+    FusionAhrs m_ahrs;
 };

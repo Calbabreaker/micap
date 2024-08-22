@@ -1,6 +1,6 @@
 #pragma once
 
-#include "math.h"
+#include "maths.h"
 
 enum class TrackerKind : uint8_t {
     BMI160, // only bmi160 supported for now

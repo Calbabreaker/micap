@@ -13,8 +13,6 @@ bool test_i2c_connection(uint8_t address) {
     return Wire.endTransmission() == 0;
 }
 
-template <typename TrackerClass> void register_tracker() {}
-
 void TrackerManager::register_tracker(Tracker* tracker, bool required) {
     uint8_t index = tracker->get_index();
     if (index >= MAX_TRACKER_COUNT) {

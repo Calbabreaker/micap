@@ -90,10 +90,6 @@ impl MainServer {
         modules.udp_server.update(self).await?;
         modules.websocket_server.update(self).await?;
 
-        // for tracker in &mut self.trackers {
-        //     // tracker.tick();
-        // }
-
         modules.vmc_connector.update(self).await?;
         self.updates.clear();
 

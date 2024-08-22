@@ -72,6 +72,6 @@ async fn task(id: u8) -> anyhow::Result<()> {
         socket.send(&buffer).await?;
         count += 1;
         buffer.clear();
-        tokio::time::sleep(Duration::from_millis(6)).await;
+        tokio::time::sleep(Duration::from_millis(16)).await;
     }
 }

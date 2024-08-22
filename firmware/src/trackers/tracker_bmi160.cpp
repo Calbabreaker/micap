@@ -1,7 +1,7 @@
 #include "tracker_bmi160.h"
 #include "globals.h"
 #include "log.h"
-#include "math.h"
+#include "maths.h"
 #include "trackers/tracker.h"
 
 #include <Wire.h>
@@ -160,7 +160,7 @@ bool TrackerBMI160::read_fifo() {
         return false;
     }
 
-    if (fifo_bytes < BMI160_FIFO_BUFFER_SIZE) {
+    if (fifo_bytes == 0) {
         return false;
     }
 
@@ -205,7 +205,7 @@ bool TrackerBMI160::read_fifo() {
     return true;
 }
 
-// Takes out int16_ts into out based on index from the fifo buffer
+// Ties to takes out int16_ts into out based on index from the fifo buffer
 // Returns whether or not the size will be contained within the fifo buffer
 bool TrackerBMI160::fifo_unpack_i16(size_t* index, size_t count, int16_t* out) {
     size_t start_index = *index;
@@ -227,7 +227,7 @@ void TrackerBMI160::handle_raw_accel(int16_t raw_accel[3]) {
         accel_xyz[i] = ((float)raw_accel[i] - m_accel_offsets[i]) * BMI160_ACCEL_CONVERSION;
     }
 
-    accel_xyz[2] += EARTH_GRAVITY;
+    accel_xyz[2] += 1;
 
     m_sensor_fusion.update_accel(accel_xyz);
 }
@@ -238,7 +238,7 @@ void TrackerBMI160::handle_raw_gyro(int16_t raw_gyro[3]) {
         gyro_xyz[i] = ((float)raw_gyro[i] - m_gyro_offsets[i]) * BMI160_GYRO_CONVERSION;
     }
 
-    m_sensor_fusion.update_gyro(gyro_xyz);
+    m_sensor_fusion.update_gyro(gyro_xyz, 1.f / BMI160_GYRO_ODR_HZ);
 }
 
 float TrackerBMI160::get_temperature() {

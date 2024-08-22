@@ -1,39 +1,39 @@
 #pragma once
 
 #include <bmi160_defs.h>
-#include <vqf.h>
 
 #include "globals.h"
 #include "tracker.h"
 #include "trackers/sensor_fusion.h"
 
-constexpr uint32_t BMI160_CALIBRATION_SAMPLES = 150;
+constexpr uint32_t BMI160_CALIBRATION_SAMPLES = 70;
 constexpr size_t BMI160_FIFO_BUFFER_SIZE = 128;
 
-// Change both HZ and FLAG when changing config
-constexpr uint8_t BMI160_GYRO_ODR_FLAG = BMI160_GYRO_ODR_200HZ;
-constexpr float BMI160_GYRO_ODR_HZ = 200.;
+// Change both HZ/RANGE and FLAG when changing config
+constexpr uint8_t BMI160_GYRO_ODR_FLAG = BMI160_GYRO_ODR_400HZ;
+constexpr float BMI160_GYRO_ODR_HZ = 400.;
 constexpr uint8_t BMI160_ACCEL_ODR_FLAG = BMI160_ACCEL_ODR_100HZ;
 constexpr float BMI160_ACCEL_ODR_HZ = 100.;
 
-constexpr uint8_t BMI160_GYRO_RANGE_FLAG = BMI160_GYRO_RANGE_500_DPS;
-constexpr float BMI160_GYRO_SENSITIVITY = 16.4f * (1 << BMI160_GYRO_RANGE_FLAG); // 16.4 * 2^index
+constexpr uint8_t BMI160_GYRO_RANGE_FLAG = BMI160_GYRO_RANGE_1000_DPS;
+constexpr float BMI160_GYRO_RANGE = 1000.f;
 constexpr uint8_t BMI160_ACCEL_RANGE_FLAG = BMI160_ACCEL_RANGE_4G;
 constexpr float BMI160_ACCEL_RANGE = 4.;
 
 // Converts raw gyro output to radians based on sensitivity from datasheet
-// LSB/°/s -> radians/s
-const float BMI160_GYRO_CONVERSION = ((PI / 180.f) / BMI160_GYRO_SENSITIVITY);
+// LSB/°/s -> degrees/s
+const float BMI160_GYRO_CONVERSION =
+    1.f / (16.4f * (1 << BMI160_GYRO_RANGE_FLAG)); // 16.4 * 2^index
 
 // Makes accel output scale from -4g to +4g
-// LSB/g -> m/s^2
-const float BMI160_ACCEL_CONVERSION = EARTH_GRAVITY / ((float)0x8000 / BMI160_ACCEL_RANGE);
+// LSB/g -> g/s
+const float BMI160_ACCEL_CONVERSION = 1.f / ((float)0x8000 / BMI160_ACCEL_RANGE);
 
 class TrackerBMI160 : public Tracker {
 public:
     TrackerBMI160(uint8_t index, uint8_t address)
         : Tracker(TrackerKind::BMI160, index, address),
-          m_sensor_fusion(BMI160_GYRO_ODR_HZ, BMI160_ACCEL_ODR_HZ) {}
+          m_sensor_fusion(BMI160_GYRO_ODR_HZ, BMI160_GYRO_RANGE) {}
 
     void setup() override final;
     void update() override final;
