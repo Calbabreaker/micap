@@ -58,8 +58,8 @@ pub struct MainServer {
 impl MainServer {
     pub fn load_config(&mut self) -> anyhow::Result<()> {
         let path = get_config_dir()?.join("config.json");
-        log::trace!("Loading from {path:?}");
-        let text = std::fs::read_to_string(path).context("Failed to load config")?;
+        log::info!("Loading from {path:?}");
+        let text = std::fs::read_to_string(path)?;
         let config: Config = serde_json::from_str(&text)?;
 
         for (id, config) in config.trackers {
@@ -79,9 +79,9 @@ impl MainServer {
         let config = Config { trackers };
 
         let path = get_config_dir()?.join("config.json");
-        log::trace!("Saving to {path:?}");
+        log::info!("Saving to {path:?}");
         let text = serde_json::to_string_pretty(&config)?;
-        std::fs::write(path, text).context("Failed to save config")?;
+        std::fs::write(path, text)?;
 
         Ok(())
     }

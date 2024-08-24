@@ -47,7 +47,9 @@ impl UdpDevice {
         let name = format!("UDP {}/{}", self.address, local_index);
         let config = TrackerConfig::new(name);
         main.add_tracker(id.clone(), Tracker::new(config));
-        main.save_config().ok();
+        if let Err(err) = main.save_config() {
+            log::error!("Failed to save tracker: {err:?}");
+        }
         self.tracker_ids[local_index as usize] = id;
     }
 
