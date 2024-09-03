@@ -9,7 +9,7 @@
 // #define TARGET_LOOP_DELTA_MS 50 // 20hz
 
 // Uncomment to define hardcoded ip
-#define SERVER_IP IPAddress(10, 136, 41, 71)
+// #define SERVER_IP IPAddress(10, 136, 41, 71)
 
 #define MAX_TRACKER_COUNT 2
 
@@ -17,6 +17,7 @@
 // Each wifi entry takes 96 bytes
 #define MAX_WIFI_ENTRIES 4
 
+// Uncomment to define a custom status led pin
 // #define CUSTOM_LED_PIN D8
 
 #define BATTERY_MONITOR_PIN A0
@@ -24,3 +25,7 @@
 
 #define CONNECTION_TIMEOUT_MS 4000
 #define CONNECTION_RESEND_INTERVAL_MS 2000
+
+// LOG_* is only for debugging purposes and will be removed in production builds
+#define ENABLE_LOG 1
+#define ENABLE_FPS_LOG 0

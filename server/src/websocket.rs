@@ -5,7 +5,6 @@ use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 
 use crate::{
     main_server::{MainServer, UpdateEvent},
-    serial::write_serial,
     tracker::{TrackerConfig, TrackerData, TrackerInfo},
 };
 
@@ -25,6 +24,9 @@ pub enum WebsocketServerMessage {
     },
     Error {
         error: String,
+    },
+    Info {
+        info: String,
     },
 }
 // Receieved from client
@@ -70,9 +72,8 @@ impl WebsocketServer {
                 Some(Some(Ok(message))) => {
                     if let Ok(text) = message.to_text() {
                         if let Err(error) = handle_websocket_message(text, main) {
-                            log::error!("Failed to handle websocket message: {error}");
-                            main.updates
-                                .push(UpdateEvent::TrackerRemove(error.to_string()));
+                            log::error!("Failed to handle websocket message: {error:?}");
+                            main.updates.push(UpdateEvent::NewError(error.to_string()));
                         }
                     }
 
@@ -104,6 +105,7 @@ impl WebsocketServer {
                 UpdateEvent::NewError(error) => WebsocketServerMessage::Error {
                     error: error.clone(),
                 },
+                UpdateEvent::NewInfo(info) => WebsocketServerMessage::Info { info: info.clone() },
             }))
             .chain(main.trackers.iter().map(|(id, tracker)| {
                 // Data from trackers
@@ -158,10 +160,11 @@ fn handle_websocket_message(message: &str, main: &mut MainServer) -> anyhow::Res
                 anyhow::bail!("SSID or password too long");
             }
 
-            write_serial(format!("Wifi\0{ssid}\0{password}\n").as_bytes())?;
+            let data = format!("Wifi\0{ssid}\0{password}\n");
+            main.serial_manager.write(data.as_bytes())?;
         }
         WebsocketClientMessage::FactoryReset => {
-            write_serial(b"FactoryReset\n")?;
+            main.serial_manager.write(b"FactoryReset\n")?;
         }
         WebsocketClientMessage::RemoveTracker { id } => {
             main.remove_tracker(&id);

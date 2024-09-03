@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { sendWebsocket } from "$lib/websocket";
+    import { sendWebsocket, info } from "$lib/websocket";
 
     let ssid = "";
     let password = "";
@@ -30,4 +30,5 @@
     <button type="submit" class="btn btn-primary mr-2 inline-block">
         Set
     </button>
+    <p>{$info}</p>
 </form>

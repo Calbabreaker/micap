@@ -1,7 +1,6 @@
 #include "tracker_bmi160.h"
 #include "globals.h"
 #include "log.h"
-#include "maths.h"
 #include "trackers/tracker.h"
 
 #include <Wire.h>

@@ -31,12 +31,19 @@ pub async fn start_server() -> anyhow::Result<()> {
         log::warn!("Failed to load config: {error:?}");
     }
 
+    let mut last_serial_scan_time = Instant::now();
+
     loop {
-        let tick_start_time = Instant::now();
+        if last_serial_scan_time.elapsed() > Duration::from_secs(5) {
+            main.serial_manager.scan_ports().ok();
+            last_serial_scan_time = Instant::now();
+        }
+
+        let update_start_time = Instant::now();
 
         main.update(&mut modules).await?;
 
-        let post_delta = tick_start_time.elapsed();
+        let post_delta = update_start_time.elapsed();
         if let Some(sleep_duration) = TARGET_LOOP_DELTA.checked_sub(post_delta) {
             tokio::time::sleep(sleep_duration).await;
         } else {

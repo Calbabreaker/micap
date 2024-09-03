@@ -32,12 +32,13 @@ bool WifiManager::monitor() {
         m_connected = false;
 
         // First try the auto reconnect
-        m_last_attempt_time = millis();
+        m_attempt_timer.reset();
     }
 
     if (m_test_networks_populated) {
-        if (millis() > m_last_attempt_time + WIFI_CONNECT_TIMEOUT_MS) {
+        if (m_attempt_timer.elapsed(WIFI_CONNECT_TIMEOUT_MS)) {
             LOG_WARN("Failed to connect to network, trying next");
+            Serial.println("WifiConnectTimeout");
             try_connect_next_network();
         }
     } else {
@@ -48,13 +49,14 @@ bool WifiManager::monitor() {
 }
 
 void WifiManager::use_credentials(const char* ssid, const char* password) {
-    if (m_connected && WiFi.SSID() == ssid) {
+    if (m_connected && WiFi.SSID().equals(ssid)) {
         return;
     }
 
     LOG_INFO("Trying to connect to network %s", ssid);
+    Serial.println("WifiConnecting");
     WiFi.begin(ssid, password);
-    m_last_attempt_time = millis();
+    m_attempt_timer.reset();
     m_has_manually_set_creds = true;
 }
 
@@ -75,7 +77,7 @@ void WifiManager::try_connect_next_network() {
     const char* password = g_config_manager.wifi_password_get(ssid);
     WiFi.begin(ssid, password);
     m_test_networks.pop_back();
-    m_last_attempt_time = millis();
+    m_attempt_timer.reset();
 }
 
 void WifiManager::try_populate_test_networks() {
@@ -114,7 +116,7 @@ void WifiManager::try_populate_test_networks() {
     if (m_test_networks.empty()) {
         LOG_WARN("No WiFi networks found that was saved in flash memory");
         // This makes it so it will rescan after WIFI_CONNECT_TIMEOUT_MS
-        m_last_attempt_time = millis();
+        m_attempt_timer.reset();
     } else {
         try_connect_next_network();
     }
@@ -150,6 +152,7 @@ void WifiManager::on_connect() {
     LOG_INFO(
         "Connected to WiFi %s with ip %s", WiFi.SSID().c_str(), WiFi.localIP().toString().c_str()
     );
+    Serial.println("WifiConnectOk");
     m_connected = true;
 
     if (m_has_manually_set_creds) {

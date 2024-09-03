@@ -1,5 +1,6 @@
 #pragma once
 
+#include "log.h"
 #include <ESP8266WiFi.h>
 #include <vector>
 
@@ -26,6 +27,6 @@ private:
     bool m_connected = false;
     bool m_has_manually_set_creds = false;
     bool m_test_networks_populated = false;
-    uint64_t m_last_attempt_time = 0;
+    Timer m_attempt_timer;
     std::vector<const bss_info*> m_test_networks;
 };

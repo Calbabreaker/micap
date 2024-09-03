@@ -60,6 +60,6 @@ private:
     std::array<TrackerStatus, MAX_TRACKER_COUNT> m_tracker_statuses_on_server;
 
     uint32_t m_next_packet_number = 0;
-    uint64_t m_last_important_send_time = 0;
-    uint64_t m_last_packet_received_time = 0;
+    Timer m_packet_received_timer;
+    Timer m_important_send_timer;
 };

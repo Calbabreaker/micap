@@ -1,5 +1,6 @@
 #pragma once
 
+#include "log.h"
 #include <cstdint>
 
 class BatteryManager {
@@ -10,5 +11,5 @@ public:
 
 private:
     uint8_t m_pin;
-    uint64_t m_last_check_level_time = 0;
+    Timer m_check_level_timer;
 };

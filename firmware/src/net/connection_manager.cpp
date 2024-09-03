@@ -15,6 +15,7 @@ void ConnectionManager::update() {
     bool just_connected = m_wifi.monitor();
 
     if (just_connected) {
+        Serial.println("Connecting");
         m_udp.begin(UDP_PORT);
     }
 
@@ -25,19 +26,21 @@ void ConnectionManager::update() {
 
     if (!m_connected) {
         // Send handshake every interval
-        if (millis() > m_last_important_send_time + CONNECTION_RESEND_INTERVAL_MS) {
+        if (m_important_send_timer.elapsed(CONNECTION_RESEND_INTERVAL_MS)) {
             g_internal_led.blink(25);
             send_handshake();
+            m_important_send_timer.reset();
         }
     } else {
         // Try and send tracker statuses every interval
-        if (millis() > m_last_important_send_time + CONNECTION_RESEND_INTERVAL_MS) {
+        if (m_important_send_timer.elapsed(CONNECTION_RESEND_INTERVAL_MS)) {
             update_tracker_statuses();
+            m_important_send_timer.reset();
         }
 
-        // If we haven't got a packet from the server for 5000ms, we can assume we
+        // If we haven't got a packet from the server for some time, we can assume we
         // got disconnected
-        if (millis() > m_last_packet_received_time + 5000) {
+        if (m_packet_received_timer.elapsed(CONNECTION_TIMEOUT_MS)) {
             LOG_WARN("Timed out and disconnected from server");
             m_connected = false;
         }
@@ -54,7 +57,7 @@ void ConnectionManager::receive_packets() {
 
     int len = m_udp.read(m_buffer, sizeof(m_buffer));
     LOG_TRACE("Received %d bytes from %s", len, m_udp.remoteIP().toString().c_str());
-    m_last_packet_received_time = millis();
+    m_packet_received_timer.reset();
 
     switch (m_buffer[0]) {
     case PACKET_HANDSHAKE: {
@@ -65,6 +68,7 @@ void ConnectionManager::receive_packets() {
             }
 
             LOG_INFO("Successfully handshaked with %s", m_udp.remoteIP().toString().c_str());
+            Serial.println("Connected");
             m_connected = true;
             m_server_ip = m_udp.remoteIP();
             m_next_packet_number = 1; // Use 1 since handshake would use packet number 0
@@ -103,8 +107,6 @@ void ConnectionManager::update_tracker_statuses() {
             send_tracker_status(tracker);
         }
     }
-
-    m_last_important_send_time = millis();
 }
 
 void ConnectionManager::send_handshake() {
@@ -128,8 +130,6 @@ void ConnectionManager::send_handshake() {
     uint8_t* mac = WiFi.macAddress(m_buffer);
     m_udp.write(mac, 6);
     end_packet();
-
-    m_last_important_send_time = millis();
 }
 
 void ConnectionManager::send_pong(uint8_t id) {

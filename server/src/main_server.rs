@@ -8,7 +8,8 @@ use std::{
 use anyhow::Context;
 
 use crate::{
-    tracker::*, udp::server::UdpServer, vmc::connector::VmcConnector, websocket::WebsocketServer,
+    serial::SerialPortManager, tracker::*, udp::server::UdpServer, vmc::connector::VmcConnector,
+    websocket::WebsocketServer,
 };
 
 pub struct SubModules {
@@ -42,6 +43,7 @@ pub enum UpdateEvent {
     TrackerInfoUpdate(String),
     TrackerRemove(String),
     NewError(String),
+    NewInfo(String),
 }
 
 #[derive(Default)]
@@ -53,6 +55,7 @@ pub struct MainServer {
     /// Set of address that should not be allowed to connect
     /// This is to allow for servers to ignore ignored trackers that are trying to connect
     pub address_blacklist: HashSet<SocketAddr>,
+    pub serial_manager: SerialPortManager,
 }
 
 impl MainServer {
@@ -87,6 +90,10 @@ impl MainServer {
     }
 
     pub async fn update(&mut self, modules: &mut SubModules) -> anyhow::Result<()> {
+        if let Some(status) = self.serial_manager.read_status() {
+            self.updates.push(UpdateEvent::NewInfo(status.to_string()))
+        }
+
         modules.udp_server.update(self).await?;
         modules.websocket_server.update(self).await?;
 

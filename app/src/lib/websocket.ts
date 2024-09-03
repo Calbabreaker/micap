@@ -54,6 +54,7 @@ export interface Tracker {
 
 export const websocket = writable<WebSocket | undefined>();
 export const trackers = writable<Map<string, Tracker>>(new Map());
+export const info = writable("");
 
 export function sendWebsocket(object: Record<string, any>) {
     let ws = get(websocket);
@@ -101,6 +102,9 @@ function handleMessage(message: Record<string, any>) {
     switch (message.type) {
         case "Error":
             alert(message.error);
+            break;
+        case "Info":
+            info.set(message.info);
             break;
         case "TrackerInfo":
             trackers.update((trackers) => {
