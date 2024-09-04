@@ -22,7 +22,7 @@ public:
         return now > m_last_elapsed_time + activation_interval;
     }
 
-    inline bool reset() {
+    inline void reset() {
         m_last_elapsed_time = millis(); //
     }
 

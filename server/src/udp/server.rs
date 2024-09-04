@@ -64,7 +64,7 @@ impl UdpServer {
                     // Only pass through the amount received
                     let bytes = &buffer[0..amount];
                     if let Err(err) = self.handle_packet(bytes, peer_addr, main).await {
-                        log::warn!("Received invalid packet 0x{:02x}: {err:?}", bytes[0]);
+                        log::trace!("Received invalid packet 0x{:02x}: {err:?}", bytes[0]);
                     }
                 }
                 // No more packets

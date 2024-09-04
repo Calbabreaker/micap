@@ -38,7 +38,7 @@ bool WifiManager::monitor() {
     if (m_test_networks_populated) {
         if (m_attempt_timer.elapsed(WIFI_CONNECT_TIMEOUT_MS)) {
             LOG_WARN("Failed to connect to network, trying next");
-            Serial.println("WifiConnectTimeout");
+            Serial.print("WifiConnectTimeout\n");
             try_connect_next_network();
         }
     } else {
@@ -54,7 +54,7 @@ void WifiManager::use_credentials(const char* ssid, const char* password) {
     }
 
     LOG_INFO("Trying to connect to network %s", ssid);
-    Serial.println("WifiConnecting");
+    Serial.print("WifiConnecting\n");
     WiFi.begin(ssid, password);
     m_attempt_timer.reset();
     m_has_manually_set_creds = true;
@@ -152,10 +152,10 @@ void WifiManager::on_connect() {
     LOG_INFO(
         "Connected to WiFi %s with ip %s", WiFi.SSID().c_str(), WiFi.localIP().toString().c_str()
     );
-    Serial.println("WifiConnectOk");
     m_connected = true;
 
     if (m_has_manually_set_creds) {
+        Serial.print("WifiConnectOk\n");
         struct station_config config;
         wifi_station_get_config(&config);
         g_config_manager.wifi_entry_save((const char*)config.ssid, (const char*)config.password);

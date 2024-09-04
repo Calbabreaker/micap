@@ -6,7 +6,7 @@
 #include "tracker.h"
 #include "trackers/sensor_fusion.h"
 
-constexpr uint32_t BMI160_CALIBRATION_SAMPLES = 70;
+constexpr size_t BMI160_CALIBRATION_SAMPLES = 70;
 constexpr size_t BMI160_FIFO_BUFFER_SIZE = 128;
 
 // Change both HZ/RANGE and FLAG when changing config

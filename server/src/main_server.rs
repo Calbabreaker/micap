@@ -66,7 +66,8 @@ impl MainServer {
         let config: Config = serde_json::from_str(&text)?;
 
         for (id, config) in config.trackers {
-            self.add_tracker(id, Tracker::new(config));
+            self.trackers.insert(id.clone(), Tracker::new(config));
+            self.updates.push(UpdateEvent::TrackerInfoUpdate(id));
         }
 
         Ok(())
@@ -91,7 +92,7 @@ impl MainServer {
 
     pub async fn update(&mut self, modules: &mut SubModules) -> anyhow::Result<()> {
         if let Some(status) = self.serial_manager.read_status() {
-            self.updates.push(UpdateEvent::NewInfo(status.to_string()))
+            self.updates.push(UpdateEvent::NewInfo(status.to_string()));
         }
 
         modules.udp_server.update(self).await?;
@@ -104,8 +105,13 @@ impl MainServer {
     }
 
     pub fn add_tracker(&mut self, id: String, tracker: Tracker) {
-        self.trackers.insert(id.clone(), tracker);
-        self.updates.push(UpdateEvent::TrackerInfoUpdate(id));
+        if !self.trackers.contains_key(&id) {
+            self.trackers.insert(id.clone(), tracker);
+            self.updates.push(UpdateEvent::TrackerInfoUpdate(id));
+            if let Err(err) = self.save_config() {
+                log::error!("Failed to save tracker: {err:?}");
+            }
+        }
     }
 
     pub fn tracker_info_update(&mut self, id: &String) -> Option<&mut Tracker> {

@@ -15,7 +15,7 @@ void ConnectionManager::update() {
     bool just_connected = m_wifi.monitor();
 
     if (just_connected) {
-        Serial.println("Connecting");
+        Serial.print("Connecting\n");
         m_udp.begin(UDP_PORT);
     }
 
@@ -68,7 +68,7 @@ void ConnectionManager::receive_packets() {
             }
 
             LOG_INFO("Successfully handshaked with %s", m_udp.remoteIP().toString().c_str());
-            Serial.println("Connected");
+            Serial.print("Connected\n");
             m_connected = true;
             m_server_ip = m_udp.remoteIP();
             m_next_packet_number = 1; // Use 1 since handshake would use packet number 0

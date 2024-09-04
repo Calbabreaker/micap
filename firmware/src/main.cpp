@@ -16,7 +16,7 @@ uint32_t iterations = 0;
 uint64_t delta_sum = 0;
 
 void setup() {
-    Serial.begin(9600);
+    Serial.begin(14400);
     g_connection_manager.setup();
     g_config_manager.setup();
     g_internal_led.setup();

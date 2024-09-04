@@ -114,7 +114,7 @@ bool TrackerBMI160::calibrate() {
     int32_t gyro_sum_xyz[3] = {0, 0, 0};
     int32_t accel_sum_xyz[3] = {0, 0, 0};
 
-    for (int i = 0; i < BMI160_CALIBRATION_SAMPLES; i++) {
+    for (size_t i = 0; i < BMI160_CALIBRATION_SAMPLES; i++) {
         struct bmi160_sensor_data raw_gyro;
         struct bmi160_sensor_data raw_accel;
 
