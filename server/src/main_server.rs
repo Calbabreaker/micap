@@ -48,7 +48,6 @@ pub struct GlobalConfig {
 #[serde(tag = "type")]
 pub enum UpdateEvent {
     TrackerInfoUpdate { id: String },
-    TrackerRemove { id: String },
     Error { error: String },
     Info { info: String },
 }
@@ -127,8 +126,6 @@ impl MainServer {
     pub fn remove_tracker(&mut self, id: &String) {
         if self.trackers.remove(id).is_some() {
             self.config.trackers.remove(id);
-            self.updates
-                .push(UpdateEvent::TrackerRemove { id: id.clone() });
         }
     }
 

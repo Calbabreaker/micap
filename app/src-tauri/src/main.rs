@@ -5,12 +5,13 @@ fn main() {
     micap_server::setup_log();
     tauri::async_runtime::spawn(async {
         if let Err(error) = micap_server::start_server().await {
-            log::error!("Server error: {error:?}");
-            if std::env::var("RUST_BACKTRACE") != Ok("1".to_string()) {
-                log::error!(
-                    "Note: set environment variable RUST_BACKTRACE=1 to see the error backtrace"
-                )
-            }
+            let note = if std::env::var("RUST_BACKTRACE") != Ok("1".to_string()) {
+                "Note: set environment variable RUST_BACKTRACE=1 to see the error backtrace"
+            } else {
+                ""
+            };
+
+            log::error!("Server error: {error:?}\n{note}");
 
             std::process::exit(1);
         }

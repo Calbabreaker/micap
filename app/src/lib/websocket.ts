@@ -1,5 +1,6 @@
 import { writable } from "svelte/store";
 import { error } from "./toast";
+import { onMount } from "svelte";
 
 const WEBSOCKET_PORT = 8298;
 
@@ -57,7 +58,7 @@ export interface TrackerData {
 
 export interface Tracker {
     info: TrackerInfo;
-    data: TrackerData;
+    data?: TrackerData;
 }
 
 export const trackers = writable<{ [id: string]: Tracker }>({});
@@ -74,7 +75,7 @@ export function sendWebsocket(object: Record<string, any>) {
     }
 }
 
-function connectWebsocket() {
+export function connectWebsocket() {
     const protocol = location.protocol === "https:" ? "wss" : "ws";
     websocket = new WebSocket(`${protocol}://localhost:${WEBSOCKET_PORT}`);
 
@@ -101,12 +102,6 @@ function connectWebsocket() {
     };
 }
 
-if (typeof window !== "undefined") {
-    window.addEventListener("load", () => {
-        connectWebsocket();
-    });
-}
-
 export function setConfig(setFunc: (config: GlobalConfig) => void) {
     globalConfig.update((config) => {
         if (config) {
@@ -129,12 +124,6 @@ function handleMessage(message: Record<string, any>) {
         case "Info":
             info.set(message.info);
             break;
-        case "TrackerRemove":
-            trackers.update((trackers) => {
-                delete trackers[message.id];
-                return trackers;
-            });
-            break;
         case "InitialState":
             globalConfig.set(message.config);
             trackers.set(message.trackers);
@@ -144,6 +133,8 @@ function handleMessage(message: Record<string, any>) {
                 const tracker = trackers[message.id];
                 if (tracker) {
                     tracker.info = message.info;
+                } else {
+                    trackers[message.id] = { info: message.info };
                 }
 
                 return trackers;

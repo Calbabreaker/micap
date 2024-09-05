@@ -19,6 +19,11 @@
             type: "RemoveTracker",
             id,
         });
+
+        trackers.update((trackers) => {
+            delete trackers[id];
+            return trackers;
+        });
     }
 
     function editTrackerConfig(id: string, config: TrackerConfig) {
@@ -37,7 +42,7 @@
             onConfigEdit={(config) => editTrackerConfig(id, config)}
         />
     {/each}
-    {#if Object.keys(trackers).length == 0}
+    {#if Object.keys($trackers).length == 0}
         <span class="text-neutral-400">No trackers connected yet.</span>
     {/if}
 </div>
