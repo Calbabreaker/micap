@@ -1,4 +1,5 @@
-import { get, writable } from "svelte/store";
+import { writable } from "svelte/store";
+import { error } from "./toast";
 
 const WEBSOCKET_PORT = 8298;
 
@@ -34,9 +35,16 @@ export interface TrackerConfig {
     location?: TrackerLocation;
 }
 
+export interface GlobalConfig {
+    trackers: { [id: string]: TrackerConfig };
+    vmc: {
+        enabled: boolean;
+        marionette_port: number;
+    };
+}
+
 export interface TrackerInfo {
     status: TrackerStatus;
-    config: TrackerConfig;
     latency_ms?: number;
     battery_level: number;
 }
@@ -49,73 +57,93 @@ export interface TrackerData {
 
 export interface Tracker {
     info: TrackerInfo;
-    data?: TrackerData;
+    data: TrackerData;
 }
 
-export const websocket = writable<WebSocket | undefined>();
-export const trackers = writable<Map<string, Tracker>>(new Map());
+export const trackers = writable<{ [id: string]: Tracker }>({});
 export const info = writable("");
+export const globalConfig = writable<GlobalConfig | undefined>();
+
+let websocket: WebSocket | undefined;
 
 export function sendWebsocket(object: Record<string, any>) {
-    let ws = get(websocket);
-    if (ws) {
-        ws.send(JSON.stringify(object));
+    if (websocket && websocket.readyState == WebSocket.OPEN) {
+        websocket.send(JSON.stringify(object));
+    } else {
+        error("Websocket is not connected");
     }
 }
 
 function connectWebsocket() {
-    if (typeof window !== "undefined") {
-        const protocol = location.protocol === "https:" ? "wss" : "ws";
-        websocket.set(new WebSocket(`${protocol}://localhost:${WEBSOCKET_PORT}`));
-    }
+    const protocol = location.protocol === "https:" ? "wss" : "ws";
+    websocket = new WebSocket(`${protocol}://localhost:${WEBSOCKET_PORT}`);
+
+    websocket.onopen = () => {
+        console.log("Connected to websocket");
+    };
+
+    websocket.onclose = () => {
+        console.log("Websocket connection closed");
+        trackers.set({});
+        connectWebsocket();
+    };
+
+    websocket.onerror = () => {
+        console.log("Websocket error");
+        websocket!.close();
+    };
+
+    websocket.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        if (message) {
+            handleMessage(message);
+        }
+    };
 }
 
-websocket.subscribe((ws) => {
-    if (ws) {
-        ws.onopen = () => {
-            console.log("Connected to websocket");
-        };
-
-        ws.onclose = () => {
-            console.log("Websocket connection closed");
-            trackers.set(new Map());
-            websocket.set(undefined);
-        };
-
-        ws.onerror = () => {
-            console.log("Websocket error");
-            ws.close();
-        };
-
-        ws.onmessage = (event) => {
-            const message = JSON.parse(event.data);
-            if (message) {
-                handleMessage(message);
-            }
-        };
-    } else {
+if (typeof window !== "undefined") {
+    window.addEventListener("load", () => {
         connectWebsocket();
-    }
-});
+    });
+}
+
+export function setConfig(setFunc: (config: GlobalConfig) => void) {
+    globalConfig.update((config) => {
+        if (config) {
+            setFunc(config);
+            sendWebsocket({
+                type: "UpdateConfig",
+                config,
+            });
+        }
+
+        return config;
+    });
+}
 
 function handleMessage(message: Record<string, any>) {
     switch (message.type) {
         case "Error":
-            alert(message.error);
+            error(message.error);
             break;
         case "Info":
             info.set(message.info);
             break;
+        case "TrackerRemove":
+            trackers.update((trackers) => {
+                delete trackers[message.id];
+                return trackers;
+            });
+            break;
+        case "InitialState":
+            globalConfig.set(message.config);
+            trackers.set(message.trackers);
+            break;
         case "TrackerInfo":
             trackers.update((trackers) => {
-                const tracker = trackers.get(message.id);
-
-                if (!message.info) {
-                    trackers.delete(message.id);
-                } else if (tracker) {
+                const tracker = trackers[message.id];
+                if (tracker) {
                     tracker.info = message.info;
-                } else {
-                    trackers.set(message.id, { info: message.info });
                 }
 
                 return trackers;
@@ -124,13 +152,12 @@ function handleMessage(message: Record<string, any>) {
             break;
         case "TrackerData":
             trackers.update((trackers) => {
-                const tracker = trackers.get(message.id);
+                const tracker = trackers[message.id];
                 if (tracker) {
                     tracker.data = message.data;
                 }
                 return trackers;
             });
-
             break;
     }
 }

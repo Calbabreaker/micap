@@ -9,7 +9,7 @@ pub use websocket::WEBSOCKET_PORT;
 
 use std::time::{Duration, Instant};
 
-use crate::main_server::{MainServer, SubModules};
+use crate::main_server::{MainServer, SubModules, UpdateEvent};
 
 pub fn setup_log() {
     env_logger::builder()
@@ -41,7 +41,15 @@ pub async fn start_server() -> anyhow::Result<()> {
 
         let update_start_time = Instant::now();
 
-        main.update(&mut modules).await?;
+        let result = main.update(&mut modules).await;
+        main.updates.clear();
+
+        if let Err(err) = result {
+            log::error!("{err:?}");
+            main.updates.push(UpdateEvent::Error {
+                error: err.root_cause().to_string(),
+            });
+        }
 
         let post_delta = update_start_time.elapsed();
         if let Some(sleep_duration) = TARGET_LOOP_DELTA.checked_sub(post_delta) {

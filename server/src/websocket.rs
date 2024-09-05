@@ -1,42 +1,44 @@
+use anyhow::Context;
 use futures_util::{FutureExt, SinkExt, StreamExt};
-use std::net::{Ipv4Addr, SocketAddr};
+use std::{
+    collections::HashMap,
+    net::{Ipv4Addr, SocketAddr},
+};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 
 use crate::{
-    main_server::{MainServer, UpdateEvent},
-    tracker::{TrackerConfig, TrackerData, TrackerInfo},
+    main_server::{GlobalConfig, MainServer, UpdateEvent},
+    tracker::{Tracker, TrackerData, TrackerInfo, TrackerStatus},
 };
 
 pub const WEBSOCKET_PORT: u16 = 8298;
 
 #[derive(Clone, serde::Serialize)]
 #[serde(tag = "type")]
-pub enum WebsocketServerMessage {
+pub enum WebsocketServerMessage<'a> {
     TrackerInfo {
-        id: String,
-        // Remove tracker if info is None
-        info: Option<TrackerInfo>,
+        id: &'a String,
+        info: &'a TrackerInfo,
     },
     TrackerData {
-        id: String,
-        data: TrackerData,
+        id: &'a String,
+        data: &'a TrackerData,
     },
-    Error {
-        error: String,
-    },
-    Info {
-        info: String,
+    InitialState {
+        trackers: &'a HashMap<String, Tracker>,
+        config: &'a GlobalConfig,
     },
 }
+
 // Receieved from client
-#[derive(Clone, serde::Deserialize)]
+#[derive(serde::Deserialize)]
 #[serde(tag = "type")]
 enum WebsocketClientMessage {
     Wifi { ssid: String, password: String },
     FactoryReset,
     RemoveTracker { id: String },
-    UpdateTrackerConfig { id: String, config: TrackerConfig },
+    UpdateConfig { config: GlobalConfig },
 }
 
 pub struct WebsocketServer {
@@ -66,64 +68,38 @@ impl WebsocketServer {
             None => (),
         }
 
-        self.ws_streams.retain_mut(|ws| {
-            // Use retain_mut to remove ws_streams when they are closed (returning false removes it)
-            match ws.next().now_or_never() {
-                Some(Some(Ok(message))) => {
-                    if let Ok(text) = message.to_text() {
-                        if let Err(error) = handle_websocket_message(text, main) {
-                            log::error!("Failed to handle websocket message: {error:?}");
-                            main.updates.push(UpdateEvent::NewError(error.to_string()));
-                        }
-                    }
-
-                    true
-                }
-                Some(Some(Err(e))) => {
-                    log::error!("Websocket error: {e:?}");
-                    false
-                }
-                Some(None) => {
-                    log::info!("Websocket disconnected");
-                    false
-                }
-                None => true,
-            }
-        });
-
         // Get list of messages to send
-        let new_messages = std::iter::empty()
-            .chain(main.updates.iter().map(|update| match update {
-                UpdateEvent::TrackerInfoUpdate(id) => WebsocketServerMessage::TrackerInfo {
-                    id: id.clone(),
-                    info: Some(main.trackers[id].info.clone()),
-                },
-                UpdateEvent::TrackerRemove(id) => WebsocketServerMessage::TrackerInfo {
-                    id: id.clone(),
-                    info: None,
-                },
-                UpdateEvent::NewError(error) => WebsocketServerMessage::Error {
-                    error: error.clone(),
-                },
-                UpdateEvent::NewInfo(info) => WebsocketServerMessage::Info { info: info.clone() },
-            }))
-            .chain(main.trackers.iter().map(|(id, tracker)| {
-                // Data from trackers
-                WebsocketServerMessage::TrackerData {
-                    id: id.clone(),
-                    data: tracker.data.clone(),
+        let messages_to_send = std::iter::empty()
+            .chain(main.updates.iter().filter_map(|update| {
+                match update {
+                    UpdateEvent::TrackerInfoUpdate { id } => {
+                        // Convert to websocket server message to include the tracker info
+                        serde_json::to_string(&WebsocketServerMessage::TrackerInfo {
+                            id,
+                            info: &main.trackers[id].info,
+                        })
+                    }
+                    event => serde_json::to_string(&event),
                 }
+                .ok()
             }))
-            .map(|message| serde_json::to_string(&message).unwrap())
+            .chain(main.trackers.iter().filter_map(|(id, tracker)| {
+                if tracker.info.status != TrackerStatus::Ok {
+                    return None;
+                }
+
+                // Data from trackers
+                serde_json::to_string(&WebsocketServerMessage::TrackerData {
+                    id,
+                    data: &tracker.data,
+                })
+                .ok()
+            }))
             .collect::<Vec<_>>();
 
-        for ws_stream in self.ws_streams.iter_mut() {
-            for message in new_messages.iter() {
-                ws_stream.feed(Message::text(message)).await.ok();
-            }
-
-            if !new_messages.is_empty() {
-                ws_stream.flush().await?;
+        for i in (0..self.ws_streams.len()).rev() {
+            if handle_websocket(main, &mut self.ws_streams[i], &messages_to_send).await? {
+                self.ws_streams.remove(i);
             }
         }
 
@@ -135,18 +111,53 @@ impl WebsocketServer {
         mut ws_stream: WebSocketStream<TcpStream>,
         main: &mut MainServer,
     ) -> anyhow::Result<()> {
-        for (id, tracker) in main.trackers.iter() {
-            let string = serde_json::to_string(&WebsocketServerMessage::TrackerInfo {
-                id: id.clone(),
-                info: Some(tracker.info.clone()),
-            })?;
-            ws_stream.feed(Message::text(string)).await?;
-        }
+        let string = serde_json::to_string(&WebsocketServerMessage::InitialState {
+            trackers: &main.trackers,
+            config: &main.config,
+        })?;
 
-        ws_stream.flush().await?;
+        ws_stream.send(Message::text(string)).await?;
         self.ws_streams.push(ws_stream);
         Ok(())
     }
+}
+
+// Return true if should remove the websocket
+async fn handle_websocket(
+    main: &mut MainServer,
+    ws_stream: &mut WebSocketStream<TcpStream>,
+    messages_to_send: &[String],
+) -> anyhow::Result<bool> {
+    match ws_stream.next().now_or_never() {
+        Some(Some(Ok(message))) => {
+            if let Ok(text) = message.to_text() {
+                handle_websocket_message(text, main)
+                    .context("Failed to handle websocket message")?;
+            }
+        }
+        Some(Some(Err(err))) => {
+            // Socket was closed
+            log::error!("Websocket error: {err}");
+            return Ok(true);
+        }
+        Some(None) => {
+            // Socket was closed
+            log::info!("Websocket disconnected");
+            return Ok(true);
+        }
+        // Future has not ended
+        None => (),
+    }
+
+    for message in messages_to_send.iter() {
+        ws_stream.feed(Message::text(message)).await.ok();
+    }
+
+    if !messages_to_send.is_empty() {
+        ws_stream.flush().await?;
+    }
+
+    Ok(false)
 }
 
 fn handle_websocket_message(message: &str, main: &mut MainServer) -> anyhow::Result<()> {
@@ -170,11 +181,8 @@ fn handle_websocket_message(message: &str, main: &mut MainServer) -> anyhow::Res
             main.remove_tracker(&id);
             main.save_config()?;
         }
-        WebsocketClientMessage::UpdateTrackerConfig { id, config } => {
-            if let Some(tracker) = main.tracker_info_update(&id) {
-                tracker.info.config = config;
-                main.save_config()?;
-            }
+        WebsocketClientMessage::UpdateConfig { config } => {
+            main.config = config;
         }
     }
 

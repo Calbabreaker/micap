@@ -4,8 +4,7 @@
     let ssid = "";
     let password = "";
 
-    function setWifi(e: SubmitEvent) {
-        e.preventDefault();
+    function setWifi() {
         sendWebsocket({
             type: "Wifi",
             ssid,
@@ -14,8 +13,7 @@
     }
 </script>
 
-<form on:submit={setWifi} class="bg-neutral-700 p-4 shadow rounded mb-4">
-    <h1 class="text-2xl mb-4">Enter Wifi Credentials</h1>
+<form on:submit|preventDefault={setWifi}>
     <input
         placeholder="WiFi SSID"
         bind:value={ssid}

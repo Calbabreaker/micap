@@ -8,7 +8,10 @@ use std::{
 use anyhow::Context;
 
 use crate::{
-    serial::SerialPortManager, tracker::*, udp::server::UdpServer, vmc::connector::VmcConnector,
+    serial::SerialPortManager,
+    tracker::*,
+    udp::server::UdpServer,
+    vmc::connector::{VmcConfig, VmcConnector},
     websocket::WebsocketServer,
 };
 
@@ -34,16 +37,20 @@ impl SubModules {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
-struct Config {
-    trackers: HashMap<String, TrackerConfig>,
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
+pub struct GlobalConfig {
+    pub trackers: HashMap<String, TrackerConfig>,
+    pub vmc: VmcConfig,
 }
 
+#[derive(Clone, serde::Serialize)]
+#[serde(tag = "type")]
 pub enum UpdateEvent {
-    TrackerInfoUpdate(String),
-    TrackerRemove(String),
-    NewError(String),
-    NewInfo(String),
+    TrackerInfoUpdate { id: String },
+    TrackerRemove { id: String },
+    Error { error: String },
+    Info { info: String },
 }
 
 #[derive(Default)]
@@ -56,6 +63,7 @@ pub struct MainServer {
     /// This is to allow for servers to ignore ignored trackers that are trying to connect
     pub address_blacklist: HashSet<SocketAddr>,
     pub serial_manager: SerialPortManager,
+    pub config: GlobalConfig,
 }
 
 impl MainServer {
@@ -63,28 +71,21 @@ impl MainServer {
         let path = get_config_dir()?.join("config.json");
         log::info!("Loading from {path:?}");
         let text = std::fs::read_to_string(path)?;
-        let config: Config = serde_json::from_str(&text)?;
+        self.config = serde_json::from_str(&text)?;
 
-        for (id, config) in config.trackers {
-            self.trackers.insert(id.clone(), Tracker::new(config));
-            self.updates.push(UpdateEvent::TrackerInfoUpdate(id));
+        for id in self.config.trackers.keys() {
+            self.trackers.insert(id.clone(), Tracker::default());
+            self.updates
+                .push(UpdateEvent::TrackerInfoUpdate { id: id.clone() });
         }
 
         Ok(())
     }
 
     pub fn save_config(&mut self) -> anyhow::Result<()> {
-        let trackers = self
-            .trackers
-            .iter()
-            .map(|(id, tracker)| (id.clone(), tracker.info.config.clone()))
-            .collect::<HashMap<String, TrackerConfig>>();
-
-        let config = Config { trackers };
-
         let path = get_config_dir()?.join("config.json");
         log::info!("Saving to {path:?}");
-        let text = serde_json::to_string_pretty(&config)?;
+        let text = serde_json::to_string_pretty(&self.config)?;
         std::fs::write(path, text)?;
 
         Ok(())
@@ -92,22 +93,24 @@ impl MainServer {
 
     pub async fn update(&mut self, modules: &mut SubModules) -> anyhow::Result<()> {
         if let Some(status) = self.serial_manager.read_status() {
-            self.updates.push(UpdateEvent::NewInfo(status.to_string()));
+            self.updates.push(UpdateEvent::Info {
+                info: status.to_string(),
+            });
         }
 
         modules.udp_server.update(self).await?;
         modules.websocket_server.update(self).await?;
 
         modules.vmc_connector.update(self).await?;
-        self.updates.clear();
 
         Ok(())
     }
 
-    pub fn add_tracker(&mut self, id: String, tracker: Tracker) {
+    pub fn add_tracker(&mut self, id: String, config: TrackerConfig) {
         if !self.trackers.contains_key(&id) {
-            self.trackers.insert(id.clone(), tracker);
-            self.updates.push(UpdateEvent::TrackerInfoUpdate(id));
+            self.trackers.insert(id.clone(), Tracker::default());
+            self.config.trackers.insert(id.clone(), config);
+            self.updates.push(UpdateEvent::TrackerInfoUpdate { id });
             if let Err(err) = self.save_config() {
                 log::error!("Failed to save tracker: {err:?}");
             }
@@ -117,13 +120,15 @@ impl MainServer {
     pub fn tracker_info_update(&mut self, id: &String) -> Option<&mut Tracker> {
         let tracker = self.trackers.get_mut(id)?;
         self.updates
-            .push(UpdateEvent::TrackerInfoUpdate(id.clone()));
+            .push(UpdateEvent::TrackerInfoUpdate { id: id.clone() });
         Some(tracker)
     }
 
     pub fn remove_tracker(&mut self, id: &String) {
         if self.trackers.remove(id).is_some() {
-            self.updates.push(UpdateEvent::TrackerRemove(id.clone()));
+            self.config.trackers.remove(id);
+            self.updates
+                .push(UpdateEvent::TrackerRemove { id: id.clone() });
         }
     }
 

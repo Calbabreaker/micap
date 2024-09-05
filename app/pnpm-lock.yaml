@@ -36,6 +36,9 @@ importers:
       '@types/three':
         specifier: ^0.168.0
         version: 0.168.0
+      '@zerodevx/svelte-toast':
+        specifier: ^0.9.5
+        version: 0.9.5(svelte@4.2.19)
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.4.44)
@@ -464,6 +467,11 @@ packages:
 
   '@webgpu/types@0.1.44':
     resolution: {integrity: sha512-JDpYJN5E/asw84LTYhKyvPpxGnD+bAKPtpW9Ilurf7cZpxaTbxkQcGwOd7jgB9BPBrTYQ+32ufo4HiuomTjHNQ==}
+
+  '@zerodevx/svelte-toast@0.9.5':
+    resolution: {integrity: sha512-JLeB/oRdJfT+dz9A5bgd3Z7TuQnBQbeUtXrGIrNWMGqWbabpepBF2KxtWVhL2qtxpRqhae2f6NAOzH7xs4jUSw==}
+    peerDependencies:
+      svelte: ^3.57.0 || ^4.0.0
 
   acorn@8.12.1:
     resolution: {integrity: sha512-tcpGyI9zbizT9JbV6oYE477V6mTlXvvi0T0G3SNIYE2apm/G5huBa1+K89VGeovbg+jycCrfhl3ADxErOuO6Jg==}
@@ -1455,6 +1463,10 @@ snapshots:
   '@types/webxr@0.5.20': {}
 
   '@webgpu/types@0.1.44': {}
+
+  '@zerodevx/svelte-toast@0.9.5(svelte@4.2.19)':
+    dependencies:
+      svelte: 4.2.19
 
   acorn@8.12.1: {}
 

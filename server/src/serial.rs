@@ -14,6 +14,7 @@ impl SerialPortManager {
             return Ok(());
         }
 
+        // Find a USB port
         let ports = serialport::available_ports()?;
         let port_info = ports
             .iter()
@@ -43,17 +44,16 @@ impl SerialPortManager {
     pub fn read_line(&mut self) -> Option<&str> {
         let port = self.port.as_mut()?;
 
-        if port.bytes_to_read().unwrap_or(0) == 0 {
-            return None;
-        }
-
         self.buffer.clear();
         let mut ignore = false;
+
+        // Read until new line
+        // Using BufReader is unreliable for some reason
         while let Ok(byte) = port.read_u8() {
             if byte == b'\n' {
                 break;
             } else if byte == b'[' {
-                // is a log message
+                // Ingnore rest of bytes if log message (beginning with [)
                 ignore = true;
             }
 
@@ -66,8 +66,9 @@ impl SerialPortManager {
             return None;
         }
 
+        // Can only be a borrow string
         let str = match String::from_utf8_lossy(&self.buffer) {
-            Cow::Owned(_) => unreachable!(),
+            Cow::Owned(_) => return None,
             Cow::Borrowed(b) => b,
         };
 

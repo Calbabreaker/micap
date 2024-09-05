@@ -3,7 +3,7 @@ use tokio::net::UdpSocket;
 
 use crate::{
     main_server::MainServer,
-    tracker::{Tracker, TrackerConfig, TrackerData, TrackerStatus},
+    tracker::{TrackerConfig, TrackerData, TrackerStatus},
     udp::packet::{
         UdpPacketBatteryLevel, UdpPacketPingPong, UdpPacketTrackerStatus, UdpTrackerData,
     },
@@ -36,7 +36,7 @@ impl UdpDevice {
         }
     }
 
-    fn add_global_tracker(&mut self, local_index: u8, main: &mut MainServer) {
+    fn add_global_tracker(&mut self, local_index: u8, main: &mut MainServer) -> &String {
         if local_index as usize >= self.tracker_ids.len() {
             self.tracker_ids
                 .resize(local_index as usize + 1, String::new());
@@ -46,8 +46,9 @@ impl UdpDevice {
         let id = format!("{}/{}", self.mac, local_index);
         let name = format!("UDP {}/{}", self.address, local_index);
         let config = TrackerConfig::new(name);
-        main.add_tracker(id.clone(), Tracker::new(config));
+        main.add_tracker(id.clone(), config);
         self.tracker_ids[local_index as usize] = id;
+        &self.tracker_ids[local_index as usize]
     }
 
     fn get_tracker_id(&mut self, local_index: u8) -> Option<&String> {
@@ -129,11 +130,11 @@ impl UdpDevice {
     }
 
     pub fn update_tracker_status(&mut self, main: &mut MainServer, packet: UdpPacketTrackerStatus) {
-        if self.get_tracker_id(packet.tracker_index).is_none() {
-            self.add_global_tracker(packet.tracker_index, main);
-        }
+        let id = match self.get_tracker_id(packet.tracker_index) {
+            Some(id) => id,
+            None => self.add_global_tracker(packet.tracker_index, main),
+        };
 
-        let id = self.get_tracker_id(packet.tracker_index).unwrap();
         if let Some(tracker) = main.tracker_info_update(id) {
             tracker.info.status = packet.tracker_status;
             tracker.data = TrackerData::default();

@@ -1,6 +1,5 @@
 use std::{net::Ipv4Addr, time::SystemTime};
 
-use futures_util::FutureExt;
 use tokio::net::UdpSocket;
 
 use crate::{
@@ -9,7 +8,20 @@ use crate::{
     vmc::packet::{IntoOscMessage, VmcBoneTransformPacket, VmcStatePacket},
 };
 
-const VMC_PORT: u16 = 39540;
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct VmcConfig {
+    enabled: bool,
+    marionette_port: u16,
+}
+
+impl Default for VmcConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            marionette_port: 39540,
+        }
+    }
+}
 
 pub struct VmcConnector {
     socket: UdpSocket,
@@ -18,21 +30,36 @@ pub struct VmcConnector {
 impl VmcConnector {
     pub async fn new() -> anyhow::Result<Self> {
         let socket = UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).await?;
-        socket.connect(("127.0.0.1", VMC_PORT)).await?;
-        // socket.send(&[]).await?;
         Ok(Self { socket })
     }
 
     pub async fn update(&mut self, main: &mut MainServer) -> anyhow::Result<()> {
+        if !main.config.vmc.enabled {
+            return Ok(());
+        }
+
+        if self
+            .socket
+            .peer_addr()
+            .map_or(true, |addr| addr.port() != main.config.vmc.marionette_port)
+        {
+            self.socket
+                .connect((Ipv4Addr::LOCALHOST, main.config.vmc.marionette_port))
+                .await?;
+        }
+
         let osc_messages = std::iter::empty()
-            .chain(main.trackers.iter().filter_map(|(_, tracker)| {
+            .chain(main.trackers.iter().filter_map(|(id, tracker)| {
                 if tracker.info.status != TrackerStatus::Ok {
                     return None;
                 }
 
                 Some(
                     VmcBoneTransformPacket {
-                        bone: tracker.info.config.location?.as_unity_bone().to_string(),
+                        bone: main.config.trackers[id]
+                            .location?
+                            .as_unity_bone()
+                            .to_string(),
                         position: tracker.data.position,
                         orientation: tracker.data.orientation,
                     }
@@ -43,26 +70,7 @@ impl VmcConnector {
             .map(rosc::OscPacket::Message)
             .collect();
         self.send_osc_bundle(osc_messages).await.ok();
-
-        let mut buffer = [0_u8; 256];
-        loop {
-            // Try and get all the packets that were received
-            match self.socket.recv_from(&mut buffer).now_or_never() {
-                Some(Ok((amount, peer_addr))) => {
-                    log::trace!(
-                        "Received {amount} bytes from {peer_addr} (0x{:02x})",
-                        buffer[0]
-                    );
-
-                    dbg!(&buffer[0..amount]);
-                }
-                // No more packets
-                None => {
-                    return Ok(());
-                }
-                Some(Err(e)) => Err(e)?,
-            }
-        }
+        Ok(())
     }
 
     pub async fn send_osc_bundle(&mut self, messages: Vec<rosc::OscPacket>) -> anyhow::Result<()> {

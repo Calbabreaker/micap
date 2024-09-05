@@ -31,3 +31,10 @@
 body {
     @apply bg-neutral-900 text-white;
 }
+
+.toast-error {
+    pointer-events: all;
+    --toastBarBackground: #991b1b;
+    --toastBackground: #dc2626;
+    @apply shadow-lg;
+}

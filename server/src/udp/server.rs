@@ -80,15 +80,6 @@ impl UdpServer {
         let mut to_remove = None;
 
         for device in self.devices_map.values_mut() {
-            // When the user has removed every tracker from the device prevent it from connecting anymore
-            let still_exists = device
-                .tracker_ids
-                .iter()
-                .any(|id| main.trackers.contains_key(id));
-            if !device.tracker_ids.is_empty() && !still_exists {
-                to_remove = Some((device.mac.clone(), device.address))
-            }
-
             if device.last_packet_received_time.elapsed() > DEVICE_TIMEOUT {
                 device.set_timed_out(main, true);
             } else {
@@ -96,12 +87,22 @@ impl UdpServer {
             }
 
             device.check_send_new_ping(&self.socket).await?;
+
+            let still_exists = device
+                .tracker_ids
+                .iter()
+                .any(|id| main.trackers.contains_key(id));
+
+            if !device.tracker_ids.is_empty() && !still_exists {
+                // When the user has removed every tracker from the device prevent it from connecting anymore
+                self.mac_to_address_map.remove(&device.mac);
+                main.address_blacklist.insert(device.address);
+                to_remove = Some(device.address);
+            }
         }
 
-        if let Some((mac, address)) = to_remove {
+        if let Some(address) = to_remove {
             self.devices_map.remove(&address);
-            self.mac_to_address_map.remove(&mac);
-            main.address_blacklist.insert(address);
         }
 
         self.last_upkeep_time = Instant::now();

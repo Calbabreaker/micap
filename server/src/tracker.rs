@@ -64,7 +64,6 @@ impl TrackerLocation {
 #[derive(Debug, Clone, Default, serde::Serialize)]
 pub struct TrackerInfo {
     pub status: TrackerStatus,
-    pub config: TrackerConfig,
     pub latency_ms: Option<u32>,
     pub battery_level: f32,
 }
@@ -78,18 +77,18 @@ pub struct TrackerData {
     pub position: glam::Vec3A,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize)]
 pub struct Tracker {
     pub info: TrackerInfo,
     pub data: TrackerData,
+    #[serde(skip)]
     pub time_data_received: Instant,
 }
 
-impl Tracker {
-    pub fn new(config: TrackerConfig) -> Self {
+impl Default for Tracker {
+    fn default() -> Self {
         Self {
             info: TrackerInfo {
-                config,
                 status: TrackerStatus::default(),
                 latency_ms: None,
                 battery_level: 0.0,
