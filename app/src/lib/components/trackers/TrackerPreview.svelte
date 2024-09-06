@@ -1,21 +1,22 @@
 <script lang="ts">
     import { T } from "@threlte/core";
-    import type { TrackerData } from "$lib/websocket";
+    import { trackers } from "$lib/websocket";
     import { ArrowHelper, Vector3 } from "three";
     import PreviewCanvas from "./PreviewCanvas.svelte";
     import { OrbitControls } from "@threlte/extras";
 
-    export let data: TrackerData;
+    export let id: string;
+    $: data = $trackers[id].data;
 
     $: updateArrow(new Vector3().fromArray(data.acceleration));
 
     let arrowRef: ArrowHelper;
 
-    $: positionLooped = [
-        data.position[0] % 6,
-        data.position[1] % 6,
-        data.position[2] % 6,
-    ];
+    // $: positionLooped = [
+    //     data?.position[0] % 6,
+    //     data?.position[1] % 6,
+    //     data?.position[2] % 6,
+    // ];
 
     function updateArrow(vector: Vector3) {
         if (arrowRef) {

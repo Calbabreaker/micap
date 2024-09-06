@@ -8,7 +8,7 @@
 #elif defined(LED_BUILTIN)
     #define INTERNAL_LED_PIN LED_BUILTIN
 #else
-    #define INTERNAL_LED_PIN 0
+    #error "No LED pin detected, please CUSTOM_LED_PIN to a status LED or 0 to not use"
 #endif
 
 class LedManager {

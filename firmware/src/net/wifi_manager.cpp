@@ -1,6 +1,8 @@
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
+#include <cstring>
 
+#include "config_manager.h"
 #include "globals.h"
 #include "log.h"
 #include "wifi_manager.h"
@@ -27,7 +29,6 @@ bool WifiManager::monitor() {
 
     // Just disconnected
     if (m_connected) {
-        LOG_INFO("Disconnected from WiFi, reconnecting...");
         m_test_networks.clear();
         m_connected = false;
 
@@ -49,6 +50,10 @@ bool WifiManager::monitor() {
 }
 
 void WifiManager::use_credentials(const char* ssid, const char* password) {
+    if (strlen(ssid) > MAX_SSID_LENGTH || strlen(password) > MAX_PASSWORD_LENGTH) {
+        return;
+    }
+
     if (m_connected && WiFi.SSID().equals(ssid)) {
         return;
     }

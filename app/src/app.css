@@ -4,7 +4,7 @@
 
 @layer components {
     .btn {
-        @apply shadow rounded border border-gray-300 px-3 py-2 text-sm bg-white hover:text-sky-600 cursor-pointer text-neutral-800;
+        @apply shadow rounded border border-gray-300 px-3 py-2 bg-white hover:text-sky-600 cursor-pointer text-neutral-800;
     }
 
     .btn-primary {
@@ -32,9 +32,22 @@ body {
     @apply bg-neutral-900 text-white;
 }
 
-.toast-error {
+.toast {
     pointer-events: all;
+    @apply shadow-lg text-sm;
+}
+
+.error {
     --toastBarBackground: #991b1b;
     --toastBackground: #dc2626;
-    @apply shadow-lg;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0; /* <-- Apparently some margin are still there even though it's hidden */
+}
+
+input[type="number"] {
+    -moz-appearance: textfield; /* Firefox */
 }

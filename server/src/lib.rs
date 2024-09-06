@@ -34,8 +34,13 @@ pub async fn start_server() -> anyhow::Result<()> {
     let mut last_serial_scan_time = Instant::now();
 
     loop {
-        if last_serial_scan_time.elapsed() > Duration::from_secs(5) {
-            main.serial_manager.scan_ports().ok();
+        if last_serial_scan_time.elapsed() > Duration::from_secs(2) {
+            if main.serial_manager.scan_ports() {
+                main.updates.push(UpdateEvent::SerialPort {
+                    port_name: main.serial_manager.port_name(),
+                });
+            }
+
             last_serial_scan_time = Instant::now();
         }
 

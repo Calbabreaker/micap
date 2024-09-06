@@ -28,15 +28,20 @@ pub enum WebsocketServerMessage<'a> {
     InitialState {
         trackers: &'a HashMap<String, Tracker>,
         config: &'a GlobalConfig,
+        port_name: Option<String>,
     },
+    SerialLog {
+        log: &'a str,
+    },
+    #[serde(untagged)]
+    UpdateEvent(&'a UpdateEvent),
 }
 
 // Receieved from client
 #[derive(serde::Deserialize)]
 #[serde(tag = "type")]
 enum WebsocketClientMessage {
-    Wifi { ssid: String, password: String },
-    FactoryReset,
+    SerialSend { data: String },
     RemoveTracker { id: String },
     UpdateConfig { config: GlobalConfig },
 }
@@ -61,45 +66,40 @@ impl WebsocketServer {
         match self.listener.accept().now_or_never() {
             Some(Ok((stream, peer_addr))) => {
                 let ws_stream = tokio_tungstenite::accept_async(stream).await?;
-                log::info!("Websocket client connected at {peer_addr}");
                 self.on_connect(ws_stream, main).await?;
+                log::info!(
+                    "Websocket client connected at {peer_addr} (currently {})",
+                    self.ws_streams.len()
+                );
             }
             Some(Err(e)) => Err(e)?,
             None => (),
         }
 
-        // Get list of messages to send
-        let messages_to_send = std::iter::empty()
-            .chain(main.updates.iter().filter_map(|update| {
-                match update {
-                    UpdateEvent::TrackerInfoUpdate { id } => {
-                        // Convert to websocket server message to include the tracker info
-                        serde_json::to_string(&WebsocketServerMessage::TrackerInfo {
-                            id,
-                            info: &main.trackers[id].info,
-                        })
-                    }
-                    event => serde_json::to_string(&event),
-                }
-                .ok()
-            }))
-            .chain(main.trackers.iter().filter_map(|(id, tracker)| {
-                if tracker.info.status != TrackerStatus::Ok {
-                    return None;
-                }
-
-                // Data from trackers
-                serde_json::to_string(&WebsocketServerMessage::TrackerData {
-                    id,
-                    data: &tracker.data,
-                })
-                .ok()
-            }))
-            .collect::<Vec<_>>();
-
         for i in (0..self.ws_streams.len()).rev() {
-            if handle_websocket(main, &mut self.ws_streams[i], &messages_to_send).await? {
-                self.ws_streams.remove(i);
+            let ws_stream = &mut self.ws_streams[i];
+
+            for message in get_messages_to_send(main) {
+                ws_stream.feed(message).await.ok();
+            }
+
+            ws_stream.flush().await?;
+
+            // Get new data from websocket
+            match ws_stream.next().now_or_never() {
+                Some(Some(Ok(message))) => {
+                    if let Ok(text) = message.to_text() {
+                        self.handle_websocket_message(text, main)
+                            .context("Failed to handle websocket message")?;
+                    }
+                }
+                Some(None) | Some(Some(Err(_))) => {
+                    // Socket was closed so remove the ws stream
+                    log::info!("Websocket disconnected");
+                    self.ws_streams.remove(i);
+                }
+                // Data has not been processed yet
+                None => (),
             }
         }
 
@@ -114,77 +114,75 @@ impl WebsocketServer {
         let string = serde_json::to_string(&WebsocketServerMessage::InitialState {
             trackers: &main.trackers,
             config: &main.config,
+            port_name: main.serial_manager.port_name(),
         })?;
 
         ws_stream.send(Message::text(string)).await?;
         self.ws_streams.push(ws_stream);
         Ok(())
     }
-}
 
-// Return true if should remove the websocket
-async fn handle_websocket(
-    main: &mut MainServer,
-    ws_stream: &mut WebSocketStream<TcpStream>,
-    messages_to_send: &[String],
-) -> anyhow::Result<bool> {
-    match ws_stream.next().now_or_never() {
-        Some(Some(Ok(message))) => {
-            if let Ok(text) = message.to_text() {
-                handle_websocket_message(text, main)
-                    .context("Failed to handle websocket message")?;
+    fn handle_websocket_message(
+        &mut self,
+        message: &str,
+        main: &mut MainServer,
+    ) -> anyhow::Result<()> {
+        if message.is_empty() {
+            return Ok(());
+        }
+
+        match serde_json::from_str(message)? {
+            WebsocketClientMessage::SerialSend { data } => {
+                log::info!("Writing {data:?} to port");
+                main.serial_manager.write(data.as_bytes())?;
+            }
+            WebsocketClientMessage::RemoveTracker { id } => {
+                main.remove_tracker(&id);
+                main.save_config()?;
+            }
+            WebsocketClientMessage::UpdateConfig { config } => {
+                main.config = config;
             }
         }
-        Some(Some(Err(err))) => {
-            // Socket was closed
-            log::error!("Websocket error: {err}");
-            return Ok(true);
-        }
-        Some(None) => {
-            // Socket was closed
-            log::info!("Websocket disconnected");
-            return Ok(true);
-        }
-        // Future has not ended
-        None => (),
-    }
 
-    for message in messages_to_send.iter() {
-        ws_stream.feed(Message::text(message)).await.ok();
+        Ok(())
     }
-
-    if !messages_to_send.is_empty() {
-        ws_stream.flush().await?;
-    }
-
-    Ok(false)
 }
 
-fn handle_websocket_message(message: &str, main: &mut MainServer) -> anyhow::Result<()> {
-    if message.is_empty() {
-        return Ok(());
-    }
-
-    match serde_json::from_str(message)? {
-        WebsocketClientMessage::Wifi { ssid, password } => {
-            if ssid.len() > 32 || password.len() > 64 {
-                anyhow::bail!("SSID or password too long");
+// Get list of messages to send
+fn get_messages_to_send(main: &mut MainServer) -> impl Iterator<Item = Message> + use<'_> {
+    std::iter::empty()
+        // Add the server events
+        .chain(main.updates.iter().map(|update| {
+            Some(match update {
+                UpdateEvent::TrackerInfoUpdate { id } => {
+                    // Convert to websocket server message to include the tracker info
+                    WebsocketServerMessage::TrackerInfo {
+                        id,
+                        info: &main.trackers[id].info,
+                    }
+                }
+                event => WebsocketServerMessage::UpdateEvent(event),
+            })
+        }))
+        // Add the tracker data
+        .chain(main.trackers.iter().map(|(id, tracker)| {
+            // Only send if client requested listen and is Ok
+            if tracker.info.status != TrackerStatus::Ok {
+                return None;
             }
 
-            let data = format!("Wifi\0{ssid}\0{password}\n");
-            main.serial_manager.write(data.as_bytes())?;
-        }
-        WebsocketClientMessage::FactoryReset => {
-            main.serial_manager.write(b"FactoryReset\n")?;
-        }
-        WebsocketClientMessage::RemoveTracker { id } => {
-            main.remove_tracker(&id);
-            main.save_config()?;
-        }
-        WebsocketClientMessage::UpdateConfig { config } => {
-            main.config = config;
-        }
-    }
-
-    Ok(())
+            // Data from trackers
+            Some(WebsocketServerMessage::TrackerData {
+                id,
+                data: &tracker.data,
+            })
+        }))
+        .chain(std::iter::once_with(|| {
+            Some(WebsocketServerMessage::SerialLog {
+                log: main.serial_manager.read_line()?,
+            })
+        }))
+        .flatten()
+        .map(|m| Message::Text(serde_json::to_string(&m).unwrap()))
 }

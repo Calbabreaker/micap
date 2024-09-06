@@ -42,6 +42,17 @@ void SerialManager::parse_incomming_command() {
 
         g_connection_manager.get_wifi().use_credentials(ssid_ptr, password_ptr);
     } else if (strcmp(m_buffer, "FactoryReset") == 0) {
+        LOG_INFO("Resetting config");
+
+        for (size_t i = 0; i < 10; i++) {
+            g_internal_led.blink(300);
+            delay(300);
+        }
+
         g_config_manager.reset();
+        ESP.eraseConfig();
+        ESP.restart();
+    } else if (strcmp(m_buffer, "Restart") == 0) {
+        ESP.restart();
     }
 }

@@ -9,26 +9,21 @@ pub struct SerialPortManager {
 }
 
 impl SerialPortManager {
-    pub fn scan_ports(&mut self) -> anyhow::Result<()> {
-        if self.port.is_some() {
-            return Ok(());
+    // Returns if the port was connected or disconnected this call
+    pub fn scan_ports(&mut self) -> bool {
+        if let Some(port) = self.port.as_ref() {
+            if port.bytes_to_read().is_err() {
+                // Disconnect port when can't read
+                self.port.take();
+                log::info!("Serial port disconnected");
+                return true;
+            }
+
+            return false;
         }
 
-        // Find a USB port
-        let ports = serialport::available_ports()?;
-        let port_info = ports
-            .iter()
-            .find(|port| matches!(port.port_type, serialport::SerialPortType::UsbPort(_)))
-            .ok_or_else(|| anyhow::anyhow!("USB device not found"))?;
-
-        log::info!("Found serial port: {}", port_info.port_name);
-        self.port = Some(
-            serialport::new(&port_info.port_name, 14400)
-                .timeout(std::time::Duration::from_millis(10))
-                .open()?,
-        );
-
-        Ok(())
+        self.port = find_usb_port();
+        self.port.is_some()
     }
 
     pub fn write(&mut self, data: &[u8]) -> anyhow::Result<()> {
@@ -44,22 +39,20 @@ impl SerialPortManager {
     pub fn read_line(&mut self) -> Option<&str> {
         let port = self.port.as_mut()?;
 
+        if port.bytes_to_read().ok()? == 0 {
+            return None;
+        }
+
         self.buffer.clear();
-        let mut ignore = false;
 
         // Read until new line
         // Using BufReader is unreliable for some reason
         while let Ok(byte) = port.read_u8() {
             if byte == b'\n' {
                 break;
-            } else if byte == b'[' {
-                // Ingnore rest of bytes if log message (beginning with [)
-                ignore = true;
             }
 
-            if !ignore {
-                self.buffer.push(byte);
-            }
+            self.buffer.push(byte);
         }
 
         if self.buffer.is_empty() {
@@ -86,4 +79,26 @@ impl SerialPortManager {
             _ => return None,
         })
     }
+
+    pub fn port_name(&self) -> Option<String> {
+        self.port.as_ref()?.name()
+    }
+}
+
+pub fn find_usb_port() -> Option<Box<dyn serialport::SerialPort>> {
+    // Find a USB port
+    let ports = serialport::available_ports().ok()?;
+    let port_info = ports
+        .iter()
+        .find(|port| matches!(port.port_type, serialport::SerialPortType::UsbPort(_)))?;
+
+    log::info!(
+        "Found serial port: {}\n{:?}",
+        port_info.port_name,
+        port_info.port_type
+    );
+    serialport::new(&port_info.port_name, 14400)
+        .timeout(std::time::Duration::from_millis(25))
+        .open()
+        .ok()
 }

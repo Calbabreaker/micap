@@ -2,7 +2,7 @@
     import {
         type Tracker,
         trackerLocations,
-        type TrackerConfig,
+        globalConfig,
     } from "$lib/websocket";
     import TrackerPreview from "./TrackerPreview.svelte";
     import TrackerInfoDisplay from "./TrackerInfoDisplay.svelte";
@@ -11,9 +11,11 @@
     import PencilIcon from "../icons/PencilIcon.svelte";
 
     export let tracker: Tracker;
-    export let config: TrackerConfig;
+    export let id: string;
+    let config = $globalConfig!.trackers[id];
+
     export let onRemove: () => void;
-    export let onConfigEdit: (config: TrackerConfig) => void;
+    export let onConfigEdit: () => void;
     let brightness: number;
 
     $: if (tracker.data) {
@@ -45,7 +47,8 @@
             on:click={() => {
                 const name = prompt("Enter the new name: ");
                 if (name) {
-                    onConfigEdit({ ...config, name });
+                    config.name = name;
+                    onConfigEdit();
                 }
             }}
         >
@@ -56,18 +59,16 @@
         class="text-neutral-700 px-1 mt-2 bg-white"
         value={config.location}
         on:change={(e) => {
-            onConfigEdit({
-                ...config,
-                location: e.currentTarget.value,
-            });
+            config.location = e.currentTarget.value;
+            onConfigEdit();
         }}
     >
         {#each trackerLocations as location}
             <option value={location}>{location}</option>
         {/each}
     </select>
-    {#if showPreview && tracker.data}
+    {#if showPreview}
         <hr class="my-4" />
-        <TrackerPreview data={tracker.data} />
+        <TrackerPreview {id} />
     {/if}
 </div>

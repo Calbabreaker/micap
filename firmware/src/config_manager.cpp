@@ -28,7 +28,6 @@ void ConfigManager::setup() {
 }
 
 void ConfigManager::reset() {
-    LOG_INFO("Resetting config");
     LittleFS.format();
 }
 

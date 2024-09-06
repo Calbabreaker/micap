@@ -52,6 +52,7 @@ impl TrackerLocation {
             Self::LeftShoulder => "LeftShoulder",
             Self::RightShoulder => "RightShoulder",
             Self::LeftUpperArm => "LeftUpperArm",
+
             Self::RightUpperArm => "RightUpperArm",
             Self::LeftLowerArm => "LeftLowerArm",
             Self::RightLowerArm => "RightLowerArm",

@@ -1,11 +1,5 @@
 <script lang="ts">
-    import {
-        trackers,
-        sendWebsocket,
-        globalConfig,
-        setConfig,
-        type TrackerConfig,
-    } from "$lib/websocket";
+    import { trackers, sendWebsocket, setConfig } from "$lib/websocket";
     import TrackerCard from "./TrackerCard.svelte";
 
     function removeTracker(id: string) {
@@ -25,21 +19,15 @@
             return trackers;
         });
     }
-
-    function editTrackerConfig(id: string, config: TrackerConfig) {
-        setConfig((globalConfig) => {
-            globalConfig.trackers[id] = config;
-        });
-    }
 </script>
 
 <div class="flex flex-wrap gap-2 mt-4 justify-center">
     {#each Object.entries($trackers) as [id, tracker]}
         <TrackerCard
             {tracker}
-            config={$globalConfig.trackers[id]}
+            {id}
             onRemove={() => removeTracker(id)}
-            onConfigEdit={(config) => editTrackerConfig(id, config)}
+            onConfigEdit={() => setConfig(() => {})}
         />
     {/each}
     {#if Object.keys($trackers).length == 0}

@@ -44,12 +44,12 @@ pub struct GlobalConfig {
     pub vmc: VmcConfig,
 }
 
-#[derive(Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize)]
 #[serde(tag = "type")]
 pub enum UpdateEvent {
     TrackerInfoUpdate { id: String },
     Error { error: String },
-    Info { info: String },
+    SerialPort { port_name: Option<String> },
 }
 
 #[derive(Default)]
@@ -91,12 +91,6 @@ impl MainServer {
     }
 
     pub async fn update(&mut self, modules: &mut SubModules) -> anyhow::Result<()> {
-        if let Some(status) = self.serial_manager.read_status() {
-            self.updates.push(UpdateEvent::Info {
-                info: status.to_string(),
-            });
-        }
-
         modules.udp_server.update(self).await?;
         modules.websocket_server.update(self).await?;
 
