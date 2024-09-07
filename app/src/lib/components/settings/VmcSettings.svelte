@@ -12,7 +12,6 @@
     $: if ($globalConfig) setVmcState($globalConfig);
 
     function setVmcConfig() {
-        console.log(enabled);
         setConfig((globalConfig) => {
             globalConfig.vmc = {
                 enabled,

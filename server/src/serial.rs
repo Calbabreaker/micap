@@ -43,41 +43,24 @@ impl SerialPortManager {
             return None;
         }
 
-        self.buffer.clear();
+        if self.buffer.last() == Some(&b'\n') {
+            self.buffer.clear();
+        }
 
-        // Read until new line
-        // Using BufReader is unreliable for some reason
+        // Only return string when new line is reached to prevent cut off messages
         while let Ok(byte) = port.read_u8() {
-            if byte == b'\n' {
-                break;
-            }
-
             self.buffer.push(byte);
+
+            if byte == b'\n' {
+                // Can only be a borrowed string
+                return Some(match String::from_utf8_lossy(&self.buffer) {
+                    Cow::Owned(_) => return None,
+                    Cow::Borrowed(b) => b,
+                });
+            }
         }
 
-        if self.buffer.is_empty() {
-            return None;
-        }
-
-        // Can only be a borrow string
-        let str = match String::from_utf8_lossy(&self.buffer) {
-            Cow::Owned(_) => return None,
-            Cow::Borrowed(b) => b,
-        };
-
-        Some(str)
-    }
-
-    pub fn read_status(&mut self) -> Option<&'static str> {
-        let line = self.read_line()?;
-        Some(match line {
-            "WifiConnecting" => "Connecting to WiFi network",
-            "WifiConnectOk" => "Connected to WiFi network",
-            "WifiConnectTimeout" => "Failed to connect to WiFi network",
-            "Connecting" => "Connecting to server",
-            "Connected" => "Connected to server",
-            _ => return None,
-        })
+        None
     }
 
     pub fn port_name(&self) -> Option<String> {
@@ -98,7 +81,7 @@ pub fn find_usb_port() -> Option<Box<dyn serialport::SerialPort>> {
         port_info.port_type
     );
     serialport::new(&port_info.port_name, 14400)
-        .timeout(std::time::Duration::from_millis(25))
+        .timeout(std::time::Duration::from_millis(5))
         .open()
         .ok()
 }

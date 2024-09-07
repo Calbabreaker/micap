@@ -33,6 +33,7 @@ pub enum WebsocketServerMessage<'a> {
     SerialLog {
         log: &'a str,
     },
+    // Passes throught the server events
     #[serde(untagged)]
     UpdateEvent(&'a UpdateEvent),
 }
@@ -48,7 +49,7 @@ enum WebsocketClientMessage {
 
 pub struct WebsocketServer {
     listener: TcpListener,
-    ws_streams: Vec<WebSocketStream<TcpStream>>,
+    ws_stream: Option<WebSocketStream<TcpStream>>,
 }
 
 impl WebsocketServer {
@@ -58,32 +59,17 @@ impl WebsocketServer {
         let listener = TcpListener::bind(address).await?;
         Ok(Self {
             listener,
-            ws_streams: Vec::new(),
+            ws_stream: None,
         })
     }
 
     pub async fn update(&mut self, main: &mut MainServer) -> anyhow::Result<()> {
-        match self.listener.accept().now_or_never() {
-            Some(Ok((stream, peer_addr))) => {
-                let ws_stream = tokio_tungstenite::accept_async(stream).await?;
-                self.on_connect(ws_stream, main).await?;
-                log::info!(
-                    "Websocket client connected at {peer_addr} (currently {})",
-                    self.ws_streams.len()
-                );
-            }
-            Some(Err(e)) => Err(e)?,
-            None => (),
-        }
-
-        for i in (0..self.ws_streams.len()).rev() {
-            let ws_stream = &mut self.ws_streams[i];
-
+        if let Some(ws_stream) = self.ws_stream.as_mut() {
             for message in get_messages_to_send(main) {
-                ws_stream.feed(message).await.ok();
+                ws_stream.feed(message.clone()).await.ok();
             }
 
-            ws_stream.flush().await?;
+            ws_stream.flush().await.ok();
 
             // Get new data from websocket
             match ws_stream.next().now_or_never() {
@@ -96,29 +82,34 @@ impl WebsocketServer {
                 Some(None) | Some(Some(Err(_))) => {
                     // Socket was closed so remove the ws stream
                     log::info!("Websocket disconnected");
-                    self.ws_streams.remove(i);
+                    self.ws_stream.take();
                 }
                 // Data has not been processed yet
                 None => (),
             }
         }
 
-        Ok(())
-    }
+        match self.listener.accept().now_or_never() {
+            Some(Ok((stream, peer_addr))) => {
+                if self.ws_stream.is_some() {
+                    anyhow::bail!("Websocket already connected, not connecting");
+                }
 
-    async fn on_connect(
-        &mut self,
-        mut ws_stream: WebSocketStream<TcpStream>,
-        main: &mut MainServer,
-    ) -> anyhow::Result<()> {
-        let string = serde_json::to_string(&WebsocketServerMessage::InitialState {
-            trackers: &main.trackers,
-            config: &main.config,
-            port_name: main.serial_manager.port_name(),
-        })?;
+                let mut ws_stream = tokio_tungstenite::accept_async(stream).await?;
+                let string = serde_json::to_string(&WebsocketServerMessage::InitialState {
+                    trackers: &main.trackers,
+                    config: &main.config,
+                    port_name: main.serial_manager.port_name(),
+                })?;
 
-        ws_stream.send(Message::text(string)).await?;
-        self.ws_streams.push(ws_stream);
+                ws_stream.send(Message::text(string)).await?;
+                self.ws_stream = Some(ws_stream);
+                log::info!("Websocket client connected at {peer_addr}");
+            }
+            Some(Err(e)) => Err(e)?,
+            None => (),
+        }
+
         Ok(())
     }
 
@@ -142,6 +133,7 @@ impl WebsocketServer {
             }
             WebsocketClientMessage::UpdateConfig { config } => {
                 main.config = config;
+                main.save_config()?;
             }
         }
 
@@ -183,6 +175,5 @@ fn get_messages_to_send(main: &mut MainServer) -> impl Iterator<Item = Message> 
                 log: main.serial_manager.read_line()?,
             })
         }))
-        .flatten()
-        .map(|m| Message::Text(serde_json::to_string(&m).unwrap()))
+        .filter_map(|m| Some(Message::Text(serde_json::to_string(&m).ok()?)))
 }

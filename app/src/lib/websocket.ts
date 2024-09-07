@@ -76,6 +76,10 @@ export function sendWebsocket(object: Record<string, any>) {
 }
 
 export function connectWebsocket() {
+    if (websocket) {
+        return;
+    }
+
     const protocol = location.protocol === "https:" ? "wss" : "ws";
     websocket = new WebSocket(`${protocol}://localhost:${WEBSOCKET_PORT}`);
 
@@ -86,7 +90,7 @@ export function connectWebsocket() {
     websocket.onclose = () => {
         console.log("Websocket connection closed");
         trackers.set({});
-        connectWebsocket();
+        websocket = undefined;
     };
 
     websocket.onerror = () => {

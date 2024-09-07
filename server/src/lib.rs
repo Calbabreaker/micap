@@ -20,7 +20,7 @@ pub fn setup_log() {
         .init();
 }
 
-const TARGET_LOOP_DELTA: Duration = Duration::from_millis(1000 / 50);
+const TARGET_LOOP_DELTA: Duration = Duration::from_millis(1000 / 60);
 
 pub async fn start_server() -> anyhow::Result<()> {
     // Seperate out  main and modules to prevent multiple borrow
