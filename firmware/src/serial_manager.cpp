@@ -42,9 +42,9 @@ void SerialManager::parse_incomming_command() {
 
         g_connection_manager.get_wifi().use_credentials(ssid_ptr, password_ptr);
     } else if (strcmp(m_buffer, "FactoryReset") == 0) {
-        LOG_INFO("Resetting config");
+        LOG_INFO("Resetting config, cut off power to stop");
 
-        for (size_t i = 0; i < 10; i++) {
+        for (size_t i = 0; i < 8; i++) {
             g_internal_led.blink(300);
             delay(300);
         }

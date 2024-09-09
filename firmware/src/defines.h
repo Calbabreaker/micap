@@ -25,7 +25,3 @@
 
 #define CONNECTION_TIMEOUT_MS 4000
 #define CONNECTION_RESEND_INTERVAL_MS 2000
-
-// LOG_* is only for debugging purposes and will be removed in production builds
-#define ENABLE_LOG 1
-#define ENABLE_FPS_LOG 0

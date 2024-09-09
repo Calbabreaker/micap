@@ -38,13 +38,15 @@ impl VmcConnector {
             return Ok(());
         }
 
+        let config_port = main.config.vmc.marionette_port;
         if self
             .socket
             .peer_addr()
-            .map_or(true, |addr| addr.port() != main.config.vmc.marionette_port)
+            .map_or(true, |addr| addr.port() != config_port)
         {
+            log::info!("Sending packets to {}", config_port);
             self.socket
-                .connect((Ipv4Addr::LOCALHOST, main.config.vmc.marionette_port))
+                .connect((Ipv4Addr::LOCALHOST, config_port))
                 .await?;
         }
 
