@@ -22,7 +22,7 @@
             placeholder="WiFi SSID"
             bind:value={ssid}
             maxlength="32"
-            class="p-2 rounded text-black text-sm"
+            class="text-input"
         />
     </div>
     <div class="mb-2">
@@ -31,7 +31,7 @@
             placeholder="Password"
             bind:value={password}
             maxlength="64"
-            class="p-2 rounded text-black text-sm"
+            class="text-input"
         />
     </div>
     <div>

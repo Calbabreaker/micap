@@ -23,6 +23,10 @@
         @apply w-4 h-4;
     }
 
+    .text-input {
+        @apply p-2 rounded text-black text-sm;
+    }
+
     .icon {
         @apply w-5 h-5;
     }

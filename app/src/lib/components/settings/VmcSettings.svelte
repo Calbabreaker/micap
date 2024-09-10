@@ -24,14 +24,14 @@
 <form on:submit|preventDefault={setVmcConfig}>
     <div class="mb-2">
         <span class="w-20 inline-block">Enabled</span>
-        <input type="checkbox" bind:checked={enabled} />
+        <input type="checkbox" bind:checked={enabled} class="w-4" />
     </div>
     <div class="mb-2">
         <span class="w-20 inline-block">Port</span>
         <input
             placeholder="Marionette port"
             bind:value={marionettePort}
-            class="p-2 rounded text-black text-sm"
+            class="text-input"
             type="number"
             disabled={!enabled}
         />

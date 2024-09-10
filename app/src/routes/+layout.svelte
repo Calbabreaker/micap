@@ -25,8 +25,9 @@
         <PopupBox
             title={$popupState.title}
             message={$popupState.message}
-            onClick={(ok) => {
-                $popupState.onClick(ok);
+            showTextInput={$popupState.showTextInput}
+            onSubmit={(ok, text) => {
+                $popupState.onSubmit(ok, text);
                 $popupState = undefined;
             }}
         />

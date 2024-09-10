@@ -4,6 +4,7 @@
         trackerLocations,
         type TrackerConfig,
     } from "$lib/websocket";
+    import { promptPopup } from "$lib/toast";
     import TrackerPreview from "./TrackerPreview.svelte";
     import TrackerInfoDisplay from "./TrackerInfoDisplay.svelte";
     import TrashIcon from "../icons/TrashIcon.svelte";
@@ -45,12 +46,9 @@
         </button>
         <button
             class="btn-icon"
-            on:click={() => {
-                const name = prompt("Enter the new name: ");
-                if (name) {
-                    config.name = name;
-                    onConfigEdit();
-                }
+            on:click={async () => {
+                config.name = await promptPopup("Enter the new name");
+                onConfigEdit();
             }}
         >
             <PencilIcon />
