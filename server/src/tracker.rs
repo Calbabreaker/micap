@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::{net::SocketAddr, time::Instant};
 
 #[derive(Default, PartialEq, Debug, Clone, Copy, serde::Serialize)]
 #[repr(u8)]
@@ -66,6 +66,7 @@ pub struct TrackerInfo {
     pub status: TrackerStatus,
     pub latency_ms: Option<u32>,
     pub battery_level: f32,
+    pub address: Option<SocketAddr>,
 }
 
 #[derive(Debug, Clone, Default, serde::Serialize)]
@@ -92,6 +93,7 @@ impl Default for Tracker {
                 status: TrackerStatus::default(),
                 latency_ms: None,
                 battery_level: 0.0,
+                address: None,
             },
             data: TrackerData::default(),
             time_data_received: Instant::now(),

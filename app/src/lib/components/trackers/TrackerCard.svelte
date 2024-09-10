@@ -2,7 +2,7 @@
     import {
         type Tracker,
         trackerLocations,
-        globalConfig,
+        type TrackerConfig,
     } from "$lib/websocket";
     import TrackerPreview from "./TrackerPreview.svelte";
     import TrackerInfoDisplay from "./TrackerInfoDisplay.svelte";
@@ -12,7 +12,7 @@
 
     export let tracker: Tracker;
     export let id: string;
-    let config = $globalConfig!.trackers[id];
+    export let config: TrackerConfig;
 
     export let onRemove: () => void;
     export let onConfigEdit: () => void;
@@ -32,6 +32,7 @@
 <div
     style:border-color={`hsl(0, 0%, ${brightness}%)`}
     class="bg-neutral-600 p-4 rounded shadow w-fit border"
+    title={`Connected from ${tracker.info.address}`}
 >
     <TrackerInfoDisplay info={tracker.info} />
     <p>{config.name}</p>

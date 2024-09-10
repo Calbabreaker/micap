@@ -1,5 +1,10 @@
 <script lang="ts">
-    import { trackers, sendWebsocket, setConfig } from "$lib/websocket";
+    import {
+        trackers,
+        sendWebsocket,
+        setConfig,
+        globalConfig,
+    } from "$lib/websocket";
     import TrackerCard from "./TrackerCard.svelte";
     import { confirmPopup } from "$lib/toast";
 
@@ -24,12 +29,15 @@
 
 <div class="flex flex-wrap gap-2 mt-4 justify-center">
     {#each Object.entries($trackers) as [id, tracker]}
-        <TrackerCard
-            {tracker}
-            {id}
-            onRemove={() => removeTracker(id)}
-            onConfigEdit={() => setConfig(() => {})}
-        />
+        {#if $globalConfig?.trackers[id]}
+            <TrackerCard
+                config={$globalConfig.trackers[id]}
+                {tracker}
+                {id}
+                onRemove={() => removeTracker(id)}
+                onConfigEdit={() => setConfig(() => {})}
+            />
+        {/if}
     {/each}
     {#if Object.keys($trackers).length == 0}
         <span class="text-neutral-400">No trackers connected yet.</span>

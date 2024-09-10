@@ -131,7 +131,8 @@ impl WebsocketServer {
                 main.serial_manager.write(data.as_bytes())?;
             }
             WebsocketClientMessage::RemoveTracker { id } => {
-                main.trackers.remove(&id);
+                main.remove_tracker(&id);
+                main.save_config()?;
             }
             WebsocketClientMessage::UpdateConfig { config } => {
                 main.config = config;

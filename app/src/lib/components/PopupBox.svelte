@@ -9,14 +9,24 @@
 
     onMount(() => {
         // Prevent user from scrolling in the background
+        document.activeElement.blur();
         const style = document.body.style;
         if (style.overflow != "hidden") {
             style.overflow = "hidden";
             return () => (style.overflow = "initial");
         }
     });
+
+    function keyDown(e: KeyboardEvent) {
+        if (e.code == "Enter") {
+            onClick(true);
+        } else if (e.code == "Escape") {
+            onClick(false);
+        }
+    }
 </script>
 
+<svelte:window on:keydown={keyDown} />
 <div
     class="fixed top-0 left-0 bg-black/60 w-full h-full z-20 overflow-y-auto overflow-x-hidden p-4 grid place-items-center"
     transition:fade={{ duration: 100 }}

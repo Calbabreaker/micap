@@ -47,6 +47,7 @@ export interface TrackerInfo {
     status: TrackerStatus;
     latency_ms?: number;
     battery_level: number;
+    address?: string;
 }
 
 export interface TrackerData {
@@ -158,6 +159,7 @@ function handleMessage(message: Record<string, any>) {
                 if (tracker) {
                     tracker.info = message.info;
                 } else {
+                    infoToast(`New device connected from ${message.info.address}`);
                     trackers[message.id] = {
                         info: message.info,
                         data: {

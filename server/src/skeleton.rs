@@ -24,4 +24,3 @@ pub struct Skeleton {
 //         Self { root_bone: Bone }
 //     }
 // }
-

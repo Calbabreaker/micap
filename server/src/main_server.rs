@@ -100,9 +100,9 @@ impl MainServer {
         Ok(())
     }
 
-    pub fn add_tracker(&mut self, id: String, config: TrackerConfig) {
+    pub fn add_tracker(&mut self, id: String, tracker: Tracker, config: TrackerConfig) {
         if !self.trackers.contains_key(&id) {
-            self.trackers.insert(id.clone(), Tracker::default());
+            self.trackers.insert(id.clone(), tracker);
             self.tracker_info_update(&id);
             self.config.trackers.insert(id, config);
             self.updates.push(UpdateEvent::ConfigUpdate);

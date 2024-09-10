@@ -3,7 +3,7 @@ use tokio::net::UdpSocket;
 
 use crate::{
     main_server::MainServer,
-    tracker::{TrackerConfig, TrackerData, TrackerStatus},
+    tracker::{Tracker, TrackerConfig, TrackerData, TrackerStatus},
     udp::packet::{
         UdpPacketBatteryLevel, UdpPacketPingPong, UdpPacketTrackerStatus, UdpTrackerData,
     },
@@ -46,7 +46,11 @@ impl UdpDevice {
         let id = format!("{}/{}", self.mac, local_index);
         let name = format!("UDP {}/{}", self.address, local_index);
         let config = TrackerConfig::new(name);
-        main.add_tracker(id.clone(), config);
+        let mut tracker = Tracker::default();
+        tracker.info.address = Some(self.address);
+
+        main.add_tracker(id.clone(), tracker, config);
+
         self.tracker_ids[local_index as usize] = id;
         &self.tracker_ids[local_index as usize]
     }
