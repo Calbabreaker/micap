@@ -3,6 +3,7 @@
     import WifiForm from "$lib/components/WifiForm.svelte";
     import Card from "$lib/components/Card.svelte";
     import { afterUpdate } from "svelte";
+    import { confirm } from "$lib/toast";
 
     let logElm: HTMLDivElement;
     afterUpdate(() => {
@@ -45,13 +46,15 @@
     </button>
     <button
         class="btn btn-primary w-full mt-2"
-        on:click={() => {
-            if (confirm("Are you sure?")) {
-                sendWebsocket({
-                    type: "SerialSend",
-                    data: "FactoryReset\n",
-                });
-            }
+        on:click={async () => {
+            await confirm(
+                "Are you sure?",
+                "This will reset the config of the connected device",
+            );
+            sendWebsocket({
+                type: "SerialSend",
+                data: "FactoryReset\n",
+            });
         }}
     >
         Factory reset

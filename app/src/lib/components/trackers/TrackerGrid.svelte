@@ -1,14 +1,12 @@
 <script lang="ts">
     import { trackers, sendWebsocket, setConfig } from "$lib/websocket";
     import TrackerCard from "./TrackerCard.svelte";
+    import { confirm } from "$lib/toast";
 
-    function removeTracker(id: string) {
+    async function removeTracker(id: string) {
         const message =
-            "Are you sure you want to remove the tracker? This will also prevent the device from connecting to the server once all the associated trackers are removed as well.";
-        if (!confirm(message)) {
-            return;
-        }
-
+            "This will also prevent the device from connecting to the server once all the associated trackers are removed as well.";
+        await confirm("Are you sure you want to remove the tracker?", message);
         sendWebsocket({
             type: "RemoveTracker",
             id,

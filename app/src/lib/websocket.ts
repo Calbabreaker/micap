@@ -184,15 +184,15 @@ function handleMessage(message: Record<string, any>) {
 function getSerialStatus(message: string): string {
     switch (message) {
         case "WifiConnecting":
-            return "Connecting to WiFi network";
+            return "Connecting to the WiFi network";
         case "WifiConnectOk":
-            return "Connected to WiFi network";
+            return "Connected to the WiFi network";
         case "WifiConnectTimeout":
-            return "Failed to connect to WiFi network";
-        case "Connecting":
-            return "Connecting to server";
+            return "Failed to connect to the WiFi network, reconnecting to previously saved";
         case "Connected":
-            return "Connected to server";
+            return "Connecting to the server";
+        case "Restarting":
+            return "Restarting";
         default:
             return "";
     }

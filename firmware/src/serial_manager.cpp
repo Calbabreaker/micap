@@ -53,6 +53,7 @@ void SerialManager::parse_incomming_command() {
         ESP.eraseConfig();
         ESP.restart();
     } else if (strcmp(m_buffer, "Restart") == 0) {
+        Serial.print("Restarting\n");
         ESP.restart();
     }
 }

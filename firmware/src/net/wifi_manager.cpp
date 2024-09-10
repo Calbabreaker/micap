@@ -158,9 +158,9 @@ void WifiManager::on_connect() {
         "Connected to WiFi %s with ip %s", WiFi.SSID().c_str(), WiFi.localIP().toString().c_str()
     );
     m_connected = true;
+    Serial.print("WifiConnectOk\n");
 
     if (m_has_manually_set_creds) {
-        Serial.print("WifiConnectOk\n");
         struct station_config config;
         wifi_station_get_config(&config);
         g_config_manager.wifi_entry_save((const char*)config.ssid, (const char*)config.password);

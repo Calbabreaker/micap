@@ -53,10 +53,13 @@ impl SerialPortManager {
 
             if byte == b'\n' {
                 // Can only be a borrowed string
-                return Some(match String::from_utf8_lossy(&self.buffer) {
+                let str = match String::from_utf8_lossy(&self.buffer) {
                     Cow::Owned(_) => return None,
                     Cow::Borrowed(b) => b,
-                });
+                };
+
+                // Remove the new line character
+                return Some(&str[0..str.len() - 1]);
             }
         }
 

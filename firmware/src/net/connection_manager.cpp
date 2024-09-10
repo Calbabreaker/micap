@@ -15,7 +15,6 @@ void ConnectionManager::update() {
     bool just_connected = m_wifi.monitor();
 
     if (just_connected) {
-        Serial.print("Connecting\n");
         m_udp.begin(UDP_PORT);
     }
 
