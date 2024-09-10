@@ -33,6 +33,9 @@ pub enum WebsocketServerMessage<'a> {
     SerialLog {
         log: &'a str,
     },
+    ConfigUpdate {
+        config: &'a GlobalConfig,
+    },
     // Passes throught the server events
     #[serde(untagged)]
     UpdateEvent(&'a UpdateEvent),
@@ -128,8 +131,7 @@ impl WebsocketServer {
                 main.serial_manager.write(data.as_bytes())?;
             }
             WebsocketClientMessage::RemoveTracker { id } => {
-                main.remove_tracker(&id);
-                main.save_config()?;
+                main.trackers.remove(&id);
             }
             WebsocketClientMessage::UpdateConfig { config } => {
                 main.config = config;
@@ -147,13 +149,16 @@ fn get_messages_to_send(main: &mut MainServer) -> impl Iterator<Item = Message> 
         // Add the server events
         .chain(main.updates.iter().map(|update| {
             Some(match update {
-                UpdateEvent::TrackerInfoUpdate { id } => {
+                UpdateEvent::TrackerInfo { id } => {
                     // Convert to websocket server message to include the tracker info
                     WebsocketServerMessage::TrackerInfo {
                         id,
                         info: &main.trackers[id].info,
                     }
                 }
+                UpdateEvent::ConfigUpdate => WebsocketServerMessage::ConfigUpdate {
+                    config: &main.config,
+                },
                 event => WebsocketServerMessage::UpdateEvent(event),
             })
         }))

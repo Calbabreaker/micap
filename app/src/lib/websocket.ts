@@ -1,5 +1,5 @@
 import { writable } from "svelte/store";
-import { error, info } from "./toast";
+import { errorToast, infoToast } from "./toast";
 
 const WEBSOCKET_PORT = 8298;
 
@@ -71,7 +71,7 @@ export function sendWebsocket(object: Record<string, any>) {
     if (websocket && websocket.readyState == WebSocket.OPEN) {
         websocket.send(JSON.stringify(object));
     } else {
-        error("Websocket is not connected");
+        errorToast("Websocket is not connected");
     }
 }
 
@@ -123,7 +123,7 @@ export function setConfig(setFunc: (config: GlobalConfig) => void) {
 function handleMessage(message: Record<string, any>) {
     switch (message.type) {
         case "Error":
-            error(message.error);
+            errorToast(message.error);
             break;
         case "SerialPort":
             serialPortName.set(message.port_name);
@@ -141,13 +141,16 @@ function handleMessage(message: Record<string, any>) {
 
             const status = getSerialStatus(message.log);
             if (status) {
-                info(status);
+                infoToast(status);
             }
             break;
         case "InitialState":
             globalConfig.set(message.config);
             trackers.set(message.trackers);
             serialPortName.set(message.port_name);
+            break;
+        case "ConfigUpdate":
+            globalConfig.set(message.config);
             break;
         case "TrackerInfo":
             trackers.update((trackers) => {

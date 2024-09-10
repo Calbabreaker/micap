@@ -47,9 +47,10 @@ pub struct GlobalConfig {
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(tag = "type")]
 pub enum UpdateEvent {
-    TrackerInfoUpdate { id: String },
+    TrackerInfo { id: String },
     Error { error: String },
     SerialPort { port_name: Option<String> },
+    ConfigUpdate,
 }
 
 #[derive(Default)]
@@ -70,14 +71,14 @@ impl MainServer {
         let path = get_config_dir()?.join("config.json");
         log::info!("Loading from {path:?}");
         let text = std::fs::read_to_string(path)?;
-        self.config = serde_json::from_str(&text)?;
+        let config = serde_json::from_str::<GlobalConfig>(&text)?;
 
-        for id in self.config.trackers.keys() {
+        for id in config.trackers.keys() {
             self.trackers.insert(id.clone(), Tracker::default());
-            self.updates
-                .push(UpdateEvent::TrackerInfoUpdate { id: id.clone() });
+            self.tracker_info_update(id);
         }
 
+        self.config = config;
         Ok(())
     }
 
@@ -102,8 +103,10 @@ impl MainServer {
     pub fn add_tracker(&mut self, id: String, config: TrackerConfig) {
         if !self.trackers.contains_key(&id) {
             self.trackers.insert(id.clone(), Tracker::default());
-            self.config.trackers.insert(id.clone(), config);
-            self.updates.push(UpdateEvent::TrackerInfoUpdate { id });
+            self.tracker_info_update(&id);
+            self.config.trackers.insert(id, config);
+            self.updates.push(UpdateEvent::ConfigUpdate);
+
             if let Err(err) = self.save_config() {
                 log::error!("Failed to save tracker: {err:?}");
             }
@@ -113,13 +116,14 @@ impl MainServer {
     pub fn tracker_info_update(&mut self, id: &String) -> Option<&mut Tracker> {
         let tracker = self.trackers.get_mut(id)?;
         self.updates
-            .push(UpdateEvent::TrackerInfoUpdate { id: id.clone() });
+            .push(UpdateEvent::TrackerInfo { id: id.clone() });
         Some(tracker)
     }
 
     pub fn remove_tracker(&mut self, id: &String) {
         if self.trackers.remove(id).is_some() {
             self.config.trackers.remove(id);
+            self.updates.push(UpdateEvent::ConfigUpdate);
         }
     }
 
