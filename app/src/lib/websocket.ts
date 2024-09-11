@@ -110,6 +110,7 @@ export function connectWebsocket() {
 export function setConfig(setFunc: (config: GlobalConfig) => void) {
     globalConfig.update((config) => {
         if (config) {
+            infoToast("Applied the config");
             setFunc(config);
             sendWebsocket({
                 type: "UpdateConfig",

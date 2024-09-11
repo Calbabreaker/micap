@@ -55,3 +55,7 @@ input::-webkit-inner-spin-button {
 input[type="number"] {
     -moz-appearance: textfield; /* Firefox */
 }
+
+input[type="checkbox"] {
+    transform: scale(1.5);
+}

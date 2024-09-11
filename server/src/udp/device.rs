@@ -45,11 +45,7 @@ impl UdpDevice {
         // Register the tracker and add the id into the udp device array to know
         let id = format!("{}/{}", self.mac, local_index);
         let name = format!("UDP {}/{}", self.address, local_index);
-        let config = TrackerConfig::new(name);
-        let mut tracker = Tracker::default();
-        tracker.info.address = Some(self.address);
-
-        main.add_tracker(id.clone(), tracker, config);
+        main.add_tracker(id.clone(), TrackerConfig::new(name));
 
         self.tracker_ids[local_index as usize] = id;
         &self.tracker_ids[local_index as usize]
@@ -141,6 +137,7 @@ impl UdpDevice {
 
         if let Some(tracker) = main.tracker_info_update(id) {
             tracker.info.status = packet.tracker_status;
+            tracker.info.address = Some(self.address);
             tracker.data = TrackerData::default();
         }
     }

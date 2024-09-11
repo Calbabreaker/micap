@@ -14,7 +14,7 @@ export function errorToast(message: string) {
     toast.push(message, {
         classes: ["toast", "error"],
         pausable: true,
-        duration: 6000,
+        duration: 5000,
     });
 }
 
@@ -22,7 +22,7 @@ export function infoToast(message: string) {
     toast.push(message, {
         classes: ["toast"],
         pausable: true,
-        duration: 6000,
+        duration: 2000,
     });
 }
 
