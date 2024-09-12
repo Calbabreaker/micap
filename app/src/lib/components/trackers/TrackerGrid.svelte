@@ -2,7 +2,7 @@
     import {
         trackers,
         sendWebsocket,
-        setConfig,
+        updateConfig,
         globalConfig,
     } from "$lib/websocket";
     import TrackerCard from "./TrackerCard.svelte";
@@ -35,7 +35,7 @@
                 {tracker}
                 {id}
                 onRemove={() => removeTracker(id)}
-                onConfigEdit={() => setConfig(() => {})}
+                onConfigEdit={() => updateConfig()}
             />
         {/if}
     {/each}

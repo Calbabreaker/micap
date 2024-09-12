@@ -1,5 +1,9 @@
 <script lang="ts">
-    import { globalConfig, setConfig, type GlobalConfig } from "$lib/websocket";
+    import {
+        globalConfig,
+        updateConfig,
+        type GlobalConfig,
+    } from "$lib/websocket";
 
     let enabled = false;
     let marionettePort = 39540;
@@ -12,7 +16,7 @@
     $: if ($globalConfig) setVmcState($globalConfig);
 
     function setVmcConfig() {
-        setConfig((globalConfig) => {
+        updateConfig((globalConfig) => {
             globalConfig.vmc = {
                 enabled,
                 marionette_port: Number(marionettePort),

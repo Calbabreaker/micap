@@ -1,8 +1,8 @@
-use std::{net::SocketAddr, time::Instant};
+use std::{cell::RefMut, net::SocketAddr, time::Instant};
 use tokio::net::UdpSocket;
 
 use crate::{
-    main_server::MainServer,
+    main_server::{MainServer, TrackerRef},
     tracker::{Tracker, TrackerConfig, TrackerData, TrackerStatus},
     udp::packet::{
         UdpPacketBatteryLevel, UdpPacketPingPong, UdpPacketTrackerStatus, UdpTrackerData,
@@ -13,8 +13,8 @@ use crate::{
 pub struct UdpDevice {
     pub(super) last_packet_received_time: Instant,
     pub(super) last_packet_number: u32,
-    /// Maps the udp device's tracker index to the tracker's global id
-    pub(super) tracker_ids: Vec<String>,
+    /// Maps the udp device's tracker index to the global tracker
+    pub(super) global_trackers: Vec<Option<TrackerRef>>,
     pub(super) timed_out: bool,
     pub(super) mac: String,
     pub(super) address: SocketAddr,
@@ -25,7 +25,7 @@ pub struct UdpDevice {
 impl UdpDevice {
     pub fn new(address: SocketAddr, mac: String) -> Self {
         Self {
-            tracker_ids: Vec::default(),
+            global_trackers: Vec::default(),
             address,
             mac,
             last_packet_received_time: Instant::now(),
@@ -36,10 +36,9 @@ impl UdpDevice {
         }
     }
 
-    fn add_global_tracker(&mut self, local_index: u8, main: &mut MainServer) -> &String {
-        if local_index as usize >= self.tracker_ids.len() {
-            self.tracker_ids
-                .resize(local_index as usize + 1, String::new());
+    fn add_global_tracker(&mut self, local_index: u8, main: &mut MainServer) {
+        if local_index as usize >= self.global_trackers.len() {
+            self.global_trackers.resize(local_index as usize + 1, None);
         }
 
         // Register the tracker and add the id into the udp device array to know
@@ -47,18 +46,22 @@ impl UdpDevice {
         let name = format!("UDP {}/{}", self.address, local_index);
         main.add_tracker(id.clone(), TrackerConfig::new(name));
 
-        self.tracker_ids[local_index as usize] = id;
-        &self.tracker_ids[local_index as usize]
+        self.global_trackers[local_index as usize] = main.trackers.get(&id).cloned();
     }
 
-    fn get_tracker_id(&mut self, local_index: u8) -> Option<&String> {
-        self.tracker_ids
-            .get(local_index as usize)
-            .filter(|id| !id.is_empty())
+    fn get_tracker(&mut self, local_index: u8) -> Option<RefMut<'_, Tracker>> {
+        Some(
+            self.global_trackers
+                .get(local_index as usize)?
+                .as_ref()?
+                .borrow_mut(),
+        )
     }
 
-    fn tracker_id_iter(&self) -> impl Iterator<Item = &String> {
-        self.tracker_ids.iter().filter(|id| !id.is_empty())
+    fn tracker_iter(&self) -> impl Iterator<Item = RefMut<'_, Tracker>> {
+        self.global_trackers
+            .iter()
+            .filter_map(|tracker| Some(tracker.as_ref()?.borrow_mut()))
     }
 
     pub fn is_latest_packet_number(&mut self, packet_number: u32) -> bool {
@@ -75,22 +78,20 @@ impl UdpDevice {
         }
     }
 
-    pub fn set_timed_out(&mut self, main: &mut MainServer, timed_out: bool) {
+    pub fn set_timed_out(&mut self, timed_out: bool) {
         if timed_out == self.timed_out {
             return;
         }
 
         self.timed_out = timed_out;
 
-        for id in self.tracker_id_iter() {
-            if let Some(tracker) = main.tracker_info_update(id) {
-                // Only allow changing status to TimedOut if tracker is Ok and vice-versa
-                if timed_out && tracker.info.status == TrackerStatus::Ok {
-                    tracker.info.status = TrackerStatus::TimedOut;
-                } else if !timed_out && tracker.info.status == TrackerStatus::TimedOut {
-                    tracker.info.status = TrackerStatus::Ok;
-                };
-            }
+        for mut tracker in self.tracker_iter() {
+            // Only allow changing status to TimedOut if tracker is Ok and vice-versa
+            if timed_out && tracker.info.status == TrackerStatus::Ok {
+                tracker.update_info().status = TrackerStatus::TimedOut;
+            } else if !timed_out && tracker.info.status == TrackerStatus::TimedOut {
+                tracker.update_info().status = TrackerStatus::Ok;
+            };
         }
     }
 
@@ -106,47 +107,48 @@ impl UdpDevice {
         Ok(())
     }
 
-    pub fn handle_pong(&mut self, main: &mut MainServer, packet: UdpPacketPingPong) {
+    pub fn handle_pong(&mut self, packet: UdpPacketPingPong) {
         if packet.id != self.current_ping_id {
             return;
         }
 
         if let Some(start_time) = self.current_ping_start_time {
-            for id in self.tracker_id_iter() {
+            for mut tracker in self.tracker_iter() {
                 let latency = start_time.elapsed() / 2;
-                if let Some(tracker) = main.tracker_info_update(id) {
-                    tracker.info.latency_ms = Some(latency.as_millis() as u32);
-                }
+                tracker.update_info().latency_ms = Some(latency.as_millis() as u32);
             }
 
             self.current_ping_start_time = None;
         }
     }
 
-    pub fn update_tracker_data(&mut self, main: &mut MainServer, data: UdpTrackerData) {
-        if let Some(id) = self.get_tracker_id(data.tracker_index) {
-            main.update_tracker_data(id, data.accleration, data.orientation);
+    pub fn update_tracker_data(&mut self, data: UdpTrackerData) {
+        if let Some(mut tracker) = self.get_tracker(data.tracker_index) {
+            tracker.update_data(data.accleration, data.orientation);
         }
     }
 
     pub fn update_tracker_status(&mut self, main: &mut MainServer, packet: UdpPacketTrackerStatus) {
-        let id = match self.get_tracker_id(packet.tracker_index) {
-            Some(id) => id,
-            None => self.add_global_tracker(packet.tracker_index, main),
-        };
+        if self.get_tracker(packet.tracker_index).is_none() {
+            self.add_global_tracker(packet.tracker_index, main);
+        }
 
-        if let Some(tracker) = main.tracker_info_update(id) {
-            tracker.info.status = packet.tracker_status;
-            tracker.info.address = Some(self.address);
-            tracker.data = TrackerData::default();
+        let address = self.address;
+        let mut tracker = self.get_tracker(packet.tracker_index).unwrap();
+
+        tracker.data = TrackerData::default();
+        tracker.update_info().status = packet.tracker_status;
+        tracker.update_info().address = Some(address);
+    }
+
+    pub fn update_battery_level(&self, packet: UdpPacketBatteryLevel) {
+        for mut tracker in self.tracker_iter() {
+            tracker.update_info().battery_level = packet.battery_level;
         }
     }
 
-    pub fn update_battery_level(&self, main: &mut MainServer, packet: UdpPacketBatteryLevel) {
-        for id in self.tracker_id_iter() {
-            if let Some(tracker) = main.tracker_info_update(id) {
-                tracker.info.battery_level = packet.battery_level;
-            }
-        }
+    pub fn all_trackers_removed(&mut self) -> bool {
+        let all_removed = self.tracker_iter().all(|tracker| tracker.to_be_removed);
+        !self.global_trackers.is_empty() && all_removed
     }
 }

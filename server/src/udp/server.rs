@@ -81,22 +81,18 @@ impl UdpServer {
 
         for device in self.devices_map.values_mut() {
             if device.last_packet_received_time.elapsed() > DEVICE_TIMEOUT {
-                device.set_timed_out(main, true);
+                device.set_timed_out(true);
             } else {
-                device.set_timed_out(main, false);
+                device.set_timed_out(false);
             }
 
             device.check_send_new_ping(&self.socket).await?;
 
-            let still_exists = device
-                .tracker_ids
-                .iter()
-                .any(|id| main.trackers.contains_key(id));
-
-            if !device.tracker_ids.is_empty() && !still_exists {
+            if device.all_trackers_removed() {
                 // When the user has removed every tracker from the device prevent it from connecting anymore
                 self.mac_to_address_map.remove(&device.mac);
                 main.address_blacklist.insert(device.address);
+                log::info!("Added {} to blacklist", device.address);
                 to_remove = Some(device.address);
             }
         }
@@ -122,7 +118,7 @@ impl UdpServer {
 
         match UdpPacket::parse(&mut bytes, &mut device)? {
             UdpPacket::PingPong(packet) => {
-                device?.handle_pong(main, packet);
+                device?.handle_pong(packet);
             }
             UdpPacket::Handshake(packet) => {
                 self.socket.send_to(&packet.to_bytes(), peer_addr).await?;
@@ -131,7 +127,7 @@ impl UdpServer {
             UdpPacket::TrackerData(mut packet) => {
                 let device = device?;
                 while let Ok(data) = packet.next_data() {
-                    device.update_tracker_data(main, data);
+                    device.update_tracker_data(data);
                 }
             }
             UdpPacket::TrackerStatus(packet) => {
@@ -139,7 +135,7 @@ impl UdpServer {
                 device?.update_tracker_status(main, packet);
             }
             UdpPacket::BatteryLevel(packet) => {
-                device?.update_battery_level(main, packet);
+                device?.update_battery_level(packet);
             }
         }
 
@@ -176,6 +172,6 @@ impl UdpServer {
         self.mac_to_address_map
             .insert(packet.mac_address, peer_addr);
         self.devices_map.insert(peer_addr, device);
-        log::info!("New device connected from {peer_addr}");
+        log::info!("New udp device connected from {peer_addr}");
     }
 }

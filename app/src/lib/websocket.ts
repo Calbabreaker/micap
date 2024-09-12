@@ -6,10 +6,10 @@ const WEBSOCKET_PORT = 8298;
 // Copied from server
 export const trackerLocations = [
     "Hip",
-    "LeftUpperLeg",
-    "RightUpperLeg",
-    "LeftLowerLeg",
-    "RightLowerLeg",
+    "LeftThigh",
+    "RightThigh",
+    "LeftKnee",
+    "RightKnee",
     "LeftFoot",
     "RightFoot",
     "Waist",
@@ -18,10 +18,10 @@ export const trackerLocations = [
     "Head",
     "LeftShoulder",
     "RightShoulder",
-    "LeftUpperArm",
-    "RightUpperArm",
-    "LeftLowerArm",
-    "RightLowerArm",
+    "LeftArm",
+    "RightArm",
+    "LeftElbow",
+    "RightElbow",
     "LeftHand",
     "RightHand",
 ];
@@ -107,11 +107,14 @@ export function connectWebsocket() {
     };
 }
 
-export function setConfig(setFunc: (config: GlobalConfig) => void) {
+export function updateConfig(updateFunc?: (config: GlobalConfig) => void) {
     globalConfig.update((config) => {
         if (config) {
             infoToast("Applied the config");
-            setFunc(config);
+            if (updateFunc) {
+                updateFunc(config);
+            }
+
             sendWebsocket({
                 type: "UpdateConfig",
                 config,
@@ -160,7 +163,7 @@ function handleMessage(message: Record<string, any>) {
                 if (tracker) {
                     tracker.info = message.info;
                 } else {
-                    infoToast(`New device connected from ${message.info.address}`);
+                    infoToast(`New udp device connected from ${message.info.address}`);
                     trackers[message.id] = {
                         info: message.info,
                         data: {

@@ -1,8 +1,9 @@
 use std::{
+    cell::RefCell,
     collections::{HashMap, HashSet},
     net::SocketAddr,
     path::PathBuf,
-    time::Instant,
+    rc::Rc,
 };
 
 use anyhow::Context;
@@ -47,16 +48,17 @@ pub struct GlobalConfig {
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(tag = "type")]
 pub enum UpdateEvent {
-    TrackerInfo { id: String },
     Error { error: String },
     SerialPort { port_name: Option<String> },
     ConfigUpdate,
 }
 
+pub type TrackerRef = Rc<RefCell<Tracker>>;
+
 #[derive(Default)]
 pub struct MainServer {
     // Maps a tracker id to a tracker
-    pub trackers: HashMap<String, Tracker>,
+    pub trackers: HashMap<String, TrackerRef>,
     /// Contains list of update event emited in the middle of a frame
     pub updates: Vec<UpdateEvent>,
     /// Set of address that should not be allowed to connect
@@ -74,8 +76,7 @@ impl MainServer {
         let config = serde_json::from_str::<GlobalConfig>(&text)?;
 
         for id in config.trackers.keys() {
-            self.trackers.insert(id.clone(), Tracker::default());
-            self.tracker_info_update(id);
+            self.trackers.insert(id.clone(), TrackerRef::default());
         }
 
         self.config = config;
@@ -87,6 +88,7 @@ impl MainServer {
         log::info!("Saving to {path:?}");
         let text = serde_json::to_string_pretty(&self.config)?;
         std::fs::write(path, text)?;
+        self.updates.push(UpdateEvent::ConfigUpdate);
 
         Ok(())
     }
@@ -94,56 +96,43 @@ impl MainServer {
     pub async fn update(&mut self, modules: &mut SubModules) -> anyhow::Result<()> {
         modules.udp_server.update(self).await?;
         modules.websocket_server.update(self).await?;
-
         modules.vmc_connector.update(self).await?;
+
+        if let Some(removed_id) = self.update_trackers() {
+            self.config.trackers.remove(&removed_id);
+            self.trackers.remove(&removed_id);
+            self.save_config()?;
+        }
 
         Ok(())
     }
 
+    // Returns a tracker id if that id should be removed
+    fn update_trackers(&mut self) -> Option<String> {
+        for (id, tracker) in &self.trackers {
+            let mut tracker = tracker.borrow_mut();
+            tracker.info.was_updated = false;
+            tracker.data.was_updated = false;
+
+            if tracker.to_be_removed {
+                return Some(id.clone());
+            }
+        }
+
+        None
+    }
+
     pub fn add_tracker(&mut self, id: String, config: TrackerConfig) {
         if !self.trackers.contains_key(&id) {
-            self.trackers.insert(id.clone(), Tracker::default());
-            self.tracker_info_update(&id);
+            let tracker = TrackerRef::default();
+            tracker.borrow_mut().update_info();
+
+            self.trackers.insert(id.clone(), tracker.clone());
             self.config.trackers.insert(id, config);
-            self.updates.push(UpdateEvent::ConfigUpdate);
 
             if let Err(err) = self.save_config() {
                 log::error!("Failed to save tracker: {err:?}");
             }
-        }
-    }
-
-    pub fn tracker_info_update(&mut self, id: &String) -> Option<&mut Tracker> {
-        let tracker = self.trackers.get_mut(id)?;
-        self.updates
-            .push(UpdateEvent::TrackerInfo { id: id.clone() });
-        Some(tracker)
-    }
-
-    pub fn remove_tracker(&mut self, id: &String) {
-        if self.trackers.remove(id).is_some() {
-            self.config.trackers.remove(id);
-            self.updates.push(UpdateEvent::ConfigUpdate);
-        }
-    }
-
-    pub fn update_tracker_data(
-        &mut self,
-        id: &String,
-        acceleration: glam::Vec3A,
-        orientation: glam::Quat,
-    ) {
-        if let Some(tracker) = self.trackers.get_mut(id) {
-            tracker.data.orientation = orientation;
-            tracker.data.acceleration = acceleration;
-
-            if tracker.info.status == TrackerStatus::Ok {
-                let delta = tracker.time_data_received.elapsed().as_secs_f32();
-                tracker.data.velocity += tracker.data.acceleration * delta;
-                tracker.data.position += tracker.data.velocity * delta;
-            }
-
-            tracker.time_data_received = Instant::now();
         }
     }
 }

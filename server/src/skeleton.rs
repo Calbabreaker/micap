@@ -1,22 +1,18 @@
-#[derive(serde::Serialize)]
-pub struct Bone {
-    tail_position: glam::Vec3A,
-    parent: Box<Bone>,
-    children: Vec<Bone>,
-}
+use std::collections::HashMap;
 
-// impl Bone {
-//     pub fn new() -> Self {
-//         Self {
-//             tail_position: (),
-//             parent: (),
-//             children: (),
-//         }
-//     }
-// }
+use crate::{
+    bone::{Bone, BoneKind},
+    main_server::TrackerRef,
+    tracker::Tracker,
+};
 
 pub struct Skeleton {
     root_bone: Bone,
+    trackers: HashMap<BoneKind, TrackerRef>,
+}
+
+impl Skeleton {
+    pub fn update(&mut self, trackers: impl Iterator<Item = Tracker>) {}
 }
 
 // impl Default for Skeleton {

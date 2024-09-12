@@ -8,8 +8,8 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 
 use crate::{
-    main_server::{GlobalConfig, MainServer, UpdateEvent},
-    tracker::{Tracker, TrackerData, TrackerInfo, TrackerStatus},
+    main_server::{GlobalConfig, MainServer, TrackerRef, UpdateEvent},
+    tracker::{TrackerData, TrackerInfo},
 };
 
 pub const WEBSOCKET_PORT: u16 = 8298;
@@ -19,14 +19,14 @@ pub const WEBSOCKET_PORT: u16 = 8298;
 pub enum WebsocketServerMessage<'a> {
     TrackerInfo {
         id: &'a String,
-        info: &'a TrackerInfo,
+        info: TrackerInfo,
     },
     TrackerData {
         id: &'a String,
-        data: &'a TrackerData,
+        data: TrackerData,
     },
     InitialState {
-        trackers: &'a HashMap<String, Tracker>,
+        trackers: &'a HashMap<String, TrackerRef>,
         config: &'a GlobalConfig,
         port_name: Option<String>,
     },
@@ -131,8 +131,9 @@ impl WebsocketServer {
                 main.serial_manager.write(data.as_bytes())?;
             }
             WebsocketClientMessage::RemoveTracker { id } => {
-                main.remove_tracker(&id);
-                main.save_config()?;
+                if let Some(tracker) = main.trackers.get(&id) {
+                    tracker.borrow_mut().to_be_removed = true;
+                }
             }
             WebsocketClientMessage::UpdateConfig { config } => {
                 main.config = config;
@@ -150,13 +151,6 @@ fn get_messages_to_send(main: &mut MainServer) -> impl Iterator<Item = Message> 
         // Add the server events
         .chain(main.updates.iter().map(|update| {
             Some(match update {
-                UpdateEvent::TrackerInfo { id } => {
-                    // Convert to websocket server message to include the tracker info
-                    WebsocketServerMessage::TrackerInfo {
-                        id,
-                        info: &main.trackers[id].info,
-                    }
-                }
                 UpdateEvent::ConfigUpdate => WebsocketServerMessage::ConfigUpdate {
                     config: &main.config,
                 },
@@ -164,17 +158,29 @@ fn get_messages_to_send(main: &mut MainServer) -> impl Iterator<Item = Message> 
             })
         }))
         // Add the tracker data
-        .chain(main.trackers.iter().map(|(id, tracker)| {
-            // Only send if client requested listen and is Ok
-            if tracker.info.status != TrackerStatus::Ok {
-                return None;
-            }
+        .chain(main.trackers.iter().flat_map(|(id, tracker)| {
+            let tracker = tracker.borrow();
 
-            // Data from trackers
-            Some(WebsocketServerMessage::TrackerData {
-                id,
-                data: &tracker.data,
-            })
+            let data_message = if tracker.data.was_updated {
+                Some(WebsocketServerMessage::TrackerData {
+                    id,
+                    data: tracker.data.clone(),
+                })
+            } else {
+                None
+            };
+
+            let info_message = if tracker.info.was_updated {
+                Some(WebsocketServerMessage::TrackerInfo {
+                    id,
+                    info: tracker.info.clone(),
+                })
+            } else {
+                None
+            };
+
+            // Data and info from trackers
+            [data_message, info_message]
         }))
         .chain(std::iter::once_with(|| {
             Some(WebsocketServerMessage::SerialLog {

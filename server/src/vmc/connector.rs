@@ -4,7 +4,6 @@ use tokio::net::UdpSocket;
 
 use crate::{
     main_server::MainServer,
-    tracker::TrackerStatus,
     vmc::packet::{IntoOscMessage, VmcBoneTransformPacket, VmcStatePacket},
 };
 
@@ -44,15 +43,16 @@ impl VmcConnector {
             .peer_addr()
             .map_or(true, |addr| addr.port() != config_port)
         {
-            log::info!("Sending packets to {}", config_port);
             self.socket
                 .connect((Ipv4Addr::LOCALHOST, config_port))
                 .await?;
+            log::info!("Sending VMC packets to {}", self.socket.peer_addr()?);
         }
 
         let osc_messages = std::iter::empty()
             .chain(main.trackers.iter().filter_map(|(id, tracker)| {
-                if tracker.info.status != TrackerStatus::Ok {
+                let tracker = tracker.borrow();
+                if !tracker.data.was_updated {
                     return None;
                 }
 
