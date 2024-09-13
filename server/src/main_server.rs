@@ -10,6 +10,7 @@ use anyhow::Context;
 
 use crate::{
     serial::SerialPortManager,
+    skeleton::{Skeleton, SkeletonConfig},
     tracker::*,
     udp::server::UdpServer,
     vmc::connector::{VmcConfig, VmcConnector},
@@ -17,6 +18,7 @@ use crate::{
 };
 
 pub struct SubModules {
+    skeleton: Skeleton,
     udp_server: UdpServer,
     vmc_connector: VmcConnector,
     websocket_server: WebsocketServer,
@@ -25,6 +27,7 @@ pub struct SubModules {
 impl SubModules {
     pub async fn new() -> anyhow::Result<Self> {
         Ok(Self {
+            skeleton: Skeleton::new(),
             websocket_server: WebsocketServer::new()
                 .await
                 .context("Failed to start websocket server")?,
@@ -43,9 +46,10 @@ impl SubModules {
 pub struct GlobalConfig {
     pub trackers: HashMap<String, TrackerConfig>,
     pub vmc: VmcConfig,
+    pub skeleton: SkeletonConfig,
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(tag = "type")]
 pub enum UpdateEvent {
     Error { error: String },
@@ -59,7 +63,8 @@ pub type TrackerRef = Rc<RefCell<Tracker>>;
 pub struct MainServer {
     // Maps a tracker id to a tracker
     pub trackers: HashMap<String, TrackerRef>,
-    /// Contains list of update event emited in the middle of a frame
+    /// Contains list of update event emited in the middle of a loop
+    /// Gets cleared at the end of the loop
     pub updates: Vec<UpdateEvent>,
     /// Set of address that should not be allowed to connect
     /// This is to allow for servers to ignore ignored trackers that are trying to connect
@@ -96,6 +101,8 @@ impl MainServer {
     pub async fn update(&mut self, modules: &mut SubModules) -> anyhow::Result<()> {
         modules.udp_server.update(self).await?;
         modules.websocket_server.update(self).await?;
+
+        modules.skeleton.update(self);
         modules.vmc_connector.update(self).await?;
 
         if let Some(removed_id) = self.update_trackers() {

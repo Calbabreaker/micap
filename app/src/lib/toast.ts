@@ -26,6 +26,7 @@ export function infoToast(message: string) {
     });
 }
 
+// These promises will reject if the user cancels
 export function confirmPopup(title: string, message: string | undefined): Promise<string> {
     return showPopup(title, message, false);
 }

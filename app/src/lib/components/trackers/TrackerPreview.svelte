@@ -1,7 +1,7 @@
 <script lang="ts">
     import { T } from "@threlte/core";
     import { trackers } from "$lib/websocket";
-    import { ArrowHelper, Vector3 } from "three";
+    import { type ArrowHelper, Vector3 } from "three";
     import PreviewCanvas from "./PreviewCanvas.svelte";
     import { OrbitControls } from "@threlte/extras";
 

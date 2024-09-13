@@ -1,4 +1,3 @@
-mod bone;
 mod main_server;
 mod serial;
 mod skeleton;

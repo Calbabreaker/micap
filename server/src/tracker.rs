@@ -1,6 +1,6 @@
 use std::{net::SocketAddr, time::Instant};
 
-use crate::bone::BoneKind;
+use crate::skeleton::BoneLocation;
 
 #[derive(Default, PartialEq, Debug, Clone, Copy, serde::Serialize)]
 #[repr(u8)]
@@ -80,7 +80,7 @@ impl Tracker {
 pub struct TrackerConfig {
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub location: Option<BoneKind>,
+    pub location: Option<BoneLocation>,
 }
 
 impl TrackerConfig {

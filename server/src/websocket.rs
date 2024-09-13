@@ -36,7 +36,7 @@ pub enum WebsocketServerMessage<'a> {
     ConfigUpdate {
         config: &'a GlobalConfig,
     },
-    // Passes throught the server events
+    // Passes through the server events
     #[serde(untagged)]
     UpdateEvent(&'a UpdateEvent),
 }

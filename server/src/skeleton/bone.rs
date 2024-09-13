@@ -1,5 +1,5 @@
-#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
-pub enum BoneKind {
+#[derive(Debug, Hash, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum BoneLocation {
     Hip,
     LeftThigh,
     RightThigh,
@@ -21,7 +21,7 @@ pub enum BoneKind {
     RightHand,
 }
 
-impl BoneKind {
+impl BoneLocation {
     // Maps to bone names used in unity, this is also what VRM uses
     // https://docs.unity3d.com/ScriptReference/HumanBodyBones.html
     pub const fn as_unity_bone(&self) -> &'static str {
@@ -49,19 +49,18 @@ impl BoneKind {
     }
 }
 
-#[derive(serde::Serialize)]
 pub struct Bone {
-    tail_position: glam::Vec3A,
-    parent: Box<Bone>,
-    children: Vec<Bone>,
+    /// Position of the tail/end of the bone
+    position: glam::Vec3A,
+    /// Orientation of the head/start of the bone
+    orientation: glam::Quat,
+    parent: Option<BoneLocation>,
+    children: Vec<BoneLocation>,
+    location: BoneLocation,
 }
 
-// impl Bone {
-//     pub fn new() -> Self {
-//         Self {
-//             tail_position: (),
-//             parent: (),
-//             children: (),
-//         }
-//     }
-// }
+impl Bone {
+    pub fn set_length(&mut self, length: f32) {
+        self.position.y = length;
+    }
+}
