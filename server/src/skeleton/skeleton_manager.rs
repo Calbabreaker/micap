@@ -2,15 +2,15 @@ use std::collections::HashMap;
 
 use crate::{
     main_server::{MainServer, TrackerRef, UpdateEvent},
-    skeleton::bone::{Bone, BoneLocation},
+    skeleton::{Bone, BoneLocation},
 };
 
-pub struct Skeleton {
+pub struct SkeletonManager {
     bones: HashMap<BoneLocation, Bone>,
     trackers: HashMap<BoneLocation, TrackerRef>,
 }
 
-impl Skeleton {
+impl SkeletonManager {
     pub fn new() -> Self {
         // Bones will be offseted based on body config
         // Hip is considered the root bone as well

@@ -9,7 +9,7 @@ pub enum SkeletonOffsetKind {
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct SkeletonConfig {
     /// Contains the length offset in meters from a bone to its connecting one
-    offsets: HashMap<SkeletonOffsetKind, f32>,
+    pub offsets: HashMap<SkeletonOffsetKind, f32>,
 }
 
 impl Default for SkeletonConfig {

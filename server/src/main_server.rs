@@ -10,7 +10,7 @@ use anyhow::Context;
 
 use crate::{
     serial::SerialPortManager,
-    skeleton::{Skeleton, SkeletonConfig},
+    skeleton::{SkeletonConfig, SkeletonManager},
     tracker::*,
     udp::server::UdpServer,
     vmc::connector::{VmcConfig, VmcConnector},
@@ -18,7 +18,7 @@ use crate::{
 };
 
 pub struct SubModules {
-    skeleton: Skeleton,
+    skeleton: SkeletonManager,
     udp_server: UdpServer,
     vmc_connector: VmcConnector,
     websocket_server: WebsocketServer,
@@ -27,7 +27,7 @@ pub struct SubModules {
 impl SubModules {
     pub async fn new() -> anyhow::Result<Self> {
         Ok(Self {
-            skeleton: Skeleton::new(),
+            skeleton: SkeletonManager::new(),
             websocket_server: WebsocketServer::new()
                 .await
                 .context("Failed to start websocket server")?,
