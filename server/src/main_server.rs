@@ -1,24 +1,19 @@
-use std::{
-    cell::RefCell,
-    collections::{HashMap, HashSet},
-    net::SocketAddr,
-    path::PathBuf,
-    rc::Rc,
-};
+use std::{collections::HashMap, path::PathBuf};
 
 use anyhow::Context;
+use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 use crate::{
+    osc::vmc_connector::{VmcConfig, VmcConnector},
     serial::SerialPortManager,
     skeleton::{SkeletonConfig, SkeletonManager},
     tracker::*,
     udp::server::UdpServer,
-    vmc::connector::{VmcConfig, VmcConnector},
     websocket::WebsocketServer,
 };
 
 pub struct SubModules {
-    skeleton: SkeletonManager,
     udp_server: UdpServer,
     vmc_connector: VmcConnector,
     websocket_server: WebsocketServer,
@@ -27,7 +22,6 @@ pub struct SubModules {
 impl SubModules {
     pub async fn new() -> anyhow::Result<Self> {
         Ok(Self {
-            skeleton: SkeletonManager::new(),
             websocket_server: WebsocketServer::new()
                 .await
                 .context("Failed to start websocket server")?,
@@ -41,7 +35,7 @@ impl SubModules {
     }
 }
 
-#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, TS)]
 #[serde(default)]
 pub struct GlobalConfig {
     pub trackers: HashMap<String, TrackerConfig>,
@@ -49,15 +43,14 @@ pub struct GlobalConfig {
     pub skeleton: SkeletonConfig,
 }
 
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, TS)]
 #[serde(tag = "type")]
 pub enum UpdateEvent {
     Error { error: String },
-    SerialPort { port_name: Option<String> },
     ConfigUpdate,
 }
 
-pub type TrackerRef = Rc<RefCell<Tracker>>;
+pub type TrackerRef = std::sync::Arc<tokio::sync::RwLock<Tracker>>;
 
 #[derive(Default)]
 pub struct MainServer {
@@ -66,10 +59,8 @@ pub struct MainServer {
     /// Contains list of update event emited in the middle of a loop
     /// Gets cleared at the end of the loop
     pub updates: Vec<UpdateEvent>,
-    /// Set of address that should not be allowed to connect
-    /// This is to allow for servers to ignore ignored trackers that are trying to connect
-    pub address_blacklist: HashSet<SocketAddr>,
     pub serial_manager: SerialPortManager,
+    pub skeleton_manager: SkeletonManager,
     pub config: GlobalConfig,
 }
 
@@ -85,6 +76,7 @@ impl MainServer {
         }
 
         self.config = config;
+        self.updates.push(UpdateEvent::ConfigUpdate);
         Ok(())
     }
 
@@ -102,10 +94,17 @@ impl MainServer {
         modules.udp_server.update(self).await?;
         modules.websocket_server.update(self).await?;
 
-        modules.skeleton.update(self);
+        if self.updates.contains(&UpdateEvent::ConfigUpdate) {
+            self.skeleton_manager
+                .apply_config(&self.config, &self.trackers);
+            modules.vmc_connector.apply_config(&self.config.vmc).await?;
+        }
+
+        self.skeleton_manager.update();
+
         modules.vmc_connector.update(self).await?;
 
-        if let Some(removed_id) = self.update_trackers() {
+        if let Some(removed_id) = self.upkeep_trackers().await {
             self.config.trackers.remove(&removed_id);
             self.trackers.remove(&removed_id);
             self.save_config()?;
@@ -115,11 +114,11 @@ impl MainServer {
     }
 
     // Returns a tracker id if that id should be removed
-    fn update_trackers(&mut self) -> Option<String> {
+    async fn upkeep_trackers(&mut self) -> Option<String> {
         for (id, tracker) in &self.trackers {
-            let mut tracker = tracker.borrow_mut();
-            tracker.info.was_updated = false;
-            tracker.data.was_updated = false;
+            let mut tracker = tracker.write().await;
+            tracker.info_was_updated = false;
+            tracker.data_was_updated = false;
 
             if tracker.to_be_removed {
                 return Some(id.clone());
@@ -129,17 +128,13 @@ impl MainServer {
         None
     }
 
-    pub fn add_tracker(&mut self, id: String, config: TrackerConfig) {
+    pub async fn add_tracker(&mut self, id: String) {
         if !self.trackers.contains_key(&id) {
             let tracker = TrackerRef::default();
-            tracker.borrow_mut().update_info();
+            tracker.write().await.update_info();
 
+            // Note: we only set the config once
             self.trackers.insert(id.clone(), tracker.clone());
-            self.config.trackers.insert(id, config);
-
-            if let Err(err) = self.save_config() {
-                log::error!("Failed to save tracker: {err:?}");
-            }
         }
     }
 }

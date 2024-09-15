@@ -1,12 +1,10 @@
 mod main_server;
+mod osc;
 mod serial;
 mod skeleton;
-mod tracker;
+pub mod tracker;
 pub mod udp;
-mod vmc;
-mod websocket;
-
-pub use websocket::WEBSOCKET_PORT;
+pub mod websocket;
 
 use std::time::{Duration, Instant};
 
@@ -32,19 +30,9 @@ pub async fn start_server() -> anyhow::Result<()> {
         log::warn!("Failed to load config: {error:?}");
     }
 
-    let mut last_serial_scan_time = Instant::now();
+    main.serial_manager.start_scan_loop();
 
     loop {
-        if last_serial_scan_time.elapsed() > Duration::from_secs(2) {
-            if main.serial_manager.scan_ports() {
-                main.updates.push(UpdateEvent::SerialPort {
-                    port_name: main.serial_manager.port_name(),
-                });
-            }
-
-            last_serial_scan_time = Instant::now();
-        }
-
         let update_start_time = Instant::now();
 
         let result = main.update(&mut modules).await;

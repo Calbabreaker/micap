@@ -25,7 +25,7 @@
     }
 </script>
 
-<form on:submit|preventDefault={setVmcConfig}>
+<form on:change={setVmcConfig}>
     <div class="mb-2">
         <span class="w-20 inline-block">Enabled</span>
         <input type="checkbox" bind:checked={enabled} class="w-4" />
@@ -36,9 +36,8 @@
             placeholder="Marionette port"
             bind:value={marionettePort}
             class="text-input"
-            type="number"
+            type="text"
             disabled={!enabled}
         />
     </div>
-    <button type="submit" class="btn btn-primary mr-2 w-full"> Apply </button>
 </form>

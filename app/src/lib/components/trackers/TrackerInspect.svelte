@@ -1,12 +1,11 @@
 <script lang="ts">
     import { T } from "@threlte/core";
-    import { trackers } from "$lib/websocket";
     import { type ArrowHelper, Vector3 } from "three";
     import PreviewCanvas from "./PreviewCanvas.svelte";
     import { OrbitControls } from "@threlte/extras";
+    import type { TrackerData } from "$lib/server_bindings";
 
-    export let id: string;
-    $: data = $trackers[id].data;
+    export let data: TrackerData;
 
     $: updateArrow(new Vector3().fromArray(data.acceleration));
 

@@ -1,74 +1,54 @@
 import { writable } from "svelte/store";
-import { errorToast, infoToast } from "./toast";
+import { confirmPopup, errorToast, infoToast } from "./toast";
+import type {
+    GlobalConfig,
+    TrackerConfig,
+    TrackerData,
+    TrackerInfo,
+    WebsocketClientMessage,
+    WebsocketServerMessage,
+} from "./server_bindings";
 
 const WEBSOCKET_PORT = 8298;
 
 // Copied from server
-export const trackerLocations = [
-    "Hip",
-    "LeftThigh",
-    "RightThigh",
-    "LeftKnee",
-    "RightKnee",
+export const boneLocations = [
+    "Hips",
+    "LeftUpperLeg",
+    "RightUpperLeg",
+    "LeftLowerLeg",
+    "RightLowerLeg",
     "LeftFoot",
     "RightFoot",
-    "Waist",
+    "Spine",
     "Chest",
     "Neck",
     "Head",
     "LeftShoulder",
     "RightShoulder",
-    "LeftArm",
-    "RightArm",
-    "LeftElbow",
-    "RightElbow",
+    "LeftUpperArm",
+    "RightUpperArm",
+    "LeftLowerArm",
+    "RightLowerArm",
     "LeftHand",
     "RightHand",
 ];
 
-export type TrackerLocation = (typeof trackerLocations)[number];
-
-export type TrackerStatus = "Ok" | "Error" | "Off" | "TimedOut";
-
-export interface TrackerConfig {
-    name: string;
-    location?: TrackerLocation;
-}
-
-export interface GlobalConfig {
-    trackers: { [id: string]: TrackerConfig };
-    vmc: {
-        enabled: boolean;
-        marionette_port: number;
-    };
-}
-
-export interface TrackerInfo {
-    status: TrackerStatus;
-    latency_ms?: number;
-    battery_level: number;
-    address?: string;
-}
-
-export interface TrackerData {
-    orientation: [number, number, number, number];
-    acceleration: [number, number, number];
-    position: [number, number, number];
-}
-
-export interface Tracker {
+interface Tracker {
     info: TrackerInfo;
-    data: TrackerData;
+    data?: TrackerData;
 }
 
-export const trackers = writable<{ [id: string]: Tracker }>({});
+type TrackerDict = { [id: string]: Tracker };
+
+export const trackers = writable<TrackerDict>({});
 export const serialPortName = writable<string | undefined>();
 export const serialLog = writable<string[]>([]);
 export const globalConfig = writable<GlobalConfig | undefined>();
 
 export let websocket: WebSocket | undefined;
 
-export function sendWebsocket(object: Record<string, any>) {
+export function sendWebsocket(object: WebsocketClientMessage) {
     if (websocket && websocket.readyState == WebSocket.OPEN) {
         websocket.send(JSON.stringify(object));
     } else {
@@ -90,7 +70,6 @@ export function connectWebsocket() {
 
     websocket.onclose = () => {
         console.log("Websocket connection closed");
-        trackers.set({});
         websocket = undefined;
     };
 
@@ -125,7 +104,36 @@ export function updateConfig(updateFunc?: (config: GlobalConfig) => void) {
     });
 }
 
-function handleMessage(message: Record<string, any>) {
+export async function removeTracker(id: string) {
+    const message =
+        "This will also prevent the device from connecting to the server once all the associated trackers are removed as well.";
+    await confirmPopup("Are you sure you want to remove the tracker?", message);
+    sendWebsocket({
+        type: "RemoveTracker",
+        id,
+    });
+
+    trackers.update((trackers) => {
+        delete trackers[id];
+        return trackers;
+    });
+    globalConfig.update((config) => {
+        delete config?.trackers[id];
+        return config;
+    });
+}
+
+export function editTrackerConfig(id: string, editFunc: (config: TrackerConfig) => void) {
+    updateConfig((config) => {
+        if (config.trackers[id] == null) {
+            config.trackers[id] = {};
+        }
+
+        editFunc(config.trackers[id]);
+    });
+}
+
+function handleMessage(message: WebsocketServerMessage) {
     switch (message.type) {
         case "Error":
             errorToast(message.error);
@@ -151,11 +159,14 @@ function handleMessage(message: Record<string, any>) {
             break;
         case "InitialState":
             globalConfig.set(message.config);
-            trackers.set(message.trackers);
             serialPortName.set(message.port_name);
-            break;
-        case "ConfigUpdate":
-            globalConfig.set(message.config);
+            trackers.update(() => {
+                let trackers: TrackerDict = {};
+                for (const [id, info] of Object.entries(message.tracker_infos)) {
+                    trackers[id] = { info };
+                }
+                return trackers;
+            });
             break;
         case "TrackerInfo":
             trackers.update((trackers) => {
@@ -164,14 +175,7 @@ function handleMessage(message: Record<string, any>) {
                     tracker.info = message.info;
                 } else {
                     infoToast(`New udp device connected from ${message.info.address}`);
-                    trackers[message.id] = {
-                        info: message.info,
-                        data: {
-                            position: [0, 0, 0],
-                            orientation: [0, 0, 0, 0],
-                            acceleration: [0, 0, 0],
-                        },
-                    };
+                    trackers[message.id] = { info: message.info };
                 }
 
                 return trackers;

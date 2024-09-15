@@ -30,7 +30,7 @@ impl<'a, R: Read> UdpPacket<'a, R> {
             device.last_packet_received_time = Instant::now();
 
             // Discard the packet if not the latest
-            if !device.is_latest_packet_number(packet_number) {
+            if !device.check_latest_packet_number(packet_number) {
                 anyhow::bail!("Out of order #{packet_number}");
             }
         }
@@ -78,14 +78,18 @@ pub struct UdpPacketPingPong {
 }
 
 impl UdpPacketPingPong {
+    pub fn new(id: u8) -> Self {
+        Self { id }
+    }
+
     pub fn from_bytes(bytes: &mut impl Read) -> std::io::Result<Self> {
         Ok(Self {
             id: bytes.read_u8()?,
         })
     }
 
-    pub const fn to_bytes(id: u8) -> [u8; 2] {
-        [PACKET_PING_PONG, id]
+    pub const fn to_bytes(self) -> [u8; 2] {
+        [PACKET_PING_PONG, self.id]
     }
 }
 

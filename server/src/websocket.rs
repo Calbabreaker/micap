@@ -1,40 +1,40 @@
 use anyhow::Context;
 use futures_util::{FutureExt, SinkExt, StreamExt};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     net::{Ipv4Addr, SocketAddr},
 };
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
+use ts_rs::TS;
 
 use crate::{
-    main_server::{GlobalConfig, MainServer, TrackerRef, UpdateEvent},
+    main_server::{GlobalConfig, MainServer, UpdateEvent},
     tracker::{TrackerData, TrackerInfo},
 };
 
 pub const WEBSOCKET_PORT: u16 = 8298;
 
-#[derive(Clone, serde::Serialize)]
+#[derive(Clone, Serialize, TS)]
 #[serde(tag = "type")]
 pub enum WebsocketServerMessage<'a> {
     TrackerInfo {
         id: &'a String,
-        info: TrackerInfo,
+        info: &'a TrackerInfo,
     },
     TrackerData {
         id: &'a String,
-        data: TrackerData,
+        data: &'a TrackerData,
     },
     InitialState {
-        trackers: &'a HashMap<String, TrackerRef>,
+        tracker_infos: HashMap<String, TrackerInfo>,
         config: &'a GlobalConfig,
+        #[ts(optional)]
         port_name: Option<String>,
     },
     SerialLog {
         log: &'a str,
-    },
-    ConfigUpdate {
-        config: &'a GlobalConfig,
     },
     // Passes through the server events
     #[serde(untagged)]
@@ -42,9 +42,9 @@ pub enum WebsocketServerMessage<'a> {
 }
 
 // Receieved from client
-#[derive(serde::Deserialize)]
+#[derive(Deserialize, TS)]
 #[serde(tag = "type")]
-enum WebsocketClientMessage {
+pub enum WebsocketClientMessage {
     SerialSend { data: String },
     RemoveTracker { id: String },
     UpdateConfig { config: GlobalConfig },
@@ -68,10 +68,7 @@ impl WebsocketServer {
 
     pub async fn update(&mut self, main: &mut MainServer) -> anyhow::Result<()> {
         if let Some(ws_stream) = self.ws_stream.as_mut() {
-            for message in get_messages_to_send(main) {
-                ws_stream.feed(message.clone()).await.ok();
-            }
-
+            feed_ws_messages(ws_stream, main).await;
             ws_stream.flush().await.ok();
 
             // Get new data from websocket
@@ -79,6 +76,7 @@ impl WebsocketServer {
                 Some(Some(Ok(message))) => {
                     if let Ok(text) = message.to_text() {
                         self.handle_websocket_message(text, main)
+                            .await
                             .context("Failed to handle websocket message")?;
                     }
                 }
@@ -99,8 +97,15 @@ impl WebsocketServer {
                 }
 
                 let mut ws_stream = tokio_tungstenite::accept_async(stream).await?;
+
+                // Get the tracker infos from main
+                let tracker_infos = futures_util::stream::iter(&main.trackers)
+                    .then(|(id, tracker)| async { (id.clone(), tracker.read().await.info.clone()) })
+                    .collect()
+                    .await;
+
                 let string = serde_json::to_string(&WebsocketServerMessage::InitialState {
-                    trackers: &main.trackers,
+                    tracker_infos,
                     config: &main.config,
                     port_name: main.serial_manager.port_name(),
                 })?;
@@ -116,7 +121,7 @@ impl WebsocketServer {
         Ok(())
     }
 
-    fn handle_websocket_message(
+    async fn handle_websocket_message(
         &mut self,
         message: &str,
         main: &mut MainServer,
@@ -132,7 +137,7 @@ impl WebsocketServer {
             }
             WebsocketClientMessage::RemoveTracker { id } => {
                 if let Some(tracker) = main.trackers.get(&id) {
-                    tracker.borrow_mut().to_be_removed = true;
+                    tracker.write().await.to_be_removed = true;
                 }
             }
             WebsocketClientMessage::UpdateConfig { config } => {
@@ -145,47 +150,47 @@ impl WebsocketServer {
     }
 }
 
-// Get list of messages to send
-fn get_messages_to_send(main: &mut MainServer) -> impl Iterator<Item = Message> + use<'_> {
-    std::iter::empty()
-        // Add the server events
-        .chain(main.updates.iter().map(|update| {
-            Some(match update {
-                UpdateEvent::ConfigUpdate => WebsocketServerMessage::ConfigUpdate {
-                    config: &main.config,
+async fn feed_ws_message<'a>(
+    ws_stream: &mut WebSocketStream<TcpStream>,
+    ws_message: WebsocketServerMessage<'a>,
+) {
+    if let Ok(text) = serde_json::to_string(&ws_message) {
+        ws_stream.feed(Message::Text(text)).await.ok();
+    }
+}
+
+async fn feed_ws_messages(ws_stream: &mut WebSocketStream<TcpStream>, main: &mut MainServer) {
+    // Send messages
+    for event in &main.updates {
+        feed_ws_message(ws_stream, WebsocketServerMessage::UpdateEvent(event)).await;
+    }
+
+    for (id, tracker) in &main.trackers {
+        let tracker = tracker.read().await;
+        if tracker.info_was_updated {
+            feed_ws_message(
+                ws_stream,
+                WebsocketServerMessage::TrackerInfo {
+                    id,
+                    info: &tracker.info,
                 },
-                event => WebsocketServerMessage::UpdateEvent(event),
-            })
-        }))
-        // Add the tracker data
-        .chain(main.trackers.iter().flat_map(|(id, tracker)| {
-            let tracker = tracker.borrow();
+            )
+            .await;
+        }
 
-            let data_message = if tracker.data.was_updated {
-                Some(WebsocketServerMessage::TrackerData {
+        if tracker.data_was_updated {
+            feed_ws_message(
+                ws_stream,
+                WebsocketServerMessage::TrackerData {
                     id,
-                    data: tracker.data.clone(),
-                })
-            } else {
-                None
-            };
+                    data: &tracker.data,
+                },
+            )
+            .await;
+        }
+    }
 
-            let info_message = if tracker.info.was_updated {
-                Some(WebsocketServerMessage::TrackerInfo {
-                    id,
-                    info: tracker.info.clone(),
-                })
-            } else {
-                None
-            };
-
-            // Data and info from trackers
-            [data_message, info_message]
-        }))
-        .chain(std::iter::once_with(|| {
-            Some(WebsocketServerMessage::SerialLog {
-                log: main.serial_manager.read_line()?,
-            })
-        }))
-        .filter_map(|m| Some(Message::Text(serde_json::to_string(&m).ok()?)))
+    if let Some(log) = main.serial_manager.read_line() {
+        feed_ws_message(ws_stream, WebsocketServerMessage::SerialLog { log }).await;
+    }
 }

@@ -1,33 +1,33 @@
 <script lang="ts">
     import {
-        type Tracker,
-        trackerLocations,
-        type TrackerConfig,
+        boneLocations,
+        trackers,
+        globalConfig,
+        editTrackerConfig,
+        removeTracker,
     } from "$lib/websocket";
     import { promptPopup } from "$lib/toast";
-    import TrackerPreview from "./TrackerPreview.svelte";
+    import TrackerInspect from "./TrackerInspect.svelte";
     import TrackerInfoDisplay from "./TrackerInfoDisplay.svelte";
     import TrashIcon from "../icons/TrashIcon.svelte";
     import MangnifyingGlassIcon from "../icons/MangnifyingGlassIcon.svelte";
     import PencilIcon from "../icons/PencilIcon.svelte";
 
-    export let tracker: Tracker;
     export let id: string;
-    export let config: TrackerConfig;
 
-    export let onRemove: () => void;
-    export let onConfigEdit: () => void;
+    $: tracker = $trackers[id];
+    $: config = $globalConfig?.trackers[id];
+
+    // Highlight border when there is movement
     let brightness: number;
-
     $: if (tracker.data) {
-        // Show when there is movement
         brightness = Math.min(
             Math.hypot(...tracker.data?.acceleration) * 50,
             50,
         );
     }
 
-    let showPreview = false;
+    let showInspect = false;
 </script>
 
 <div
@@ -36,19 +36,21 @@
     title={`Connected from ${tracker.info.address}`}
 >
     <TrackerInfoDisplay info={tracker.info} />
-    <p>{config.name}</p>
+    <p>{config?.name ?? id}</p>
     <div class="flex gap-1 mt-2">
-        <button class="btn-icon" on:click={onRemove}>
+        <button class="btn-icon" on:click={() => removeTracker(id)}>
             <TrashIcon />
         </button>
-        <button class="btn-icon" on:click={() => (showPreview = !showPreview)}>
+        <button class="btn-icon" on:click={() => (showInspect = !showInspect)}>
             <MangnifyingGlassIcon />
         </button>
         <button
             class="btn-icon"
             on:click={async () => {
-                config.name = await promptPopup("Enter the new name");
-                onConfigEdit();
+                let name = await promptPopup("Enter the new name");
+                editTrackerConfig(id, (config) => {
+                    config.name = name;
+                });
             }}
         >
             <PencilIcon />
@@ -56,18 +58,22 @@
     </div>
     <select
         class="text-neutral-700 px-1 mt-2 bg-white"
-        value={config.location}
+        value={config?.location ?? ""}
         on:change={(e) => {
-            config.location = e.currentTarget.value;
-            onConfigEdit();
+            editTrackerConfig(id, (config) => {
+                config.location = e.currentTarget.value;
+            });
         }}
     >
-        {#each trackerLocations as location}
+        {#each boneLocations as location}
             <option value={location}>{location}</option>
         {/each}
     </select>
-    {#if showPreview}
+    {#if showInspect}
         <hr class="my-4" />
-        <TrackerPreview {id} />
+        <p>Connected from {tracker.info.address}</p>
+        {#if tracker.data}
+            <TrackerInspect data={tracker.data} />
+        {/if}
     {/if}
 </div>

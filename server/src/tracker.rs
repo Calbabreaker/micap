@@ -1,8 +1,10 @@
+use serde::{Deserialize, Serialize};
 use std::{net::SocketAddr, time::Instant};
+use ts_rs::TS;
 
 use crate::skeleton::BoneLocation;
 
-#[derive(Default, PartialEq, Debug, Clone, Copy, serde::Serialize)]
+#[derive(Default, PartialEq, Debug, Clone, Copy, Serialize, TS)]
 #[repr(u8)]
 pub enum TrackerStatus {
     Ok = 0,
@@ -12,35 +14,35 @@ pub enum TrackerStatus {
     TimedOut,
 }
 
-#[derive(Debug, Clone, Default, serde::Serialize)]
+#[derive(Debug, Clone, Default, Serialize, TS)]
 pub struct TrackerInfo {
     pub status: TrackerStatus,
     pub latency_ms: Option<u32>,
     pub battery_level: f32,
     pub address: Option<SocketAddr>,
-    #[serde(skip)]
-    pub was_updated: bool,
 }
 
-#[derive(Debug, Clone, Default, serde::Serialize)]
+#[derive(Debug, Clone, Default, Serialize, TS)]
 pub struct TrackerData {
+    #[ts(type = "[number, number, number, number]")]
     pub orientation: glam::Quat,
+    #[ts(type = "[number, number, number]")]
     pub acceleration: glam::Vec3A,
+    #[ts(type = "[number, number, number]")]
+    pub position: glam::Vec3A,
+
     #[serde(skip)]
     pub velocity: glam::Vec3A,
-    pub position: glam::Vec3A,
-    #[serde(skip)]
-    pub was_updated: bool,
 }
 
-#[derive(Clone, Debug, serde::Serialize)]
+#[derive(Clone, Debug)]
 pub struct Tracker {
     pub info: TrackerInfo,
     pub data: TrackerData,
-    #[serde(skip)]
     pub to_be_removed: bool,
-    #[serde(skip)]
     pub time_data_last_updated: Instant,
+    pub info_was_updated: bool,
+    pub data_was_updated: bool,
 }
 
 impl Default for Tracker {
@@ -50,6 +52,8 @@ impl Default for Tracker {
             data: TrackerData::default(),
             to_be_removed: false,
             time_data_last_updated: Instant::now(),
+            info_was_updated: true,
+            data_was_updated: true,
         }
     }
 }
@@ -66,28 +70,20 @@ impl Tracker {
         }
 
         self.time_data_last_updated = Instant::now();
-        self.data.was_updated = true;
+        self.data_was_updated = true;
     }
 
     pub fn update_info(&mut self) -> &mut TrackerInfo {
-        self.info.was_updated = true;
+        self.info_was_updated = true;
         &mut self.info
     }
 }
 
-/// Seperate from TrackerInfo to be used to save to a file
-#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+/// Seperated from TrackerInfo to be used to save to a file
+#[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
 pub struct TrackerConfig {
-    pub name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub name: Option<String>,
+    #[ts(optional)]
     pub location: Option<BoneLocation>,
-}
-
-impl TrackerConfig {
-    pub fn new(name: String) -> Self {
-        Self {
-            name,
-            ..Default::default()
-        }
-    }
 }

@@ -1,43 +1,43 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, io::Write, sync::Arc, time::Duration};
 
 use byteorder::ReadBytesExt;
+use futures_util::FutureExt;
+use serialport::SerialPort;
+use tokio::sync::RwLock;
+
+#[cfg(unix)]
+type NativePort = serialport::TTYPort;
+#[cfg(windows)]
+type NativePort = serialport::COMPort;
 
 #[derive(Default)]
 pub struct SerialPortManager {
-    port: Option<Box<dyn serialport::SerialPort>>,
+    port: Arc<RwLock<Option<NativePort>>>,
     buffer: Vec<u8>,
 }
 
 impl SerialPortManager {
-    // Returns if the port was connected or disconnected this call
-    pub fn scan_ports(&mut self) -> bool {
-        if let Some(port) = self.port.as_ref() {
-            if port.bytes_to_read().is_err() {
-                // Disconnect port when can't read
-                self.port.take();
-                log::info!("Serial port disconnected");
-                return true;
-            }
-
-            return false;
-        }
-
-        self.port = find_usb_port();
-        self.port.is_some()
+    pub fn start_scan_loop(&self) {
+        let port_rw = self.port.clone();
+        tokio::spawn(async move {
+            check_ports(&port_rw).await;
+            tokio::time::sleep(Duration::from_secs(2)).await;
+        });
     }
 
     pub fn write(&mut self, data: &[u8]) -> anyhow::Result<()> {
-        let port = self
-            .port
-            .as_mut()
-            .ok_or_else(|| anyhow::anyhow!("Port does not exist"))?;
-        port.write_all(data)?;
-
+        if let Some(mut port_lock) = self.port.write().now_or_never() {
+            let port = port_lock
+                .as_mut()
+                .ok_or_else(|| anyhow::anyhow!("Port does not exist"))?;
+            port.write_all(data)?;
+        }
         Ok(())
     }
 
     pub fn read_line(&mut self) -> Option<&str> {
-        let port = self.port.as_mut()?;
+        let mut port_lock = self.port.write().now_or_never()?;
+        let port = port_lock.as_mut()?;
 
         if port.bytes_to_read().ok()? == 0 {
             return None;
@@ -67,11 +67,26 @@ impl SerialPortManager {
     }
 
     pub fn port_name(&self) -> Option<String> {
-        self.port.as_ref()?.name()
+        self.port.read().now_or_never()?.as_ref()?.name()
     }
 }
 
-pub fn find_usb_port() -> Option<Box<dyn serialport::SerialPort>> {
+async fn check_ports(port_rw: &Arc<RwLock<Option<NativePort>>>) {
+    let mut port_opt = port_rw.write().await;
+    if let Some(port) = port_opt.as_ref() {
+        // Disconnect port when can't read
+        if port.bytes_to_read().is_err() {
+            port_opt.take();
+            log::info!("Serial port disconnected");
+        }
+
+        return;
+    }
+
+    *port_opt = tokio::task::block_in_place(find_usb_port);
+}
+
+fn find_usb_port() -> Option<NativePort> {
     // Find a USB port
     let ports = serialport::available_ports().ok()?;
     let port_info = ports
@@ -85,6 +100,6 @@ pub fn find_usb_port() -> Option<Box<dyn serialport::SerialPort>> {
     );
     serialport::new(&port_info.port_name, 14400)
         .timeout(std::time::Duration::from_millis(5))
-        .open()
+        .open_native()
         .ok()
 }
