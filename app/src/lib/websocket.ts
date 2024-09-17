@@ -11,29 +11,6 @@ import type {
 
 const WEBSOCKET_PORT = 8298;
 
-// Copied from server
-export const boneLocations = [
-    "Hips",
-    "LeftUpperLeg",
-    "RightUpperLeg",
-    "LeftLowerLeg",
-    "RightLowerLeg",
-    "LeftFoot",
-    "RightFoot",
-    "Spine",
-    "Chest",
-    "Neck",
-    "Head",
-    "LeftShoulder",
-    "RightShoulder",
-    "LeftUpperArm",
-    "RightUpperArm",
-    "LeftLowerArm",
-    "RightLowerArm",
-    "LeftHand",
-    "RightHand",
-];
-
 interface Tracker {
     info: TrackerInfo;
     data?: TrackerData;
@@ -45,6 +22,7 @@ export const trackers = writable<TrackerDict>({});
 export const serialPortName = writable<string | undefined>();
 export const serialLog = writable<string[]>([]);
 export const globalConfig = writable<GlobalConfig | undefined>();
+export const websocketConnected = writable(false);
 
 export let websocket: WebSocket | undefined;
 
@@ -66,11 +44,13 @@ export function connectWebsocket() {
 
     websocket.onopen = () => {
         console.log("Connected to websocket");
+        websocketConnected.set(true);
     };
 
     websocket.onclose = () => {
         console.log("Websocket connection closed");
         websocket = undefined;
+        websocketConnected.set(false);
     };
 
     websocket.onerror = () => {

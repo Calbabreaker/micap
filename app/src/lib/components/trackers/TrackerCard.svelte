@@ -1,6 +1,5 @@
 <script lang="ts">
     import {
-        boneLocations,
         trackers,
         globalConfig,
         editTrackerConfig,
@@ -14,6 +13,25 @@
     import PencilIcon from "../icons/PencilIcon.svelte";
 
     export let id: string;
+
+    export const commonBoneLocations = [
+        "Hips",
+        "LeftUpperLeg",
+        "RightUpperLeg",
+        "LeftLowerLeg",
+        "RightLowerLeg",
+        "LeftFoot",
+        "RightFoot",
+        "Spine",
+        "Chest",
+        "Neck",
+        "LeftUpperArm",
+        "RightUpperArm",
+        "LeftLowerArm",
+        "RightLowerArm",
+        "LeftHand",
+        "RightHand",
+    ];
 
     $: tracker = $trackers[id];
     $: config = $globalConfig?.trackers[id];
@@ -33,7 +51,6 @@
 <div
     style:border-color={`hsl(0, 0%, ${brightness}%)`}
     class="bg-neutral-600 p-4 rounded shadow w-fit border"
-    title={`Connected from ${tracker.info.address}`}
 >
     <TrackerInfoDisplay info={tracker.info} />
     <p>{config?.name ?? id}</p>
@@ -65,7 +82,7 @@
             });
         }}
     >
-        {#each boneLocations as location}
+        {#each commonBoneLocations as location}
             <option value={location}>{location}</option>
         {/each}
     </select>

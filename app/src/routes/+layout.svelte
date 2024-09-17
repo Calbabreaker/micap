@@ -1,11 +1,16 @@
 <script lang="ts">
     import NavBar from "$lib/components/NavBar.svelte";
-    import { connectWebsocket, websocket } from "$lib/websocket";
+    import {
+        connectWebsocket,
+        websocket,
+        websocketConnected,
+    } from "$lib/websocket";
     import { onMount } from "svelte";
     import "../app.css";
     import { SvelteToast } from "@zerodevx/svelte-toast";
     import PopupBox from "$lib/components/PopupBox.svelte";
     import { popupState } from "$lib/toast";
+    import Popup from "$lib/components/Popup.svelte";
 
     onMount(() => {
         // Try to connect to websocket every so often
@@ -31,6 +36,9 @@
                 $popupState = undefined;
             }}
         />
+    {/if}
+    {#if !$websocketConnected}
+        <Popup>Connecting to the server...</Popup>
     {/if}
     <NavBar />
     <slot />
