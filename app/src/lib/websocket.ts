@@ -138,7 +138,7 @@ function handleMessage(message: WebsocketServerMessage) {
         case "Error":
             errorToast(message.error);
             break;
-        case "SerialPort":
+        case "SerialPortChanged":
             serialPortName.set(message.port_name);
             break;
         case "SerialLog":

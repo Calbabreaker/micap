@@ -30,8 +30,6 @@ pub async fn start_server() -> anyhow::Result<()> {
         log::warn!("Failed to load config: {error:?}");
     }
 
-    main.serial_manager.start_scan_loop();
-
     loop {
         let update_start_time = Instant::now();
 

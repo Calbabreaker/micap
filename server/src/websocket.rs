@@ -36,6 +36,10 @@ pub enum WebsocketServerMessage<'a> {
     SerialLog {
         log: &'a str,
     },
+    SerialPortChanged {
+        #[ts(optional)]
+        port_name: Option<String>,
+    },
     // Passes through the server events
     #[serde(untagged)]
     UpdateEvent(&'a UpdateEvent),
@@ -188,6 +192,16 @@ async fn feed_ws_messages(ws_stream: &mut WebSocketStream<TcpStream>, main: &mut
             )
             .await;
         }
+    }
+
+    if main.serial_manager.check_port().await {
+        feed_ws_message(
+            ws_stream,
+            WebsocketServerMessage::SerialPortChanged {
+                port_name: main.serial_manager.port_name(),
+            },
+        )
+        .await;
     }
 
     if let Some(log) = main.serial_manager.read_line() {
