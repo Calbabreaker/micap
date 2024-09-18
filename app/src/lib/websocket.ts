@@ -147,28 +147,22 @@ function handleMessage(message: WebsocketServerMessage) {
                 return trackers;
             });
             break;
-        case "TrackerInfo":
+        case "TrackerUpdate":
             trackers.update((trackers) => {
                 const tracker = trackers[message.id];
                 if (tracker) {
-                    tracker.info = message.info;
+                    tracker.info = message.info || tracker.info;
+                    tracker.data = message.data || tracker.data;
                 } else {
-                    infoToast(`New udp device connected from ${message.info.address}`);
-                    trackers[message.id] = { info: message.info };
+                    if (message.info) {
+                        infoToast(`New udp device connected from ${message.info.address}`);
+                        trackers[message.id] = { info: message.info };
+                    }
                 }
 
                 return trackers;
             });
 
-            break;
-        case "TrackerData":
-            trackers.update((trackers) => {
-                const tracker = trackers[message.id];
-                if (tracker) {
-                    tracker.data = message.data;
-                }
-                return trackers;
-            });
             break;
     }
 }

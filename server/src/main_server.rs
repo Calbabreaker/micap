@@ -6,20 +6,19 @@ use ts_rs::TS;
 
 use crate::{
     osc::vmc_connector::{VmcConfig, VmcConnector},
-    serial::SerialPortManager,
     skeleton::{SkeletonConfig, SkeletonManager},
     tracker::*,
     udp::server::UdpServer,
     websocket::WebsocketServer,
 };
 
-pub struct SubModules {
-    udp_server: UdpServer,
-    vmc_connector: VmcConnector,
-    websocket_server: WebsocketServer,
+pub struct ServerModules {
+    pub udp_server: UdpServer,
+    pub vmc_connector: VmcConnector,
+    pub websocket_server: WebsocketServer,
 }
 
-impl SubModules {
+impl ServerModules {
     pub async fn new() -> anyhow::Result<Self> {
         Ok(Self {
             websocket_server: WebsocketServer::new()
@@ -28,26 +27,24 @@ impl SubModules {
             udp_server: UdpServer::new()
                 .await
                 .context("Failed to start UDP server")?,
-            vmc_connector: VmcConnector::new()
-                .await
-                .context("Failed to connect to VMC")?,
+            vmc_connector: VmcConnector::new().await?,
         })
     }
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize, TS)]
+#[derive(PartialEq, Serialize, TS)]
+#[serde(tag = "type")]
+pub enum ServerEvent {
+    Error { error: String },
+    ConfigUpdate,
+}
+
+#[derive(Default, Serialize, Deserialize, TS)]
 #[serde(default)]
 pub struct GlobalConfig {
     pub trackers: HashMap<String, TrackerConfig>,
     pub vmc: VmcConfig,
     pub skeleton: SkeletonConfig,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, TS)]
-#[serde(tag = "type")]
-pub enum UpdateEvent {
-    Error { error: String },
-    ConfigUpdate,
 }
 
 pub type TrackerRef = std::sync::Arc<tokio::sync::RwLock<Tracker>>;
@@ -58,8 +55,7 @@ pub struct MainServer {
     pub trackers: HashMap<String, TrackerRef>,
     /// Contains list of update event emited in the middle of a loop
     /// Gets cleared at the end of the loop
-    pub updates: Vec<UpdateEvent>,
-    pub serial_manager: SerialPortManager,
+    pub events: Vec<ServerEvent>,
     pub skeleton_manager: SkeletonManager,
     pub config: GlobalConfig,
 }
@@ -76,7 +72,7 @@ impl MainServer {
         }
 
         self.config = config;
-        self.updates.push(UpdateEvent::ConfigUpdate);
+        self.events.push(ServerEvent::ConfigUpdate);
         Ok(())
     }
 
@@ -85,26 +81,26 @@ impl MainServer {
         log::info!("Saving to {path:?}");
         let text = serde_json::to_string_pretty(&self.config)?;
         std::fs::write(path, text)?;
-        self.updates.push(UpdateEvent::ConfigUpdate);
+        self.events.push(ServerEvent::ConfigUpdate);
 
         Ok(())
     }
 
-    pub async fn update(&mut self, modules: &mut SubModules) -> anyhow::Result<()> {
+    pub async fn update(&mut self, modules: &mut ServerModules) -> anyhow::Result<()> {
         modules.udp_server.update(self).await?;
         modules.websocket_server.update(self).await?;
 
-        if self.updates.contains(&UpdateEvent::ConfigUpdate) {
+        if self.events.contains(&ServerEvent::ConfigUpdate) {
             self.skeleton_manager
                 .apply_config(&self.config, &self.trackers);
-            modules.vmc_connector.apply_config(&self.config.vmc).await?;
+            modules.vmc_connector.apply_config(&self.config).await?;
         }
 
         self.skeleton_manager.update();
-
         modules.vmc_connector.update(self).await?;
 
         if let Some(removed_id) = self.upkeep_trackers().await {
+            // Remove the tracker when is set to remove
             self.trackers.remove(&removed_id);
             if self.config.trackers.remove(&removed_id).is_some() {
                 self.save_config()?;

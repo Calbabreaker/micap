@@ -4,9 +4,10 @@ use serde::{Deserialize, Serialize};
 use tokio::net::UdpSocket;
 use ts_rs::TS;
 
-use crate::main_server::MainServer;
+use crate::main_server::{GlobalConfig, MainServer};
 
-#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[derive(Serialize, Deserialize, TS)]
+#[serde(default)]
 pub struct VmcConfig {
     enabled: bool,
     send_port: u16,
@@ -40,21 +41,16 @@ impl VmcConnector {
 
         let bones = &main.skeleton_manager.bones;
 
-        let osc_messages = bones
-            .values()
-            .map(|bone| {
-                let mut args = vec![rosc::OscType::String(bone.location.as_unity_bone())];
-                add_osc_transform_args(
-                    &mut args,
-                    bone.get_head_position(bones),
-                    bone.get_orientation(),
-                );
-                rosc::OscPacket::Message(rosc::OscMessage {
-                    addr: "/VMC/Ext/Bone/Pos".to_string(),
-                    args,
-                })
+        let mut osc_messages = Vec::new();
+
+        osc_messages.extend(bones.values().map(|bone| {
+            let mut args = vec![rosc::OscType::String(bone.location.as_unity_bone())];
+            add_osc_transform_args(&mut args, bone.get_head_position(bones), bone.orientation);
+            rosc::OscPacket::Message(rosc::OscMessage {
+                addr: "/VMC/Ext/Bone/Pos".to_string(),
+                args,
             })
-            .collect();
+        }));
 
         self.send_osc_bundle(osc_messages).await.ok();
         Ok(())
@@ -69,13 +65,15 @@ impl VmcConnector {
         Ok(())
     }
 
-    pub async fn apply_config(&mut self, config: &VmcConfig) -> anyhow::Result<()> {
-        if !config.enabled {
+    pub async fn on_server_event() {}
+
+    pub async fn apply_config(&mut self, config: &GlobalConfig) -> anyhow::Result<()> {
+        if !config.vmc.enabled {
             return Ok(());
         }
 
         self.socket
-            .connect((Ipv4Addr::LOCALHOST, config.send_port))
+            .connect((Ipv4Addr::LOCALHOST, config.vmc.send_port))
             .await?;
         // Test send
         self.socket.send(&[]).await?;
@@ -84,7 +82,6 @@ impl VmcConnector {
     }
 }
 
-/// Adds position and orientation data to the current osc message arguments
 fn add_osc_transform_args(
     args: &mut Vec<rosc::OscType>,
     position: glam::Vec3A,

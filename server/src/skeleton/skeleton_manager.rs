@@ -1,13 +1,17 @@
 use std::collections::HashMap;
 
+use serde::Serialize;
+use ts_rs::TS;
+
 use crate::{
     main_server::{GlobalConfig, TrackerRef},
     skeleton::{Bone, BoneLocation},
 };
 
-#[derive(Default)]
+#[derive(Default, Serialize, TS)]
 pub struct SkeletonManager {
     pub bones: HashMap<BoneLocation, Bone>,
+    #[serde(skip)]
     trackers: HashMap<BoneLocation, TrackerRef>,
 }
 

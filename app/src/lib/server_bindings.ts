@@ -6,6 +6,7 @@ export type BoneLocation = "Hip" | "LeftUpperLeg" | "RightUpperLeg" | "LeftLower
  */
 export type BoneOffsetKind = "NeckLength" | "WaistLength" | "ChestLength" | "UpperChestLength" | "HipLength" | "HipsWidth" | "UpperLegLength" | "LowerLegLength" | "ShouldersWidth" | "ShoulderOffset" | "UpperArmLength" | "LowerArmLength" | "FootLength" | "HandLength";
 export type GlobalConfig = { trackers: { [key: string]: TrackerConfig }, vmc: VmcConfig, skeleton: SkeletonConfig, };
+export type ServerEvent = { "type": "Error", error: string, } | { "type": "ConfigUpdate" };
 export type SkeletonConfig = { 
 /**
  * Contains the length offset in meters from a bone to its connecting one
@@ -18,7 +19,6 @@ export type TrackerConfig = { name?: string, location?: BoneLocation, };
 export type TrackerData = { orientation: [number, number, number, number], acceleration: [number, number, number], position: [number, number, number], };
 export type TrackerInfo = { status: TrackerStatus, latency_ms?: number, battery_level: number, address?: string, };
 export type TrackerStatus = "Ok" | "Error" | "Off" | "TimedOut";
-export type UpdateEvent = { "type": "Error", error: string, } | { "type": "ConfigUpdate" };
 export type VmcConfig = { enabled: boolean, send_port: number, receive_port: number, };
 export type WebsocketClientMessage = { "type": "SerialSend", data: string, } | { "type": "RemoveTracker", id: string, } | { "type": "UpdateConfig", config: GlobalConfig, };
-export type WebsocketServerMessage = { "type": "TrackerInfo", id: string, info: TrackerInfo, } | { "type": "TrackerData", id: string, data: TrackerData, } | { "type": "InitialState", tracker_infos: { [key: string]: TrackerInfo }, config: GlobalConfig, port_name?: string, } | { "type": "SerialLog", log: string, } | { "type": "SerialPortChanged", port_name?: string, } | UpdateEvent;
+export type WebsocketServerMessage = { "type": "TrackerUpdate", id: string, info?: TrackerInfo, data?: TrackerData, } | { "type": "InitialState", tracker_infos: { [key: string]: TrackerInfo }, config: GlobalConfig, port_name?: string, } | { "type": "SerialLog", log: string, } | { "type": "SerialPortChanged", port_name?: string, } | ServerEvent;

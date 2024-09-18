@@ -1,4 +1,4 @@
-use futures_util::{Stream, StreamExt};
+use futures_util::FutureExt;
 use std::{net::SocketAddr, time::Instant};
 use tokio::sync::RwLockWriteGuard;
 
@@ -10,7 +10,6 @@ use crate::{
     },
 };
 
-#[derive(Debug)]
 pub struct UdpDevice {
     pub(super) last_packet_received_time: Instant,
     pub(super) last_packet_number: u32,
@@ -49,19 +48,20 @@ impl UdpDevice {
         self.global_trackers[local_index as usize] = main.trackers.get(&id).cloned();
     }
 
-    async fn get_tracker(&mut self, local_index: u8) -> Option<RwLockWriteGuard<'_, Tracker>> {
-        Some(
-            self.global_trackers
-                .get(local_index as usize)?
-                .as_ref()?
-                .write()
-                .await,
-        )
+    fn get_tracker(&self, local_index: u8) -> Option<RwLockWriteGuard<'_, Tracker>> {
+        self.global_trackers
+            .get(local_index as usize)?
+            .as_ref()?
+            .write()
+            // Udp server is ran in the loop synced with the rest of the other stuff so the
+            // tracker rwlock should always be readily available
+            .now_or_never()
     }
 
-    fn global_trackers_iter(&self) -> impl Stream<Item = RwLockWriteGuard<Tracker>> {
-        futures_util::stream::iter(self.global_trackers.iter())
-            .filter_map(|tracker| async { Some(tracker.as_ref()?.write().await) })
+    fn global_trackers_iter(&self) -> impl Iterator<Item = RwLockWriteGuard<'_, Tracker>> {
+        self.global_trackers
+            .iter()
+            .filter_map(|tracker| tracker.as_ref()?.write().now_or_never())
     }
 
     pub fn check_latest_packet_number(&mut self, packet_number: u32) -> bool {
@@ -78,23 +78,21 @@ impl UdpDevice {
         }
     }
 
-    pub async fn set_timed_out(&mut self, timed_out: bool) {
+    pub fn set_timed_out(&mut self, timed_out: bool) {
         if timed_out == self.timed_out {
             return;
         }
 
         self.timed_out = timed_out;
 
-        self.global_trackers_iter()
-            .for_each(|mut tracker| async move {
-                // Only allow changing status to TimedOut if tracker is Ok and vice-versa
-                if timed_out && tracker.info.status == TrackerStatus::Ok {
-                    tracker.update_info().status = TrackerStatus::TimedOut;
-                } else if !timed_out && tracker.info.status == TrackerStatus::TimedOut {
-                    tracker.update_info().status = TrackerStatus::Ok;
-                };
-            })
-            .await;
+        for mut tracker in self.global_trackers_iter() {
+            // Only allow changing status to TimedOut if tracker is Ok and vice-versa
+            if timed_out && tracker.info.status == TrackerStatus::Ok {
+                tracker.update_info().status = TrackerStatus::TimedOut;
+            } else if !timed_out && tracker.info.status == TrackerStatus::TimedOut {
+                tracker.update_info().status = TrackerStatus::Ok;
+            };
+        }
     }
 
     pub fn check_get_ping_packet(&mut self) -> UdpPacketPingPong {
@@ -107,59 +105,49 @@ impl UdpDevice {
         UdpPacketPingPong::new(self.current_ping_id)
     }
 
-    pub async fn handle_pong(&mut self, packet: UdpPacketPingPong) {
+    pub fn handle_pong(&mut self, packet: UdpPacketPingPong) {
         if packet.id != self.current_ping_id {
             return;
         }
 
         if let Some(start_time) = self.current_ping_start_time {
-            self.global_trackers_iter()
-                .for_each(|mut tracker| async move {
-                    let latency = start_time.elapsed() / 2;
-                    tracker.update_info().latency_ms = Some(latency.as_millis() as u32);
-                })
-                .await;
+            for mut tracker in self.global_trackers_iter() {
+                let latency = start_time.elapsed() / 2;
+                tracker.update_info().latency_ms = Some(latency.as_millis() as u32);
+            }
 
             self.current_ping_start_time = None;
         }
     }
 
-    pub async fn update_tracker_data(&mut self, data: UdpTrackerData) {
-        if let Some(mut tracker) = self.get_tracker(data.tracker_index).await {
+    pub fn update_tracker_data(&mut self, data: UdpTrackerData) {
+        if let Some(mut tracker) = self.get_tracker(data.tracker_index) {
             tracker.update_data(data.accleration, data.orientation);
         }
     }
 
-    pub async fn update_tracker_status(
-        &mut self,
-        main: &mut MainServer,
-        packet: UdpPacketTrackerStatus,
-    ) {
-        if self.get_tracker(packet.tracker_index).await.is_none() {
+    pub fn update_tracker_status(&mut self, main: &mut MainServer, packet: UdpPacketTrackerStatus) {
+        if self.get_tracker(packet.tracker_index).is_none() {
             self.add_global_tracker(packet.tracker_index, main);
         }
 
         let address = self.address;
-        let mut tracker = self.get_tracker(packet.tracker_index).await.unwrap();
-
+        let mut tracker = self.get_tracker(packet.tracker_index).unwrap();
         tracker.data = TrackerData::default();
         tracker.update_info().status = packet.tracker_status;
         tracker.update_info().address = Some(address);
     }
 
-    pub async fn update_battery_level(&self, packet: UdpPacketBatteryLevel) {
-        self.global_trackers_iter()
-            .for_each(|mut tracker| async move {
-                tracker.update_info().battery_level = packet.battery_level;
-            })
-            .await;
+    pub fn update_battery_level(&self, packet: UdpPacketBatteryLevel) {
+        for mut tracker in self.global_trackers_iter() {
+            tracker.update_info().battery_level = packet.battery_level;
+        }
     }
 
-    pub async fn all_trackers_removed(&mut self) -> bool {
+    pub fn all_trackers_removed(&mut self) -> bool {
         let all_removed = self
             .global_trackers_iter()
-            .all(|tracker| async move { tracker.to_be_removed })
-            .await;
+            .all(|tracker| tracker.to_be_removed);
         !self.global_trackers.is_empty() && all_removed
     }
 }

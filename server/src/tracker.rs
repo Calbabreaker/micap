@@ -4,7 +4,7 @@ use ts_rs::TS;
 
 use crate::skeleton::BoneLocation;
 
-#[derive(Default, PartialEq, Debug, Clone, Copy, Serialize, TS)]
+#[derive(Default, PartialEq, Clone, Copy, Serialize, TS)]
 #[repr(u8)]
 pub enum TrackerStatus {
     Ok = 0,
@@ -14,7 +14,7 @@ pub enum TrackerStatus {
     TimedOut,
 }
 
-#[derive(Debug, Clone, Default, Serialize, TS)]
+#[derive(Clone, Default, Serialize, TS)]
 pub struct TrackerInfo {
     pub status: TrackerStatus,
     #[ts(optional)]
@@ -24,7 +24,7 @@ pub struct TrackerInfo {
     pub address: Option<SocketAddr>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, TS)]
+#[derive(Default, Serialize, TS)]
 pub struct TrackerData {
     #[ts(type = "[number, number, number, number]")]
     pub orientation: glam::Quat,
@@ -37,7 +37,6 @@ pub struct TrackerData {
     pub velocity: glam::Vec3A,
 }
 
-#[derive(Clone, Debug)]
 pub struct Tracker {
     pub info: TrackerInfo,
     pub data: TrackerData,
@@ -80,7 +79,8 @@ impl Tracker {
 }
 
 /// Seperated from TrackerInfo to be used to save to a file
-#[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
+#[derive(Default, Serialize, Deserialize, TS)]
+#[serde(default)]
 pub struct TrackerConfig {
     #[ts(optional)]
     pub name: Option<String>,

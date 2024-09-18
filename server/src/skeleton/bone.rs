@@ -109,11 +109,14 @@ impl BoneLocation {
     }
 }
 
+#[derive(Serialize, TS)]
 pub struct Bone {
     /// Positional offset of the joint
-    tail_offset: glam::Vec3A,
+    #[ts(type = "[number, number, number]")]
+    pub tail_offset: glam::Vec3A,
     /// Orientation of joint
-    orientation: glam::Quat,
+    #[ts(type = "[number, number, number, number]")]
+    pub orientation: glam::Quat,
     pub location: BoneLocation,
 }
 
@@ -130,19 +133,11 @@ impl Bone {
         self.tail_offset = self.location.get_tail_offset(offsets);
     }
 
-    pub fn get_tail_position(&self) -> glam::Vec3A {
-        self.tail_offset
-    }
-
     pub fn get_head_position(&self, bones: &HashMap<BoneLocation, Bone>) -> glam::Vec3A {
         if let Some(location) = self.location.get_parent() {
-            bones[&location].get_tail_position()
+            bones[&location].tail_offset
         } else {
             glam::Vec3A::ZERO
         }
-    }
-
-    pub fn get_orientation(&self) -> glam::Quat {
-        self.orientation
     }
 }

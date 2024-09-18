@@ -33,7 +33,8 @@ pub enum BoneOffsetKind {
     HandLength,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[derive(Serialize, Deserialize, TS)]
+#[serde(default)]
 pub struct SkeletonConfig {
     /// Contains the length offset in meters from a bone to its connecting one
     pub offsets: HashMap<BoneOffsetKind, f32>,

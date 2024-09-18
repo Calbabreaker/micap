@@ -8,7 +8,7 @@ pub mod websocket;
 
 use std::time::{Duration, Instant};
 
-use crate::main_server::{MainServer, SubModules, UpdateEvent};
+use crate::main_server::{MainServer, ServerEvent, ServerModules};
 
 pub fn setup_log() {
     env_logger::builder()
@@ -24,7 +24,7 @@ const TARGET_LOOP_DELTA: Duration = Duration::from_millis(1000 / 60);
 pub async fn start_server() -> anyhow::Result<()> {
     // Seperate out  main and modules to prevent multiple borrow
     let mut main = MainServer::default();
-    let mut modules = SubModules::new().await?;
+    let mut modules = ServerModules::new().await?;
 
     if let Err(error) = main.load_config() {
         log::warn!("Failed to load config: {error:?}");
@@ -34,11 +34,11 @@ pub async fn start_server() -> anyhow::Result<()> {
         let update_start_time = Instant::now();
 
         let result = main.update(&mut modules).await;
-        main.updates.clear();
+        main.events.clear();
 
         if let Err(err) = result {
             log::error!("{err:?}");
-            main.updates.push(UpdateEvent::Error {
+            main.events.push(ServerEvent::Error {
                 error: err.root_cause().to_string(),
             });
         }

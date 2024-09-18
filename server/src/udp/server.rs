@@ -84,13 +84,13 @@ impl UdpServer {
 
         for device in self.devices_map.values_mut() {
             let timed_out = device.last_packet_received_time.elapsed() > DEVICE_TIMEOUT;
-            device.set_timed_out(timed_out).await;
+            device.set_timed_out(timed_out);
 
             let bytes = device.check_get_ping_packet().to_bytes();
             self.socket.send_to(&bytes, device.address).await?;
 
             // When the user has removed every tracker from the device prevent it from connecting anymore
-            if device.all_trackers_removed().await {
+            if device.all_trackers_removed() {
                 self.mac_to_address_map.remove(&device.mac);
                 self.address_blacklist.insert(device.address);
                 log::info!("Added {} to blacklist", device.address);
@@ -118,7 +118,7 @@ impl UdpServer {
 
         match UdpPacket::parse(&mut bytes, &mut device)? {
             UdpPacket::PingPong(packet) => {
-                device?.handle_pong(packet).await;
+                device?.handle_pong(packet);
             }
             UdpPacket::Handshake(packet) => {
                 self.socket.send_to(&packet.to_bytes(), peer_addr).await?;
@@ -127,15 +127,15 @@ impl UdpServer {
             UdpPacket::TrackerData(mut packet) => {
                 let device = device?;
                 while let Ok(data) = packet.next_data() {
-                    device.update_tracker_data(data).await;
+                    device.update_tracker_data(data);
                 }
             }
             UdpPacket::TrackerStatus(packet) => {
                 self.socket.send_to(&packet.to_bytes(), peer_addr).await?;
-                device?.update_tracker_status(main, packet).await;
+                device?.update_tracker_status(main, packet);
             }
             UdpPacket::BatteryLevel(packet) => {
-                device?.update_battery_level(packet).await;
+                device?.update_battery_level(packet);
             }
         }
 

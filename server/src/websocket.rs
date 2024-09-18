@@ -10,7 +10,8 @@ use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 use ts_rs::TS;
 
 use crate::{
-    main_server::{GlobalConfig, MainServer, UpdateEvent},
+    main_server::{GlobalConfig, MainServer, ServerEvent},
+    serial::SerialPortManager,
     tracker::{TrackerData, TrackerInfo},
 };
 
@@ -19,13 +20,12 @@ pub const WEBSOCKET_PORT: u16 = 8298;
 #[derive(Clone, Serialize, TS)]
 #[serde(tag = "type")]
 pub enum WebsocketServerMessage<'a> {
-    TrackerInfo {
+    TrackerUpdate {
         id: &'a String,
-        info: &'a TrackerInfo,
-    },
-    TrackerData {
-        id: &'a String,
-        data: &'a TrackerData,
+        #[ts(optional)]
+        info: Option<&'a TrackerInfo>,
+        #[ts(optional)]
+        data: Option<&'a TrackerData>,
     },
     InitialState {
         tracker_infos: HashMap<String, TrackerInfo>,
@@ -42,7 +42,7 @@ pub enum WebsocketServerMessage<'a> {
     },
     // Passes through the server events
     #[serde(untagged)]
-    UpdateEvent(&'a UpdateEvent),
+    ServerEvent(&'a ServerEvent),
 }
 
 // Receieved from client
@@ -57,6 +57,7 @@ pub enum WebsocketClientMessage {
 pub struct WebsocketServer {
     listener: TcpListener,
     ws_stream: Option<WebSocketStream<TcpStream>>,
+    serial_manager: SerialPortManager,
 }
 
 impl WebsocketServer {
@@ -67,20 +68,19 @@ impl WebsocketServer {
         Ok(Self {
             listener,
             ws_stream: None,
+            serial_manager: SerialPortManager::default(),
         })
     }
 
     pub async fn update(&mut self, main: &mut MainServer) -> anyhow::Result<()> {
-        if let Some(ws_stream) = self.ws_stream.as_mut() {
-            feed_ws_messages(ws_stream, main).await;
-            ws_stream.flush().await.ok();
+        self.feed_ws_messages(main).await;
 
+        if let Some(ws_stream) = self.ws_stream.as_mut() {
             // Get new data from websocket
             match ws_stream.next().now_or_never() {
                 Some(Some(Ok(message))) => {
                     if let Ok(text) = message.to_text() {
                         self.handle_websocket_message(text, main)
-                            .await
                             .context("Failed to handle websocket message")?;
                     }
                 }
@@ -108,13 +108,14 @@ impl WebsocketServer {
                     .collect()
                     .await;
 
-                let string = serde_json::to_string(&WebsocketServerMessage::InitialState {
+                let message = WebsocketServerMessage::InitialState {
                     tracker_infos,
                     config: &main.config,
-                    port_name: main.serial_manager.port_name(),
-                })?;
+                    port_name: self.serial_manager.port_name(),
+                };
 
-                ws_stream.send(Message::text(string)).await?;
+                feed_ws_message(&mut ws_stream, message).await;
+                ws_stream.flush().await?;
                 self.ws_stream = Some(ws_stream);
                 log::info!("Websocket client connected at {peer_addr}");
             }
@@ -125,7 +126,51 @@ impl WebsocketServer {
         Ok(())
     }
 
-    async fn handle_websocket_message(
+    async fn feed_ws_messages(&mut self, main: &mut MainServer) {
+        let ws_stream = match self.ws_stream.as_mut() {
+            Some(s) => s,
+            None => return,
+        };
+
+        // Send the serial stuff
+        if self.serial_manager.check_port().await {
+            let message = WebsocketServerMessage::SerialPortChanged {
+                port_name: self.serial_manager.port_name(),
+            };
+            feed_ws_message(ws_stream, message).await;
+        }
+
+        if let Some(log) = self.serial_manager.read_line() {
+            feed_ws_message(ws_stream, WebsocketServerMessage::SerialLog { log }).await;
+        }
+
+        // Send events
+        for event in &main.events {
+            feed_ws_message(ws_stream, WebsocketServerMessage::ServerEvent(event)).await;
+        }
+
+        for (id, tracker) in &main.trackers {
+            let tracker = tracker.read().await;
+            if tracker.info_was_updated || tracker.data_was_updated {
+                let message = WebsocketServerMessage::TrackerUpdate {
+                    id,
+                    info: match tracker.info_was_updated {
+                        true => Some(&tracker.info),
+                        false => None,
+                    },
+                    data: match tracker.data_was_updated {
+                        true => Some(&tracker.data),
+                        false => None,
+                    },
+                };
+                feed_ws_message(ws_stream, message).await;
+            }
+        }
+
+        ws_stream.flush().await.ok();
+    }
+
+    fn handle_websocket_message(
         &mut self,
         message: &str,
         main: &mut MainServer,
@@ -137,11 +182,11 @@ impl WebsocketServer {
         match serde_json::from_str(message)? {
             WebsocketClientMessage::SerialSend { data } => {
                 log::info!("Writing {data:?} to port");
-                main.serial_manager.write(data.as_bytes())?;
+                self.serial_manager.write(data.as_bytes())?;
             }
             WebsocketClientMessage::RemoveTracker { id } => {
                 if let Some(tracker) = main.trackers.get(&id) {
-                    tracker.write().await.to_be_removed = true;
+                    tracker.write().now_or_never().unwrap().to_be_removed = true;
                 }
             }
             WebsocketClientMessage::UpdateConfig { config } => {
@@ -160,51 +205,5 @@ async fn feed_ws_message<'a>(
 ) {
     if let Ok(text) = serde_json::to_string(&ws_message) {
         ws_stream.feed(Message::Text(text)).await.ok();
-    }
-}
-
-async fn feed_ws_messages(ws_stream: &mut WebSocketStream<TcpStream>, main: &mut MainServer) {
-    // Send messages
-    for event in &main.updates {
-        feed_ws_message(ws_stream, WebsocketServerMessage::UpdateEvent(event)).await;
-    }
-
-    for (id, tracker) in &main.trackers {
-        let tracker = tracker.read().await;
-        if tracker.info_was_updated {
-            feed_ws_message(
-                ws_stream,
-                WebsocketServerMessage::TrackerInfo {
-                    id,
-                    info: &tracker.info,
-                },
-            )
-            .await;
-        }
-
-        if tracker.data_was_updated {
-            feed_ws_message(
-                ws_stream,
-                WebsocketServerMessage::TrackerData {
-                    id,
-                    data: &tracker.data,
-                },
-            )
-            .await;
-        }
-    }
-
-    if main.serial_manager.check_port().await {
-        feed_ws_message(
-            ws_stream,
-            WebsocketServerMessage::SerialPortChanged {
-                port_name: main.serial_manager.port_name(),
-            },
-        )
-        .await;
-    }
-
-    if let Some(log) = main.serial_manager.read_line() {
-        feed_ws_message(ws_stream, WebsocketServerMessage::SerialLog { log }).await;
     }
 }
