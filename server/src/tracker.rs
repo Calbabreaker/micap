@@ -17,8 +17,10 @@ pub enum TrackerStatus {
 #[derive(Debug, Clone, Default, Serialize, TS)]
 pub struct TrackerInfo {
     pub status: TrackerStatus,
+    #[ts(optional)]
     pub latency_ms: Option<u32>,
     pub battery_level: f32,
+    #[ts(optional)]
     pub address: Option<SocketAddr>,
 }
 
@@ -63,11 +65,9 @@ impl Tracker {
         self.data.orientation = orientation;
         self.data.acceleration = acceleration;
 
-        if self.info.status == TrackerStatus::Ok {
-            let delta = self.time_data_last_updated.elapsed().as_secs_f32();
-            self.data.velocity += self.data.acceleration * delta;
-            self.data.position += self.data.velocity * delta;
-        }
+        let delta = self.time_data_last_updated.elapsed().as_secs_f32();
+        self.data.velocity += self.data.acceleration * delta;
+        self.data.position += self.data.velocity * delta;
 
         self.time_data_last_updated = Instant::now();
         self.data_was_updated = true;

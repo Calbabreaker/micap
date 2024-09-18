@@ -24,7 +24,11 @@
     }
 
     .text-input {
-        @apply p-2 rounded text-black text-sm;
+        @apply p-2 rounded text-black text-sm border border-neutral-900;
+    }
+
+    .text-input:disabled {
+        @apply bg-neutral-400 cursor-not-allowed;
     }
 
     .icon {

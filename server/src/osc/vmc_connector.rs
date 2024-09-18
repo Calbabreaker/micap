@@ -70,9 +70,15 @@ impl VmcConnector {
     }
 
     pub async fn apply_config(&mut self, config: &VmcConfig) -> anyhow::Result<()> {
+        if !config.enabled {
+            return Ok(());
+        }
+
         self.socket
             .connect((Ipv4Addr::LOCALHOST, config.send_port))
             .await?;
+        // Test send
+        self.socket.send(&[]).await?;
         log::info!("Sending VMC packets to {}", self.socket.peer_addr()?);
         Ok(())
     }

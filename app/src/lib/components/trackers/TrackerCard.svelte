@@ -15,7 +15,7 @@
     export let id: string;
 
     export const commonBoneLocations = [
-        "Hips",
+        "Hip",
         "LeftUpperLeg",
         "RightUpperLeg",
         "LeftLowerLeg",
@@ -37,7 +37,7 @@
     $: config = $globalConfig?.trackers[id];
 
     // Highlight border when there is movement
-    let brightness: number;
+    let brightness = 0;
     $: if (tracker.data) {
         brightness = Math.min(
             Math.hypot(...tracker.data?.acceleration) * 50,
@@ -88,9 +88,11 @@
     </select>
     {#if showInspect}
         <hr class="my-4" />
-        <p>Connected from {tracker.info.address}</p>
-        {#if tracker.data}
-            <TrackerInspect data={tracker.data} />
-        {/if}
+        <div class="text-sm text-neutral-300">
+            <p>Connected from {tracker.info.address}</p>
+            {#if tracker.data}
+                <TrackerInspect data={tracker.data} />
+            {/if}
+        </div>
     {/if}
 </div>

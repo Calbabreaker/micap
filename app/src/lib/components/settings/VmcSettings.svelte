@@ -1,25 +1,23 @@
 <script lang="ts">
-    import {
-        globalConfig,
-        updateConfig,
-        type GlobalConfig,
-    } from "$lib/websocket";
+    import { globalConfig, updateConfig } from "$lib/websocket";
+    import type { VmcConfig } from "$lib/server_bindings";
 
-    let enabled = false;
-    let marionettePort = 39540;
+    let enabled: boolean;
+    let sendPort: number;
 
-    function setVmcState(globalConfig: GlobalConfig) {
-        marionettePort = globalConfig.vmc.marionette_port;
-        enabled = globalConfig.vmc.enabled;
+    function setConfigState(config: VmcConfig) {
+        sendPort = config.send_port;
+        enabled = config.enabled;
     }
 
-    $: if ($globalConfig) setVmcState($globalConfig);
+    $: if ($globalConfig) setConfigState($globalConfig.vmc);
 
     function setVmcConfig() {
         updateConfig((globalConfig) => {
             globalConfig.vmc = {
                 enabled,
-                marionette_port: Number(marionettePort),
+                send_port: Number(sendPort),
+                receive_port: Number(sendPort),
             };
         });
     }
@@ -31,12 +29,12 @@
         <input type="checkbox" bind:checked={enabled} class="w-4" />
     </div>
     <div class="mb-2">
-        <span class="w-20 inline-block">Port</span>
+        <span class="w-20 inline-block">Send port</span>
         <input
-            placeholder="Marionette port"
-            bind:value={marionettePort}
+            placeholder="Send port"
+            bind:value={sendPort}
             class="text-input"
-            type="text"
+            type="number"
             disabled={!enabled}
         />
     </div>

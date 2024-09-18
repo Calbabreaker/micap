@@ -30,21 +30,17 @@
     }
 </script>
 
-<div>
-    <div class="mb-2 text-sm text-neutral-300">
-        <p>Orientation: {formatArray(data.orientation)}</p>
-        <p>Acceleration: {formatArray(data.acceleration)}</p>
-        <p>Position: {formatArray(data.position)}</p>
-    </div>
-    <PreviewCanvas>
-        <T.PerspectiveCamera makeDefault position={[10, 10, 10]}>
-            <OrbitControls />
-        </T.PerspectiveCamera>
-        <T.Mesh quaternion={data.orientation} scale={[1.5, 1.5, 1.5]}>
-            <T.AxesHelper args={[5]} />
-            <T.BoxGeometry />
-            <T.MeshLambertMaterial color={0xffffff} />
-        </T.Mesh>
-        <T.ArrowHelper bind:ref={arrowRef} />
-    </PreviewCanvas>
-</div>
+<p>Orientation: {formatArray(data.orientation)}</p>
+<p>Acceleration: {formatArray(data.acceleration)}</p>
+<p class="mb-2">Position: {formatArray(data.position)}</p>
+<PreviewCanvas>
+    <T.PerspectiveCamera makeDefault position={[10, 10, 10]}>
+        <OrbitControls />
+    </T.PerspectiveCamera>
+    <T.Mesh quaternion={data.orientation} scale={[1.5, 1.5, 1.5]}>
+        <T.AxesHelper args={[5]} />
+        <T.BoxGeometry />
+        <T.MeshLambertMaterial color={0xffffff} />
+    </T.Mesh>
+    <T.ArrowHelper bind:ref={arrowRef} />
+</PreviewCanvas>

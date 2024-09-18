@@ -105,15 +105,16 @@ impl MainServer {
         modules.vmc_connector.update(self).await?;
 
         if let Some(removed_id) = self.upkeep_trackers().await {
-            self.config.trackers.remove(&removed_id);
             self.trackers.remove(&removed_id);
-            self.save_config()?;
+            if self.config.trackers.remove(&removed_id).is_some() {
+                self.save_config()?;
+            }
         }
 
         Ok(())
     }
 
-    // Returns a tracker id if that id should be removed
+    // Returns a tracker id if that tracker should be removed
     async fn upkeep_trackers(&mut self) -> Option<String> {
         for (id, tracker) in &self.trackers {
             let mut tracker = tracker.write().await;
@@ -128,12 +129,10 @@ impl MainServer {
         None
     }
 
-    pub async fn add_tracker(&mut self, id: String) {
+    pub fn add_tracker(&mut self, id: String) {
         if !self.trackers.contains_key(&id) {
             let tracker = TrackerRef::default();
-            tracker.write().await.update_info();
-
-            // Note: we only set the config once
+            // Note: we only set the config once the user does
             self.trackers.insert(id.clone(), tracker.clone());
         }
     }

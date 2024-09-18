@@ -16,7 +16,7 @@ offsets: { [key: BoneOffsetKind]: number }, };
  */
 export type TrackerConfig = { name?: string, location?: BoneLocation, };
 export type TrackerData = { orientation: [number, number, number, number], acceleration: [number, number, number], position: [number, number, number], };
-export type TrackerInfo = { status: TrackerStatus, latency_ms: number | null, battery_level: number, address: string | null, };
+export type TrackerInfo = { status: TrackerStatus, latency_ms?: number, battery_level: number, address?: string, };
 export type TrackerStatus = "Ok" | "Error" | "Off" | "TimedOut";
 export type UpdateEvent = { "type": "Error", error: string, } | { "type": "ConfigUpdate" };
 export type VmcConfig = { enabled: boolean, send_port: number, receive_port: number, };

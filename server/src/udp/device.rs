@@ -37,14 +37,14 @@ impl UdpDevice {
         }
     }
 
-    async fn add_global_tracker(&mut self, local_index: u8, main: &mut MainServer) {
+    fn add_global_tracker(&mut self, local_index: u8, main: &mut MainServer) {
         if local_index as usize >= self.global_trackers.len() {
             self.global_trackers.resize(local_index as usize + 1, None);
         }
 
         // Register the tracker and add the id into the udp device array to know
         let id = format!("{}/{}", self.mac, local_index);
-        main.add_tracker(id.clone()).await;
+        main.add_tracker(id.clone());
 
         self.global_trackers[local_index as usize] = main.trackers.get(&id).cloned();
     }
@@ -59,7 +59,7 @@ impl UdpDevice {
         )
     }
 
-    fn tracker_iter(&self) -> impl Stream<Item = RwLockWriteGuard<Tracker>> {
+    fn global_trackers_iter(&self) -> impl Stream<Item = RwLockWriteGuard<Tracker>> {
         futures_util::stream::iter(self.global_trackers.iter())
             .filter_map(|tracker| async { Some(tracker.as_ref()?.write().await) })
     }
@@ -85,7 +85,7 @@ impl UdpDevice {
 
         self.timed_out = timed_out;
 
-        self.tracker_iter()
+        self.global_trackers_iter()
             .for_each(|mut tracker| async move {
                 // Only allow changing status to TimedOut if tracker is Ok and vice-versa
                 if timed_out && tracker.info.status == TrackerStatus::Ok {
@@ -113,7 +113,7 @@ impl UdpDevice {
         }
 
         if let Some(start_time) = self.current_ping_start_time {
-            self.tracker_iter()
+            self.global_trackers_iter()
                 .for_each(|mut tracker| async move {
                     let latency = start_time.elapsed() / 2;
                     tracker.update_info().latency_ms = Some(latency.as_millis() as u32);
@@ -136,7 +136,7 @@ impl UdpDevice {
         packet: UdpPacketTrackerStatus,
     ) {
         if self.get_tracker(packet.tracker_index).await.is_none() {
-            self.add_global_tracker(packet.tracker_index, main).await;
+            self.add_global_tracker(packet.tracker_index, main);
         }
 
         let address = self.address;
@@ -148,7 +148,7 @@ impl UdpDevice {
     }
 
     pub async fn update_battery_level(&self, packet: UdpPacketBatteryLevel) {
-        self.tracker_iter()
+        self.global_trackers_iter()
             .for_each(|mut tracker| async move {
                 tracker.update_info().battery_level = packet.battery_level;
             })
@@ -157,7 +157,7 @@ impl UdpDevice {
 
     pub async fn all_trackers_removed(&mut self) -> bool {
         let all_removed = self
-            .tracker_iter()
+            .global_trackers_iter()
             .all(|tracker| async move { tracker.to_be_removed })
             .await;
         !self.global_trackers.is_empty() && all_removed
