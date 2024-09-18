@@ -53,7 +53,7 @@
     class="bg-neutral-600 p-4 rounded shadow w-fit border"
 >
     <TrackerInfoDisplay info={tracker.info} />
-    <p>{config?.name ?? id}</p>
+    <p>{config?.name || id}</p>
     <div class="flex gap-1 mt-2">
         <button class="btn-icon" on:click={() => removeTracker(id)}>
             <TrashIcon />

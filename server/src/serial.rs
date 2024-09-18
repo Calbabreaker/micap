@@ -10,8 +10,8 @@ type NativePort = serialport::TTYPort;
 type NativePort = serialport::COMPort;
 
 pub struct SerialPortManager {
-    port: Option<NativePort>,
     /// Empty string means not connected
+    port: Option<NativePort>,
     port_rx: Receiver<NativePort>,
     buffer: Vec<u8>,
 }

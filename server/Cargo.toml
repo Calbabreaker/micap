@@ -9,7 +9,7 @@ futures-util = "0.3"
 log = "0.4"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "time", "sync"] }
 serialport = "4"
-serde = { version = "1.0", features = ["derive", "rc"] }
+serde = { version = "1.0", features = ["derive"] }
 anyhow = "1"
 glam = { version = "0.29", features = ["serde"] }
 byteorder = "1"

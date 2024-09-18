@@ -46,32 +46,6 @@ impl BoneLocation {
         }
     }
 
-    /// Maps to the its parent bone location
-    pub const fn get_parent(&self) -> Option<BoneLocation> {
-        Some(match self {
-            Self::Hip => return None,
-            Self::Waist => Self::Hip,
-            Self::LeftHip | Self::RightHip => Self::Hip,
-            Self::LeftUpperLeg => Self::LeftHip,
-            Self::LeftLowerLeg => Self::LeftUpperLeg,
-            Self::LeftFoot => Self::LeftLowerLeg,
-            Self::RightUpperLeg => Self::RightHip,
-            Self::RightLowerLeg => Self::RightUpperLeg,
-            Self::RightFoot => Self::RightLowerLeg,
-            Self::Chest => Self::Waist,
-            Self::UpperChest => Self::Chest,
-            Self::LeftShoulder | Self::RightShoulder => Self::UpperChest,
-            Self::LeftUpperArm => Self::LeftShoulder,
-            Self::LeftLowerArm => Self::LeftShoulder,
-            Self::LeftHand => Self::LeftLowerArm,
-            Self::RightUpperArm => Self::RightShoulder,
-            Self::RightLowerArm => Self::RightShoulder,
-            Self::RightHand => Self::RightLowerArm,
-            Self::Neck => Self::UpperChest,
-            Self::Head => Self::Neck,
-        })
-    }
-
     /// Gets a vector of the head to the tail of the bone if the head is at the origin
     pub fn get_tail_offset(&self, offsets: &HashMap<BoneOffsetKind, f32>) -> glam::Vec3A {
         use BoneOffsetKind::*;
@@ -107,6 +81,32 @@ impl BoneLocation {
             Self::Head => glam::vec3a(0., 0., 0.),
         }
     }
+
+    // Maps a bone location to its parent
+    pub const SELF_TO_PARENT: &[(Self, Option<Self>)] = &[
+        (Self::Hip, None),
+        (Self::Waist, Some(Self::Hip)),
+        (Self::LeftHip, Some(Self::Hip)),
+        (Self::RightHip, Some(Self::Hip)),
+        (Self::LeftUpperLeg, Some(Self::LeftHip)),
+        (Self::LeftLowerLeg, Some(Self::LeftUpperLeg)),
+        (Self::LeftFoot, Some(Self::LeftLowerLeg)),
+        (Self::RightUpperLeg, Some(Self::RightHip)),
+        (Self::RightLowerLeg, Some(Self::RightUpperLeg)),
+        (Self::RightFoot, Some(Self::RightLowerLeg)),
+        (Self::Chest, Some(Self::Waist)),
+        (Self::UpperChest, Some(Self::Chest)),
+        (Self::LeftShoulder, Some(Self::UpperChest)),
+        (Self::RightShoulder, Some(Self::UpperChest)),
+        (Self::LeftUpperArm, Some(Self::LeftShoulder)),
+        (Self::LeftLowerArm, Some(Self::LeftShoulder)),
+        (Self::LeftHand, Some(Self::LeftLowerArm)),
+        (Self::RightUpperArm, Some(Self::RightShoulder)),
+        (Self::RightLowerArm, Some(Self::RightShoulder)),
+        (Self::RightHand, Some(Self::RightLowerArm)),
+        (Self::Neck, Some(Self::UpperChest)),
+        (Self::Head, Some(Self::Neck)),
+    ];
 }
 
 #[derive(Serialize, TS)]
@@ -117,24 +117,28 @@ pub struct Bone {
     /// Orientation of joint
     #[ts(type = "[number, number, number, number]")]
     pub orientation: glam::Quat,
-    pub location: BoneLocation,
+    pub parent: Option<BoneLocation>,
 }
 
 impl Bone {
-    pub fn new(location: BoneLocation) -> Self {
+    pub fn new(parent: Option<BoneLocation>) -> Self {
         Self {
             tail_offset: glam::Vec3A::ZERO,
             orientation: glam::Quat::IDENTITY,
-            location,
+            parent,
         }
     }
 
-    pub fn set_tail_offset(&mut self, offsets: &HashMap<BoneOffsetKind, f32>) {
-        self.tail_offset = self.location.get_tail_offset(offsets);
+    pub fn set_tail_offset(
+        &mut self,
+        location: BoneLocation,
+        offsets: &HashMap<BoneOffsetKind, f32>,
+    ) {
+        self.tail_offset = location.get_tail_offset(offsets);
     }
 
     pub fn get_head_position(&self, bones: &HashMap<BoneLocation, Bone>) -> glam::Vec3A {
-        if let Some(location) = self.location.get_parent() {
+        if let Some(location) = self.parent {
             bones[&location].tail_offset
         } else {
             glam::Vec3A::ZERO

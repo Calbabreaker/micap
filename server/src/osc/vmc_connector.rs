@@ -43,8 +43,8 @@ impl VmcConnector {
 
         let mut osc_messages = Vec::new();
 
-        osc_messages.extend(bones.values().map(|bone| {
-            let mut args = vec![rosc::OscType::String(bone.location.as_unity_bone())];
+        osc_messages.extend(bones.iter().map(|(location, bone)| {
+            let mut args = vec![rosc::OscType::String(location.as_unity_bone())];
             add_osc_transform_args(&mut args, bone.get_head_position(bones), bone.orientation);
             rosc::OscPacket::Message(rosc::OscMessage {
                 addr: "/VMC/Ext/Bone/Pos".to_string(),
@@ -64,8 +64,6 @@ impl VmcConnector {
         self.socket.send(&msg_buf).await?;
         Ok(())
     }
-
-    pub async fn on_server_event() {}
 
     pub async fn apply_config(&mut self, config: &GlobalConfig) -> anyhow::Result<()> {
         if !config.vmc.enabled {
