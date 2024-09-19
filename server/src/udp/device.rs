@@ -132,10 +132,11 @@ impl UdpDevice {
         }
 
         let address = self.address;
-        let mut tracker = self.get_tracker(packet.tracker_index).unwrap();
-        tracker.data = TrackerData::default();
-        tracker.update_info().status = packet.tracker_status;
-        tracker.update_info().address = Some(address);
+        if let Some(mut tracker) = self.get_tracker(packet.tracker_index) {
+            tracker.data = TrackerData::default();
+            tracker.update_info().status = packet.tracker_status;
+            tracker.update_info().address = Some(address);
+        }
     }
 
     pub fn update_battery_level(&self, packet: UdpPacketBatteryLevel) {
@@ -148,6 +149,7 @@ impl UdpDevice {
         let all_removed = self
             .global_trackers_iter()
             .all(|tracker| tracker.to_be_removed);
-        !self.global_trackers.is_empty() && all_removed
+        let empty = self.global_trackers_iter().count() == 0;
+        !&empty && all_removed
     }
 }
