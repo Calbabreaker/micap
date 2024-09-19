@@ -32,31 +32,32 @@ pub struct TrackerData {
     pub acceleration: glam::Vec3A,
     #[ts(type = "[number, number, number]")]
     pub position: glam::Vec3A,
+}
 
-    #[serde(skip)]
+pub struct TrackerInternal {
+    pub to_be_removed: bool,
+    pub time_data_last_updated: Instant,
     pub velocity: glam::Vec3A,
 }
 
+impl Default for TrackerInternal {
+    fn default() -> Self {
+        Self {
+            to_be_removed: false,
+            time_data_last_updated: Instant::now(),
+            velocity: glam::Vec3A::default(),
+        }
+    }
+}
+
+#[derive(Default, Serialize, TS)]
 pub struct Tracker {
     pub info: TrackerInfo,
     pub data: TrackerData,
-    pub to_be_removed: bool,
-    pub time_data_last_updated: Instant,
+    #[serde(skip)]
+    pub internal: TrackerInternal,
     pub info_was_updated: bool,
     pub data_was_updated: bool,
-}
-
-impl Default for Tracker {
-    fn default() -> Self {
-        Self {
-            info: TrackerInfo::default(),
-            data: TrackerData::default(),
-            to_be_removed: false,
-            time_data_last_updated: Instant::now(),
-            info_was_updated: true,
-            data_was_updated: true,
-        }
-    }
 }
 
 impl Tracker {
@@ -64,11 +65,11 @@ impl Tracker {
         self.data.orientation = orientation;
         self.data.acceleration = acceleration;
 
-        let delta = self.time_data_last_updated.elapsed().as_secs_f32();
-        self.data.velocity += self.data.acceleration * delta;
-        self.data.position += self.data.velocity * delta;
+        let delta = self.internal.time_data_last_updated.elapsed().as_secs_f32();
+        self.internal.velocity += self.data.acceleration * delta;
+        self.data.position += self.internal.velocity * delta;
 
-        self.time_data_last_updated = Instant::now();
+        self.internal.time_data_last_updated = Instant::now();
         self.data_was_updated = true;
     }
 

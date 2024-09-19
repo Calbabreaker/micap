@@ -139,30 +139,9 @@ function handleMessage(message: WebsocketServerMessage) {
         case "InitialState":
             globalConfig.set(message.config);
             serialPortName.set(message.port_name);
-            trackers.update(() => {
-                let trackers: TrackerDict = {};
-                for (const [id, info] of Object.entries(message.tracker_infos)) {
-                    trackers[id] = { info };
-                }
-                return trackers;
-            });
             break;
         case "TrackerUpdate":
-            trackers.update((trackers) => {
-                const tracker = trackers[message.id];
-                if (tracker) {
-                    tracker.info = message.info || tracker.info;
-                    tracker.data = message.data || tracker.data;
-                } else {
-                    if (message.info) {
-                        infoToast(`New udp device connected from ${message.info.address}`);
-                        trackers[message.id] = { info: message.info };
-                    }
-                }
-
-                return trackers;
-            });
-
+            trackers.set(message.trackers);
             break;
     }
 }

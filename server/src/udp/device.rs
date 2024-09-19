@@ -1,6 +1,4 @@
-use futures_util::FutureExt;
-use std::{net::SocketAddr, time::Instant};
-use tokio::sync::RwLockWriteGuard;
+use std::{net::SocketAddr, sync::MutexGuard, time::Instant};
 
 use crate::{
     main_server::{MainServer, TrackerRef},
@@ -48,20 +46,20 @@ impl UdpDevice {
         self.global_trackers[local_index as usize] = main.trackers.get(&id).cloned();
     }
 
-    fn get_tracker(&self, local_index: u8) -> Option<RwLockWriteGuard<'_, Tracker>> {
-        self.global_trackers
-            .get(local_index as usize)?
-            .as_ref()?
-            .write()
-            // Udp server is ran in the loop synced with the rest of the other stuff so the
-            // tracker rwlock should always be readily available
-            .now_or_never()
+    fn get_tracker(&self, local_index: u8) -> Option<MutexGuard<'_, Tracker>> {
+        Some(
+            self.global_trackers
+                .get(local_index as usize)?
+                .as_ref()?
+                .lock()
+                .unwrap(),
+        )
     }
 
-    fn global_trackers_iter(&self) -> impl Iterator<Item = RwLockWriteGuard<'_, Tracker>> {
+    fn global_trackers_iter(&self) -> impl Iterator<Item = MutexGuard<'_, Tracker>> {
         self.global_trackers
             .iter()
-            .filter_map(|tracker| tracker.as_ref()?.write().now_or_never())
+            .filter_map(|tracker| Some(tracker.as_ref()?.lock().unwrap()))
     }
 
     pub fn check_latest_packet_number(&mut self, packet_number: u32) -> bool {
@@ -148,7 +146,7 @@ impl UdpDevice {
     pub fn all_trackers_removed(&mut self) -> bool {
         let all_removed = self
             .global_trackers_iter()
-            .all(|tracker| tracker.to_be_removed);
+            .all(|tracker| tracker.internal.to_be_removed);
         let empty = self.global_trackers_iter().count() == 0;
         !&empty && all_removed
     }

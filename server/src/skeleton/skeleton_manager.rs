@@ -1,18 +1,12 @@
 use std::collections::HashMap;
 
-use futures_util::FutureExt;
-use serde::Serialize;
-use ts_rs::TS;
-
 use crate::{
     main_server::{GlobalConfig, TrackerRef},
     skeleton::{Bone, BoneLocation},
 };
 
-#[derive(Serialize, TS)]
 pub struct SkeletonManager {
     pub bones: HashMap<BoneLocation, Bone>,
-    #[serde(skip)]
     trackers: HashMap<BoneLocation, TrackerRef>,
 }
 
@@ -79,7 +73,7 @@ impl SkeletonManager {
     fn get_tracker_orientation(&self, locations: &[BoneLocation]) -> Option<glam::Quat> {
         for location in locations {
             if let Some(tracker) = self.trackers.get(location) {
-                let tracker = tracker.read().now_or_never()?;
+                let tracker = tracker.lock().unwrap();
                 if tracker.data_was_updated {
                     return Some(tracker.data.orientation);
                 }

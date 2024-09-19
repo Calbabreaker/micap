@@ -47,7 +47,7 @@ pub struct GlobalConfig {
     pub skeleton: SkeletonConfig,
 }
 
-pub type TrackerRef = std::sync::Arc<tokio::sync::RwLock<Tracker>>;
+pub type TrackerRef = std::sync::Arc<std::sync::Mutex<Tracker>>;
 
 #[derive(Default)]
 pub struct MainServer {
@@ -113,11 +113,11 @@ impl MainServer {
     // Returns a tracker id if that tracker should be removed
     async fn upkeep_trackers(&mut self) -> Option<String> {
         for (id, tracker) in &self.trackers {
-            let mut tracker = tracker.write().await;
+            let mut tracker = tracker.lock().unwrap();
             tracker.info_was_updated = false;
             tracker.data_was_updated = false;
 
-            if tracker.to_be_removed {
+            if tracker.internal.to_be_removed {
                 return Some(id.clone());
             }
         }

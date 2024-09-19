@@ -1,3 +1,4 @@
+mod looper;
 mod main_server;
 mod osc;
 mod serial;
@@ -6,9 +7,10 @@ pub mod tracker;
 pub mod udp;
 pub mod websocket;
 
-use std::time::{Duration, Instant};
-
-use crate::main_server::{MainServer, ServerEvent, ServerModules};
+use crate::{
+    looper::Looper,
+    main_server::{MainServer, ServerEvent, ServerModules},
+};
 
 pub fn setup_log() {
     env_logger::builder()
@@ -19,8 +21,6 @@ pub fn setup_log() {
         .init();
 }
 
-const TARGET_LOOP_DELTA: Duration = Duration::from_millis(1000 / 60);
-
 pub async fn start_server() -> anyhow::Result<()> {
     // Seperate out  main and modules to prevent multiple borrow
     let mut main = MainServer::default();
@@ -30,8 +30,10 @@ pub async fn start_server() -> anyhow::Result<()> {
         log::warn!("Failed to load config: {error:?}");
     }
 
+    let mut looper = Looper::default();
+
     loop {
-        let update_start_time = Instant::now();
+        looper.start_loop();
 
         let result = main.update(&mut modules).await;
         main.events.clear();
@@ -43,13 +45,6 @@ pub async fn start_server() -> anyhow::Result<()> {
             });
         }
 
-        let post_delta = update_start_time.elapsed();
-        if let Some(sleep_duration) = TARGET_LOOP_DELTA.checked_sub(post_delta) {
-            tokio::time::sleep(sleep_duration).await;
-        } else {
-            log::warn!(
-                "Main server loop took {post_delta:?} which is longer than target {TARGET_LOOP_DELTA:?}"
-            );
-        }
+        looper.end_loop_and_wait().await;
     }
 }
