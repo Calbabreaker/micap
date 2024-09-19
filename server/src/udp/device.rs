@@ -86,9 +86,9 @@ impl UdpDevice {
         for mut tracker in self.global_trackers_iter() {
             // Only allow changing status to TimedOut if tracker is Ok and vice-versa
             if timed_out && tracker.info.status == TrackerStatus::Ok {
-                tracker.update_info().status = TrackerStatus::TimedOut;
+                tracker.info.status = TrackerStatus::TimedOut;
             } else if !timed_out && tracker.info.status == TrackerStatus::TimedOut {
-                tracker.update_info().status = TrackerStatus::Ok;
+                tracker.info.status = TrackerStatus::Ok;
             };
         }
     }
@@ -111,7 +111,7 @@ impl UdpDevice {
         if let Some(start_time) = self.current_ping_start_time {
             for mut tracker in self.global_trackers_iter() {
                 let latency = start_time.elapsed() / 2;
-                tracker.update_info().latency_ms = Some(latency.as_millis() as u32);
+                tracker.info.latency_ms = Some(latency.as_millis() as u32);
             }
 
             self.current_ping_start_time = None;
@@ -132,14 +132,14 @@ impl UdpDevice {
         let address = self.address;
         if let Some(mut tracker) = self.get_tracker(packet.tracker_index) {
             tracker.data = TrackerData::default();
-            tracker.update_info().status = packet.tracker_status;
-            tracker.update_info().address = Some(address);
+            tracker.info.status = packet.tracker_status;
+            tracker.info.address = Some(address);
         }
     }
 
     pub fn update_battery_level(&self, packet: UdpPacketBatteryLevel) {
         for mut tracker in self.global_trackers_iter() {
-            tracker.update_info().battery_level = packet.battery_level;
+            tracker.info.battery_level = packet.battery_level;
         }
     }
 

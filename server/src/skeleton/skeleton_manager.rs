@@ -74,9 +74,7 @@ impl SkeletonManager {
         for location in locations {
             if let Some(tracker) = self.trackers.get(location) {
                 let tracker = tracker.lock().unwrap();
-                if tracker.data_was_updated {
-                    return Some(tracker.data.orientation);
-                }
+                return Some(tracker.data.orientation);
             }
         }
 

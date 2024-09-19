@@ -2,19 +2,13 @@ import { writable } from "svelte/store";
 import { confirmPopup, errorToast, infoToast } from "./toast";
 import type {
     GlobalConfig,
+    Tracker,
     TrackerConfig,
-    TrackerData,
-    TrackerInfo,
     WebsocketClientMessage,
     WebsocketServerMessage,
 } from "./server_bindings";
 
 const WEBSOCKET_PORT = 8298;
-
-interface Tracker {
-    info: TrackerInfo;
-    data?: TrackerData;
-}
 
 type TrackerDict = { [id: string]: Tracker };
 

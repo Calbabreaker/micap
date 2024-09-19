@@ -56,8 +56,6 @@ pub struct Tracker {
     pub data: TrackerData,
     #[serde(skip)]
     pub internal: TrackerInternal,
-    pub info_was_updated: bool,
-    pub data_was_updated: bool,
 }
 
 impl Tracker {
@@ -70,12 +68,6 @@ impl Tracker {
         self.data.position += self.internal.velocity * delta;
 
         self.internal.time_data_last_updated = Instant::now();
-        self.data_was_updated = true;
-    }
-
-    pub fn update_info(&mut self) -> &mut TrackerInfo {
-        self.info_was_updated = true;
-        &mut self.info
     }
 }
 

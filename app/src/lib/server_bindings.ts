@@ -21,7 +21,7 @@ export type SkeletonConfig = {
  * Contains the length offset in meters from a bone to its connecting one
  */
 offsets: { [key: BoneOffsetKind]: number }, };
-export type Tracker = { info: TrackerInfo, data: TrackerData, info_was_updated: boolean, data_was_updated: boolean, };
+export type Tracker = { info: TrackerInfo, data: TrackerData, };
 /**
  * Seperated from TrackerInfo to be used to save to a file
  */

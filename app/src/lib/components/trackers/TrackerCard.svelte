@@ -37,13 +37,7 @@
     $: config = $globalConfig?.trackers[id];
 
     // Highlight border when there is movement
-    let brightness = 0;
-    $: if (tracker.data) {
-        brightness = Math.min(
-            Math.hypot(...tracker.data?.acceleration) * 50,
-            50,
-        );
-    }
+    $: brightness = Math.hypot(...tracker.data.acceleration) > 2 ? 60 : 10;
 
     let showInspect = false;
 </script>
@@ -90,9 +84,7 @@
         <hr class="my-4" />
         <div class="text-sm text-neutral-300">
             <p>Connected from {tracker.info.address}</p>
-            {#if tracker.data}
-                <TrackerInspect data={tracker.data} />
-            {/if}
+            <TrackerInspect data={tracker.data} />
         </div>
     {/if}
 </div>
