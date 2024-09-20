@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use crate::{
-    main_server::{GlobalConfig, TrackerRef},
-    skeleton::{Bone, BoneLocation},
+    skeleton::{Bone, BoneLocation, SkeletonConfig},
+    tracker::{TrackerConfig, TrackerRef},
 };
 
 pub struct SkeletonManager {
@@ -49,17 +49,23 @@ impl SkeletonManager {
         );
     }
 
-    pub fn apply_config(&mut self, config: &GlobalConfig, trackers: &HashMap<String, TrackerRef>) {
+    pub fn apply_tracker_config(
+        &mut self,
+        configs: &HashMap<String, TrackerConfig>,
+        trackers: &HashMap<String, TrackerRef>,
+    ) {
         // Sets self.trackers based on bone location
         self.trackers.clear();
-        for (id, config) in &config.trackers {
+        for (id, config) in configs {
             if let Some(location) = config.location {
                 self.trackers.insert(location, trackers[id].clone());
             }
         }
+    }
 
+    pub fn apply_skeleton_config(&mut self, config: &SkeletonConfig) {
         for (location, joints) in &mut self.bones {
-            joints.set_tail_offset(*location, &config.skeleton.offsets);
+            joints.set_tail_offset(*location, &config.offsets);
         }
     }
 

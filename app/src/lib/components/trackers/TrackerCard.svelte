@@ -22,7 +22,7 @@
         "RightLowerLeg",
         "LeftFoot",
         "RightFoot",
-        "Spine",
+        "Waist",
         "Chest",
         "Neck",
         "LeftUpperArm",
@@ -33,7 +33,7 @@
         "RightHand",
     ];
 
-    $: tracker = $trackers[id];
+    $: tracker = $trackers[id]!;
     $: config = $globalConfig?.trackers[id];
 
     // Highlight border when there is movement
@@ -59,8 +59,9 @@
             class="btn-icon"
             on:click={async () => {
                 let name = await promptPopup("Enter the new name");
-                editTrackerConfig(id, (config) => {
-                    config.name = name;
+                editTrackerConfig(id, {
+                    ...config,
+                    name,
                 });
             }}
         >
@@ -71,8 +72,9 @@
         class="text-neutral-700 px-1 mt-2 bg-white"
         value={config?.location ?? ""}
         on:change={(e) => {
-            editTrackerConfig(id, (config) => {
-                config.location = e.currentTarget.value;
+            editTrackerConfig(id, {
+                ...config,
+                location: e.currentTarget.value,
             });
         }}
     >
@@ -83,7 +85,8 @@
     {#if showInspect}
         <hr class="my-4" />
         <div class="text-sm text-neutral-300">
-            <p>Connected from {tracker.info.address}</p>
+            <p>Address: {tracker.info.address}</p>
+            <p>ID: {id}</p>
             <TrackerInspect data={tracker.data} />
         </div>
     {/if}

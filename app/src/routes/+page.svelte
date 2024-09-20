@@ -1,6 +1,7 @@
 <script lang="ts">
     import Card from "$lib/components/Card.svelte";
-    import SkeletonPreview from "$lib/components/trackers/SkeletonPreview.svelte";
+    import PreviewCanvas from "$lib/components/trackers/PreviewCanvas.svelte";
+    import SkeletonScene from "$lib/components/trackers/SkeletonScene.svelte";
     import TrackerGrid from "$lib/components/trackers/TrackerGrid.svelte";
 </script>
 
@@ -8,5 +9,7 @@
     <TrackerGrid />
 </Card>
 <Card title="Skeleton Preview">
-    <SkeletonPreview />
+    <PreviewCanvas>
+        <SkeletonScene />
+    </PreviewCanvas>
 </Card>

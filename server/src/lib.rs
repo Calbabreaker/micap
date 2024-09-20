@@ -9,7 +9,7 @@ pub mod websocket;
 
 use crate::{
     looper::Looper,
-    main_server::{MainServer, ServerEvent, ServerModules},
+    main_server::{MainServer, ServerModules},
 };
 
 pub fn setup_log() {
@@ -36,13 +36,11 @@ pub async fn start_server() -> anyhow::Result<()> {
         looper.start_loop();
 
         let result = main.update(&mut modules).await;
-        main.events.clear();
+        main.updates = Default::default();
 
         if let Err(err) = result {
             log::error!("{err:?}");
-            main.events.push(ServerEvent::Error {
-                error: err.root_cause().to_string(),
-            });
+            main.updates.error = Some(err.root_cause().to_string());
         }
 
         looper.end_loop_and_wait().await;

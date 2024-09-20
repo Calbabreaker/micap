@@ -44,21 +44,22 @@ impl Default for SkeletonConfig {
     fn default() -> Self {
         use BoneOffsetKind::*;
         Self {
+            // Some default values for an average body probably
             offsets: HashMap::from([
-                (NeckLength, 0.0),
-                (WaistLength, 0.0),
-                (ChestLength, 0.0),
-                (UpperChestLength, 0.0),
-                (HipLength, 0.0),
-                (HipsWidth, 0.0),
-                (UpperLegLength, 0.0),
-                (LowerLegLength, 0.0),
-                (ShouldersWidth, 0.0),
-                (ShoulderOffset, 0.0),
-                (UpperArmLength, 0.0),
-                (LowerArmLength, 0.0),
-                (FootLength, 0.0),
-                (HandLength, 0.0),
+                (NeckLength, 0.1),
+                (WaistLength, 0.2),
+                (ChestLength, 0.1),
+                (UpperChestLength, 0.1),
+                (HipLength, 0.4),
+                (HipsWidth, 0.3),
+                (UpperLegLength, 0.4),
+                (LowerLegLength, 0.5),
+                (ShouldersWidth, 0.3),
+                (ShoulderOffset, 0.1),
+                (UpperArmLength, 0.3),
+                (LowerArmLength, 0.3),
+                (FootLength, 0.1),
+                (HandLength, 0.1),
             ]),
         }
     }

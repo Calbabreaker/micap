@@ -50,6 +50,8 @@ impl Default for TrackerInternal {
     }
 }
 
+pub type TrackerRef = std::sync::Arc<std::sync::Mutex<Tracker>>;
+
 #[derive(Default, Serialize, TS)]
 pub struct Tracker {
     pub info: TrackerInfo,
@@ -71,7 +73,7 @@ impl Tracker {
     }
 }
 
-/// Seperated from TrackerInfo to be used to save to a file
+// Seperated from TrackerInfo to be used to save to a file
 #[derive(Default, Serialize, Deserialize, TS)]
 #[serde(default)]
 pub struct TrackerConfig {

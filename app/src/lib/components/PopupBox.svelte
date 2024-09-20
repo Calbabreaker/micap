@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { onMount } from "svelte";
     import Popup from "./Popup.svelte";
 
     export let title: string;
@@ -26,6 +27,10 @@
             confirm(false);
         }
     }
+
+    onMount(() => {
+        textInput.focus();
+    });
 </script>
 
 <svelte:window on:keydown={keyDown} />

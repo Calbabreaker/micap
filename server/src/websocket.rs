@@ -11,9 +11,10 @@ use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 use ts_rs::TS;
 
 use crate::{
-    main_server::{GlobalConfig, MainServer, ServerEvent, TrackerRef},
+    main_server::{GlobalConfig, GlobalConfigUpdate, MainServer},
     serial::SerialPortManager,
     skeleton::{Bone, BoneLocation},
+    tracker::TrackerRef,
 };
 
 pub const WEBSOCKET_PORT: u16 = 8298;
@@ -39,9 +40,9 @@ pub enum WebsocketServerMessage<'a> {
         #[ts(optional)]
         port_name: Option<String>,
     },
-    // Passes through the server events
-    #[serde(untagged)]
-    ServerEvent(&'a ServerEvent),
+    Error {
+        error: &'a String,
+    },
 }
 
 // Receieved from client
@@ -50,7 +51,7 @@ pub enum WebsocketServerMessage<'a> {
 pub enum WebsocketClientMessage {
     SerialSend { data: String },
     RemoveTracker { id: String },
-    UpdateConfig { config: GlobalConfig },
+    UpdateConfig { config: GlobalConfigUpdate },
 }
 
 pub struct WebsocketServer {
@@ -143,9 +144,8 @@ impl WebsocketServer {
             feed_ws_message(ws_stream, WebsocketServerMessage::SerialLog { log }).await?;
         }
 
-        // Send events
-        for event in &main.events {
-            feed_ws_message(ws_stream, WebsocketServerMessage::ServerEvent(event)).await?;
+        if let Some(error) = main.updates.error.as_ref() {
+            feed_ws_message(ws_stream, WebsocketServerMessage::Error { error }).await?;
         }
 
         let message = WebsocketServerMessage::TrackerUpdate {
@@ -178,8 +178,7 @@ impl WebsocketServer {
                 }
             }
             WebsocketClientMessage::UpdateConfig { config } => {
-                main.config = config;
-                main.save_config()?;
+                main.updates.config = Some(config);
             }
         }
 

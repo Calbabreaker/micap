@@ -1,8 +1,8 @@
 use std::{net::SocketAddr, sync::MutexGuard, time::Instant};
 
 use crate::{
-    main_server::{MainServer, TrackerRef},
-    tracker::{Tracker, TrackerData, TrackerStatus},
+    main_server::MainServer,
+    tracker::{Tracker, TrackerData, TrackerRef, TrackerStatus},
     udp::packet::{
         UdpPacketBatteryLevel, UdpPacketPingPong, UdpPacketTrackerStatus, UdpTrackerData,
     },

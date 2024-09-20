@@ -15,20 +15,17 @@ export type BoneLocation = "Hip" | "LeftUpperLeg" | "RightUpperLeg" | "LeftLower
  */
 export type BoneOffsetKind = "NeckLength" | "WaistLength" | "ChestLength" | "UpperChestLength" | "HipLength" | "HipsWidth" | "UpperLegLength" | "LowerLegLength" | "ShouldersWidth" | "ShoulderOffset" | "UpperArmLength" | "LowerArmLength" | "FootLength" | "HandLength";
 export type GlobalConfig = { trackers: { [key in string]?: TrackerConfig }, vmc: VmcConfig, skeleton: SkeletonConfig, };
-export type ServerEvent = { "type": "Error", error: string, } | { "type": "ConfigUpdate" };
+export type GlobalConfigUpdate = { trackers?: { [key in string]?: TrackerConfig }, vmc?: VmcConfig, skeleton?: SkeletonConfig, };
 export type SkeletonConfig = { 
 /**
  * Contains the length offset in meters from a bone to its connecting one
  */
 offsets: { [key in BoneOffsetKind]?: number }, };
 export type Tracker = { info: TrackerInfo, data: TrackerData, };
-/**
- * Seperated from TrackerInfo to be used to save to a file
- */
 export type TrackerConfig = { name?: string, location?: BoneLocation, };
 export type TrackerData = { orientation: [number, number, number, number], acceleration: [number, number, number], position: [number, number, number], };
 export type TrackerInfo = { status: TrackerStatus, latency_ms?: number, battery_level: number, address?: string, };
 export type TrackerStatus = "Ok" | "Error" | "Off" | "TimedOut";
 export type VmcConfig = { enabled: boolean, send_port: number, receive_port: number, };
-export type WebsocketClientMessage = { "type": "SerialSend", data: string, } | { "type": "RemoveTracker", id: string, } | { "type": "UpdateConfig", config: GlobalConfig, };
-export type WebsocketServerMessage = { "type": "TrackerUpdate", trackers: { [key in string]?: Tracker }, } | { "type": "InitialState", config: GlobalConfig, port_name?: string, } | { "type": "SkeletonUpdate", bones: { [key in BoneLocation]?: Bone }, } | { "type": "SerialLog", log: string, } | { "type": "SerialPortChanged", port_name?: string, } | ServerEvent;
+export type WebsocketClientMessage = { "type": "SerialSend", data: string, } | { "type": "RemoveTracker", id: string, } | { "type": "UpdateConfig", config: GlobalConfigUpdate, };
+export type WebsocketServerMessage = { "type": "TrackerUpdate", trackers: { [key in string]?: Tracker }, } | { "type": "InitialState", config: GlobalConfig, port_name?: string, } | { "type": "SkeletonUpdate", bones: { [key in BoneLocation]?: Bone }, } | { "type": "SerialLog", log: string, } | { "type": "SerialPortChanged", port_name?: string, } | { "type": "Error", error: string, };

@@ -32,13 +32,6 @@ impl ServerModules {
     }
 }
 
-#[derive(PartialEq, Serialize, TS)]
-#[serde(tag = "type")]
-pub enum ServerEvent {
-    Error { error: String },
-    ConfigUpdate,
-}
-
 #[derive(Default, Serialize, Deserialize, TS)]
 #[serde(default)]
 pub struct GlobalConfig {
@@ -47,17 +40,30 @@ pub struct GlobalConfig {
     pub skeleton: SkeletonConfig,
 }
 
-pub type TrackerRef = std::sync::Arc<std::sync::Mutex<Tracker>>;
+#[derive(Serialize, Deserialize, TS)]
+pub struct GlobalConfigUpdate {
+    // Note: every field as optional to allow for specific config updates
+    #[ts(optional)]
+    pub trackers: Option<HashMap<String, TrackerConfig>>,
+    #[ts(optional)]
+    pub vmc: Option<VmcConfig>,
+    #[ts(optional)]
+    pub skeleton: Option<SkeletonConfig>,
+}
+
+#[derive(Default)]
+pub struct ServerUpdates {
+    pub error: Option<String>,
+    pub config: Option<GlobalConfigUpdate>,
+}
 
 #[derive(Default)]
 pub struct MainServer {
     // Maps a tracker id to a tracker
     pub trackers: HashMap<String, TrackerRef>,
-    /// Contains list of update event emited in the middle of a loop
-    /// Gets cleared at the end of the loop
-    pub events: Vec<ServerEvent>,
     pub skeleton_manager: SkeletonManager,
     pub config: GlobalConfig,
+    pub updates: ServerUpdates,
 }
 
 impl MainServer {
@@ -65,14 +71,16 @@ impl MainServer {
         let path = get_config_dir()?.join("config.json");
         log::info!("Loading from {path:?}");
         let text = std::fs::read_to_string(path)?;
-        let config = serde_json::from_str::<GlobalConfig>(&text)?;
+        let config = serde_json::from_str::<GlobalConfigUpdate>(&text)?;
 
-        for id in config.trackers.keys() {
-            self.trackers.insert(id.clone(), TrackerRef::default());
+        if let Some(tracker_config) = config.trackers.as_ref() {
+            for id in tracker_config.keys() {
+                self.trackers.insert(id.clone(), TrackerRef::default());
+            }
         }
 
-        self.config = config;
-        self.events.push(ServerEvent::ConfigUpdate);
+        self.updates.config = Some(config);
+
         Ok(())
     }
 
@@ -81,7 +89,6 @@ impl MainServer {
         log::info!("Saving to {path:?}");
         let text = serde_json::to_string_pretty(&self.config)?;
         std::fs::write(path, text)?;
-        self.events.push(ServerEvent::ConfigUpdate);
 
         Ok(())
     }
@@ -90,10 +97,8 @@ impl MainServer {
         modules.udp_server.update(self).await?;
         modules.websocket_server.update(self).await?;
 
-        if self.events.contains(&ServerEvent::ConfigUpdate) {
-            self.skeleton_manager
-                .apply_config(&self.config, &self.trackers);
-            modules.vmc_connector.apply_config(&self.config).await?;
+        if let Some(config_update) = self.updates.config.take() {
+            self.apply_config(config_update, modules).await?;
         }
 
         self.skeleton_manager.update();
@@ -120,6 +125,31 @@ impl MainServer {
         }
 
         None
+    }
+
+    async fn apply_config(
+        &mut self,
+        config: GlobalConfigUpdate,
+        modules: &mut ServerModules,
+    ) -> anyhow::Result<()> {
+        if let Some(config) = config.trackers {
+            self.skeleton_manager
+                .apply_tracker_config(&config, &self.trackers);
+            self.config.trackers = config;
+        }
+
+        if let Some(config) = config.skeleton {
+            self.skeleton_manager.apply_skeleton_config(&config);
+            self.config.skeleton = config;
+        }
+
+        if let Some(config) = config.vmc {
+            modules.vmc_connector.apply_config(&config).await?;
+            self.config.vmc = config;
+        }
+
+        self.save_config()?;
+        Ok(())
     }
 
     pub fn add_tracker(&mut self, id: String) {

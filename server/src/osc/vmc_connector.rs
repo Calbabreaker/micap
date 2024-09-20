@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use tokio::net::UdpSocket;
 use ts_rs::TS;
 
-use crate::main_server::{GlobalConfig, MainServer};
+use crate::main_server::MainServer;
 
 #[derive(Serialize, Deserialize, TS)]
 #[serde(default)]
@@ -65,13 +65,13 @@ impl VmcConnector {
         Ok(())
     }
 
-    pub async fn apply_config(&mut self, config: &GlobalConfig) -> anyhow::Result<()> {
-        if !config.vmc.enabled {
+    pub async fn apply_config(&mut self, config: &VmcConfig) -> anyhow::Result<()> {
+        if !config.enabled {
             return Ok(());
         }
 
         self.socket
-            .connect((Ipv4Addr::LOCALHOST, config.vmc.send_port))
+            .connect((Ipv4Addr::LOCALHOST, config.send_port))
             .await?;
         // Test send
         self.socket.send(&[]).await?;

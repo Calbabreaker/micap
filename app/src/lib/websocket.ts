@@ -1,4 +1,4 @@
-import { writable } from "svelte/store";
+import { get, writable } from "svelte/store";
 import { confirmPopup, errorToast, infoToast } from "./toast";
 import type {
     BoneLocation,
@@ -8,12 +8,13 @@ import type {
     WebsocketClientMessage,
     Bone,
     WebsocketServerMessage,
+    GlobalConfigUpdate,
 } from "./server_bindings";
 
 const WEBSOCKET_PORT = 8298;
 
-type TrackerDict = { [id in string]?: Tracker };
-type BoneDict = { [id in BoneLocation]?: Bone };
+export type TrackerDict = { [id in string]?: Tracker };
+export type BoneDict = { [id in BoneLocation]: Bone };
 
 export const trackers = writable<TrackerDict>({});
 export const bones = writable<BoneDict>();
@@ -50,6 +51,7 @@ export function connectWebsocket() {
         console.log("Websocket connection closed");
         websocket = undefined;
         websocketConnected.set(false);
+        trackers.set({});
     };
 
     websocket.onerror = () => {
@@ -65,16 +67,16 @@ export function connectWebsocket() {
     };
 }
 
-export function updateConfig(updateFunc?: (config: GlobalConfig) => void) {
+export function updateConfig(configUpdate: GlobalConfigUpdate) {
     globalConfig.update((config) => {
         if (config) {
-            if (updateFunc) {
-                updateFunc(config);
-            }
-
             sendWebsocket({
                 type: "UpdateConfig",
-                config,
+                config: configUpdate,
+            });
+
+            Object.entries(configUpdate).forEach(([field, value]) => {
+                (config[field as keyof GlobalConfig] as any) = value;
             });
         }
 
@@ -101,20 +103,19 @@ export async function removeTracker(id: string) {
     });
 }
 
-export function editTrackerConfig(id: string, editFunc: (config: TrackerConfig) => void) {
-    updateConfig((config) => {
-        if (config.trackers[id] == null) {
-            config.trackers[id] = {};
-        }
-
-        editFunc(config.trackers[id]);
-    });
+export function editTrackerConfig(id: string, config: TrackerConfig) {
+    const trackerConfig = get(globalConfig)?.trackers;
+    if (trackerConfig) {
+        trackerConfig[id] = config;
+        updateConfig({ trackers: trackerConfig });
+    }
 }
 
 function handleMessage(message: WebsocketServerMessage) {
     switch (message.type) {
         case "Error":
             errorToast(message.error);
+            console.error("Error from server: " + message.error);
             break;
         case "SerialPortChanged":
             serialPortName.set(message.port_name);
@@ -130,25 +131,35 @@ function handleMessage(message: WebsocketServerMessage) {
                 return log;
             });
 
-            const status = getSerialStatus(message.log);
+            const status = getSerialStatusMessage(message.log);
             if (status) {
                 infoToast(status);
             }
             break;
         case "SkeletonUpdate":
-            bones.set(message.bones);
+            bones.set(message.bones as BoneDict);
             break;
         case "InitialState":
             globalConfig.set(message.config);
             serialPortName.set(message.port_name);
             break;
         case "TrackerUpdate":
+            // Notify new trackers
+            const currentTrackers = get(trackers);
+            if (Object.keys(currentTrackers).length !== 0) {
+                Object.entries(message.trackers).forEach(([id, tracker]) => {
+                    if (!currentTrackers[id]) {
+                        infoToast(`New tracker connected from ${tracker!.info.address}`);
+                    }
+                });
+            }
+
             trackers.set(message.trackers);
             break;
     }
 }
 
-function getSerialStatus(message: string): string {
+function getSerialStatusMessage(message: string): string {
     switch (message) {
         case "WifiConnecting":
             return "Connecting to the WiFi network";

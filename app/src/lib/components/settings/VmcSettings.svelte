@@ -13,12 +13,17 @@
     $: if ($globalConfig) setConfigState($globalConfig.vmc);
 
     function setVmcConfig() {
-        updateConfig((globalConfig) => {
-            globalConfig.vmc = {
+        sendPort = Number(sendPort);
+        if (sendPort == 0) {
+            return;
+        }
+
+        updateConfig({
+            vmc: {
                 enabled,
-                send_port: Number(sendPort),
-                receive_port: Number(sendPort),
-            };
+                send_port: sendPort,
+                receive_port: sendPort,
+            },
         });
     }
 </script>
