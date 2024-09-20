@@ -95,8 +95,8 @@ impl WebsocketServer {
             self.try_receive_ws_connection(main).await?;
         }
 
-        // Limit ws sending to 50 times per second
-        if self.time_last_send_messages.elapsed() > Duration::from_millis(1000 / 50) {
+        // Limit ws sending to 60 times per second
+        if self.time_last_send_messages.elapsed() > Duration::from_millis(1000 / 60) {
             self.send_ws_messages(main).await?;
             self.time_last_send_messages = Instant::now();
         }

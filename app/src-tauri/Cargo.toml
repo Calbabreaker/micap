@@ -9,7 +9,7 @@ edition = "2021"
 
 [build-dependencies]
 tauri-build = { version = "2.0.0-beta", features = [] }
-ts-rs = "9"
+ts-rs = "10"
 micap-server = { path = "../../server" }
 
 [dependencies]

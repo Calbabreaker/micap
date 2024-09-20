@@ -1,22 +1,27 @@
 import { writable } from "svelte/store";
 import { confirmPopup, errorToast, infoToast } from "./toast";
 import type {
+    BoneLocation,
     GlobalConfig,
     Tracker,
     TrackerConfig,
     WebsocketClientMessage,
+    Bone,
     WebsocketServerMessage,
 } from "./server_bindings";
 
 const WEBSOCKET_PORT = 8298;
 
-type TrackerDict = { [id: string]: Tracker };
+type TrackerDict = { [id in string]?: Tracker };
+type BoneDict = { [id in BoneLocation]?: Bone };
 
 export const trackers = writable<TrackerDict>({});
-export const serialPortName = writable<string | undefined>();
-export const serialLog = writable<string[]>([]);
+export const bones = writable<BoneDict>();
 export const globalConfig = writable<GlobalConfig | undefined>();
 export const websocketConnected = writable(false);
+
+export const serialPortName = writable<string | undefined>();
+export const serialLog = writable<string[]>([]);
 
 export let websocket: WebSocket | undefined;
 
@@ -129,6 +134,9 @@ function handleMessage(message: WebsocketServerMessage) {
             if (status) {
                 infoToast(status);
             }
+            break;
+        case "SkeletonUpdate":
+            bones.set(message.bones);
             break;
         case "InitialState":
             globalConfig.set(message.config);

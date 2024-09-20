@@ -14,13 +14,13 @@ export type BoneLocation = "Hip" | "LeftUpperLeg" | "RightUpperLeg" | "LeftLower
  * See BoneLocation::get_offset
  */
 export type BoneOffsetKind = "NeckLength" | "WaistLength" | "ChestLength" | "UpperChestLength" | "HipLength" | "HipsWidth" | "UpperLegLength" | "LowerLegLength" | "ShouldersWidth" | "ShoulderOffset" | "UpperArmLength" | "LowerArmLength" | "FootLength" | "HandLength";
-export type GlobalConfig = { trackers: { [key: string]: TrackerConfig }, vmc: VmcConfig, skeleton: SkeletonConfig, };
+export type GlobalConfig = { trackers: { [key in string]?: TrackerConfig }, vmc: VmcConfig, skeleton: SkeletonConfig, };
 export type ServerEvent = { "type": "Error", error: string, } | { "type": "ConfigUpdate" };
 export type SkeletonConfig = { 
 /**
  * Contains the length offset in meters from a bone to its connecting one
  */
-offsets: { [key: BoneOffsetKind]: number }, };
+offsets: { [key in BoneOffsetKind]?: number }, };
 export type Tracker = { info: TrackerInfo, data: TrackerData, };
 /**
  * Seperated from TrackerInfo to be used to save to a file
@@ -31,4 +31,4 @@ export type TrackerInfo = { status: TrackerStatus, latency_ms?: number, battery_
 export type TrackerStatus = "Ok" | "Error" | "Off" | "TimedOut";
 export type VmcConfig = { enabled: boolean, send_port: number, receive_port: number, };
 export type WebsocketClientMessage = { "type": "SerialSend", data: string, } | { "type": "RemoveTracker", id: string, } | { "type": "UpdateConfig", config: GlobalConfig, };
-export type WebsocketServerMessage = { "type": "TrackerUpdate", trackers: { [key: string]: Tracker }, } | { "type": "InitialState", config: GlobalConfig, port_name?: string, } | { "type": "SkeletonUpdate", bones: { [key: BoneLocation]: Bone }, } | { "type": "SerialLog", log: string, } | { "type": "SerialPortChanged", port_name?: string, } | ServerEvent;
+export type WebsocketServerMessage = { "type": "TrackerUpdate", trackers: { [key in string]?: Tracker }, } | { "type": "InitialState", config: GlobalConfig, port_name?: string, } | { "type": "SkeletonUpdate", bones: { [key in BoneLocation]?: Bone }, } | { "type": "SerialLog", log: string, } | { "type": "SerialPortChanged", port_name?: string, } | ServerEvent;
