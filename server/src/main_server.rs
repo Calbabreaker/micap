@@ -40,7 +40,7 @@ pub struct GlobalConfig {
     pub skeleton: SkeletonConfig,
 }
 
-#[derive(Serialize, Deserialize, TS)]
+#[derive(Default, Serialize, Deserialize, TS)]
 pub struct GlobalConfigUpdate {
     // Note: every field as optional to allow for specific config updates
     #[ts(optional)]
@@ -108,7 +108,10 @@ impl MainServer {
             // Remove the tracker when is set to remove
             self.trackers.remove(&removed_id);
             if self.config.trackers.remove(&removed_id).is_some() {
-                self.save_config()?;
+                self.updates.config = Some(GlobalConfigUpdate {
+                    trackers: Some(self.config.trackers.clone()),
+                    ..Default::default()
+                });
             }
         }
 

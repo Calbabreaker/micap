@@ -74,7 +74,7 @@ impl Tracker {
 }
 
 // Seperated from TrackerInfo to be used to save to a file
-#[derive(Default, Serialize, Deserialize, TS)]
+#[derive(Default, Clone, Serialize, Deserialize, TS)]
 #[serde(default)]
 pub struct TrackerConfig {
     #[ts(optional)]
