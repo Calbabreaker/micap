@@ -41,7 +41,7 @@
         <Popup>Connecting to the server...</Popup>
     {/if}
     <NavBar />
-    <div class="flex flex-col justify-center gap-4 lg:flex-row">
+    <div class="flex flex-col justify-center gap-4 md:flex-row">
         <slot />
     </div>
 </main>

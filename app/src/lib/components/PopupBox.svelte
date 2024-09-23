@@ -29,7 +29,9 @@
     }
 
     onMount(() => {
-        textInput.focus();
+        if (textInput) {
+            textInput.focus();
+        }
     });
 </script>
 

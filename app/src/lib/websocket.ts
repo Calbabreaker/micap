@@ -76,7 +76,8 @@ export function updateConfig(configUpdate: GlobalConfigUpdate) {
             });
 
             Object.entries(configUpdate).forEach(([field, value]) => {
-                (config[field as keyof GlobalConfig] as any) = value;
+                // @ts-ignore
+                config[field] = value;
             });
         }
 
@@ -93,10 +94,6 @@ export async function removeTracker(id: string) {
         id,
     });
 
-    trackers.update((trackers) => {
-        delete trackers[id];
-        return trackers;
-    });
     globalConfig.update((config) => {
         delete config?.trackers[id];
         return config;
