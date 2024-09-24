@@ -29,6 +29,7 @@ pub enum WebsocketServerMessage<'a> {
         config: &'a GlobalConfig,
         #[ts(optional)]
         port_name: Option<String>,
+        default_config: GlobalConfig,
     },
     SkeletonUpdate {
         bones: &'a HashMap<BoneLocation, Bone>,
@@ -113,9 +114,10 @@ impl WebsocketServer {
                 let message = WebsocketServerMessage::InitialState {
                     config: &main.config,
                     port_name: self.serial_manager.port_name(),
+                    default_config: GlobalConfig::default(),
                 };
-
                 feed_ws_message(&mut ws_stream, message).await?;
+
                 ws_stream.flush().await?;
                 self.ws_stream = Some(ws_stream);
                 log::info!("Websocket client connected at {peer_addr}");

@@ -4,7 +4,7 @@
 
 {#if level > 0.9}
     <svg
-        class="icon text-green-400"
+        class="text-green-400"
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 576 512"
     >
@@ -16,7 +16,7 @@
     </svg>
 {:else if level > 0.7}
     <svg
-        class="icon text-green-400"
+        class="text-green-400"
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 576 512"
     >
@@ -28,7 +28,7 @@
     </svg>
 {:else if level > 0.4}
     <svg
-        class="icon text-yellow-400"
+        class="text-yellow-400"
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 576 512"
     >
@@ -40,7 +40,7 @@
     </svg>
 {:else if level > 0}
     <svg
-        class={`icon ${level < 0.1 ? "text-red-400" : "text-yellow-400"}`}
+        class={`${level < 0.1 ? "text-red-400" : "text-yellow-400"}`}
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 576 512"
     >
@@ -51,7 +51,7 @@
         />
     </svg>
 {:else}
-    <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512">
         <!--!Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.-->
         <path
             fill="currentColor"

@@ -6,13 +6,14 @@
     let showModel = true;
 </script>
 
-<div class="flex gap-2 flex-col mb-4">
-    <div class="flex justify-center">
-        <span class="w-32 inline-block">Show Lines</span>
+<div class="grid grid-cols-[1fr_auto] mb-4 w-32">
+    <span>Show Lines</span>
+    <div>
         <input type="checkbox" bind:checked={showLines} />
     </div>
-    <div class="flex justify-center">
-        <span class="w-32 inline-block">Show Model</span>
+
+    <span>Show Model</span>
+    <div>
         <input type="checkbox" bind:checked={showModel} />
     </div>
 </div>

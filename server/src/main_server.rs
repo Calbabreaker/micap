@@ -135,6 +135,8 @@ impl MainServer {
         config: GlobalConfigUpdate,
         modules: &mut ServerModules,
     ) -> anyhow::Result<()> {
+        self.save_config()?;
+
         if let Some(config) = config.trackers {
             self.skeleton_manager
                 .apply_tracker_config(&config, &self.trackers);
@@ -151,7 +153,6 @@ impl MainServer {
             self.config.vmc = config;
         }
 
-        self.save_config()?;
         Ok(())
     }
 

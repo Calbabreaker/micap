@@ -19,8 +19,16 @@
         @apply hover:bg-neutral-300/40 p-1;
     }
 
-    .btn-icon > .icon {
+    .btn-icon > svg {
         @apply w-4 h-4;
+    }
+
+    .btn-icon:disabled {
+        @apply text-neutral-500 cursor-not-allowed;
+    }
+
+    svg {
+        @apply w-5 h-5;
     }
 
     .text-input {
@@ -29,10 +37,6 @@
 
     .text-input:disabled {
         @apply bg-neutral-400 cursor-not-allowed;
-    }
-
-    .icon {
-        @apply w-5 h-5;
     }
 }
 

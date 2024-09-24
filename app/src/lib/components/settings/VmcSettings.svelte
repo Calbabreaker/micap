@@ -1,6 +1,8 @@
 <script lang="ts">
-    import { globalConfig, updateConfig } from "$lib/websocket";
     import type { VmcConfig } from "$lib/server_bindings";
+    import { globalConfig, updateConfig, defaultConfig } from "$lib/websocket";
+    import RotateLeftIcon from "../icons/RotateLeftIcon.svelte";
+    import ResetButton from "./ResetButton.svelte";
 
     let enabled: boolean;
     let sendPort: number;
@@ -12,7 +14,7 @@
 
     $: if ($globalConfig) setConfigState($globalConfig.vmc);
 
-    function setVmcConfig() {
+    function updateVmcConfig() {
         sendPort = Number(sendPort);
         if (sendPort == 0) {
             return;
@@ -28,19 +30,31 @@
     }
 </script>
 
-<form on:change={setVmcConfig}>
-    <div class="mb-2">
-        <span class="w-20 inline-block">Enabled</span>
-        <input type="checkbox" bind:checked={enabled} class="w-4" />
+<form
+    class="grid grid-cols-[1fr_auto] gap-y-2 gap-x-4"
+    on:change={updateVmcConfig}
+>
+    <span class="my-auto">Enabled</span>
+    <div class="flex items-center gap-2">
+        <input type="checkbox" bind:checked={enabled} />
+        <ResetButton
+            bind:value={enabled}
+            defaultValue={$defaultConfig?.vmc?.enabled}
+        />
     </div>
-    <div class="mb-2">
-        <span class="w-20 inline-block">Send port</span>
+
+    <span class="my-auto">Send port</span>
+    <div class="flex items-center gap-2">
         <input
             placeholder="Send port"
             bind:value={sendPort}
             class="text-input"
             type="number"
             disabled={!enabled}
+        />
+        <ResetButton
+            bind:value={sendPort}
+            defaultValue={$defaultConfig?.vmc?.send_port}
         />
     </div>
 </form>

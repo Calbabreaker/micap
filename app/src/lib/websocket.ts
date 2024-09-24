@@ -19,12 +19,13 @@ export type BoneDict = { [id in BoneLocation]: Bone };
 export const trackers = writable<TrackerDict>({});
 export const bones = writable<BoneDict>();
 export const globalConfig = writable<GlobalConfig | undefined>();
-export const websocketConnected = writable(false);
+export const defaultConfig = writable<GlobalConfig | undefined>();
 
 export const serialPortName = writable<string | undefined>();
 export const serialLog = writable<string[]>([]);
 
 export let websocket: WebSocket | undefined;
+export const websocketConnected = writable(false);
 
 export function sendWebsocket(object: WebsocketClientMessage) {
     if (websocket && websocket.readyState == WebSocket.OPEN) {
@@ -116,6 +117,11 @@ function handleMessage(message: WebsocketServerMessage) {
             break;
         case "SerialPortChanged":
             serialPortName.set(message.port_name);
+            if (message.port_name) {
+                infoToast(`Serial port ${message.port_name} has been connected`);
+            } else {
+                infoToast(`Serial port has been disconnected`);
+            }
             break;
         case "SerialLog":
             serialLog.update((log) => {
@@ -139,6 +145,7 @@ function handleMessage(message: WebsocketServerMessage) {
         case "InitialState":
             globalConfig.set(message.config);
             serialPortName.set(message.port_name);
+            defaultConfig.set(message.default_config);
             break;
         case "TrackerUpdate":
             // Notify new trackers

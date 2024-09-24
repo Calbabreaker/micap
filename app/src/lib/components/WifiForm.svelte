@@ -15,28 +15,25 @@
     }
 </script>
 
-<form on:submit|preventDefault={setWifi}>
-    <div class="mb-2">
-        <span class="w-24 inline-block">SSID</span>
-        <input
-            placeholder="WiFi SSID"
-            bind:value={ssid}
-            maxlength="32"
-            class="text-input"
-        />
-    </div>
-    <div class="mb-2">
-        <span class="w-24 inline-block">Password</span>
-        <input
-            placeholder="Password"
-            bind:value={password}
-            maxlength="64"
-            class="text-input"
-        />
-    </div>
-    <div>
-        <button type="submit" class="btn btn-primary mr-2 w-full">
-            Send
-        </button>
-    </div>
+<form
+    class="grid grid-cols-[1fr_auto] gap-y-2 gap-x-4"
+    on:submit|preventDefault={setWifi}
+>
+    <span class="my-auto">SSID</span>
+    <input
+        placeholder="WiFi SSID"
+        bind:value={ssid}
+        maxlength="32"
+        class="text-input"
+    />
+
+    <span class="my-auto">Password</span>
+    <input
+        placeholder="Password"
+        bind:value={password}
+        maxlength="64"
+        class="text-input"
+    />
+
+    <button type="submit" class="btn btn-primary col-span-2"> Send </button>
 </form>
