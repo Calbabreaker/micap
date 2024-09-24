@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
@@ -35,7 +35,7 @@ impl ServerModules {
 #[derive(Default, Serialize, Deserialize, TS)]
 #[serde(default)]
 pub struct GlobalConfig {
-    pub trackers: HashMap<String, TrackerConfig>,
+    pub trackers: HashMap<Arc<str>, TrackerConfig>,
     pub vmc: VmcConfig,
     pub skeleton: SkeletonConfig,
 }
@@ -44,7 +44,7 @@ pub struct GlobalConfig {
 pub struct GlobalConfigUpdate {
     // Note: every field as optional to allow for specific config updates
     #[ts(optional)]
-    pub trackers: Option<HashMap<String, TrackerConfig>>,
+    pub trackers: Option<HashMap<Arc<str>, TrackerConfig>>,
     #[ts(optional)]
     pub vmc: Option<VmcConfig>,
     #[ts(optional)]
@@ -53,14 +53,14 @@ pub struct GlobalConfigUpdate {
 
 #[derive(Default)]
 pub struct ServerUpdates {
-    pub error: Option<String>,
+    pub error: Option<Box<str>>,
     pub config: Option<GlobalConfigUpdate>,
 }
 
 #[derive(Default)]
 pub struct MainServer {
     // Maps a tracker id to a tracker
-    pub trackers: HashMap<String, TrackerRef>,
+    pub trackers: HashMap<Arc<str>, TrackerRef>,
     pub skeleton_manager: SkeletonManager,
     pub config: GlobalConfig,
     pub updates: ServerUpdates,
@@ -99,6 +99,7 @@ impl MainServer {
 
         if let Some(config_update) = self.updates.config.take() {
             self.apply_config(config_update, modules).await?;
+            self.save_config()?;
         }
 
         self.skeleton_manager.update();
@@ -107,9 +108,10 @@ impl MainServer {
         if let Some(removed_id) = self.upkeep_trackers().await {
             // Remove the tracker when is set to remove
             self.trackers.remove(&removed_id);
+
             if self.config.trackers.remove(&removed_id).is_some() {
                 self.updates.config = Some(GlobalConfigUpdate {
-                    trackers: Some(self.config.trackers.clone()),
+                    trackers: Some(HashMap::new()),
                     ..Default::default()
                 });
             }
@@ -119,7 +121,7 @@ impl MainServer {
     }
 
     // Returns a tracker id if that tracker should be removed
-    async fn upkeep_trackers(&mut self) -> Option<String> {
+    async fn upkeep_trackers(&mut self) -> Option<Arc<str>> {
         for (id, tracker) in &self.trackers {
             let tracker = tracker.lock().unwrap();
             if tracker.internal.to_be_removed {
@@ -135,12 +137,14 @@ impl MainServer {
         config: GlobalConfigUpdate,
         modules: &mut ServerModules,
     ) -> anyhow::Result<()> {
-        self.save_config()?;
+        if let Some(mut tracker_configs) = config.trackers {
+            // Set all the tracker configs provided
+            for (id, config_update) in tracker_configs.drain() {
+                self.config.trackers.insert(id, config_update);
+            }
 
-        if let Some(config) = config.trackers {
             self.skeleton_manager
-                .apply_tracker_config(&config, &self.trackers);
-            self.config.trackers = config;
+                .apply_tracker_config(&self.config.trackers, &self.trackers);
         }
 
         if let Some(config) = config.skeleton {
@@ -156,12 +160,14 @@ impl MainServer {
         Ok(())
     }
 
-    pub fn add_tracker(&mut self, id: String) {
-        if !self.trackers.contains_key(&id) {
+    pub fn add_tracker(&mut self, id: &Arc<str>) -> Option<TrackerRef> {
+        if !self.trackers.contains_key(id) {
             let tracker = TrackerRef::default();
             // Note: we only set the config once the user does
             self.trackers.insert(id.clone(), tracker.clone());
         }
+
+        self.trackers.get(id).cloned()
     }
 }
 

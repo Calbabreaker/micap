@@ -1,5 +1,5 @@
 use byteorder::{LittleEndian, ReadBytesExt};
-use std::{io::Read, time::Instant};
+use std::{io::Read, sync::Arc, time::Instant};
 
 use crate::tracker::TrackerStatus;
 use crate::udp::device::UdpDevice;
@@ -49,7 +49,7 @@ impl<'a, R: Read> UdpPacket<'a, R> {
 }
 
 pub struct UdpPacketHandshake {
-    pub mac_address: String,
+    pub mac_address: Arc<str>,
 }
 
 impl UdpPacketHandshake {
@@ -63,7 +63,7 @@ impl UdpPacketHandshake {
         let mac_string = mac_bytes.map(|b| format!("{b:02x}")).join(":");
 
         Ok(Self {
-            mac_address: mac_string,
+            mac_address: mac_string.into(),
         })
     }
 

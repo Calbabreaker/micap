@@ -40,7 +40,7 @@ pub async fn start_server() -> anyhow::Result<()> {
 
         if let Err(err) = result {
             log::error!("{err:?}");
-            main.updates.error = Some(err.root_cause().to_string());
+            main.updates.error = Some(Box::from(err.to_string()));
         }
 
         looper.end_loop_and_wait().await;

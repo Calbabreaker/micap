@@ -68,22 +68,25 @@ export function connectWebsocket() {
     };
 }
 
-export function updateConfig(configUpdate: GlobalConfigUpdate) {
-    globalConfig.update((config) => {
-        if (config) {
+function updateConfig(editFunc: (config: GlobalConfig) => void, configUpdate: GlobalConfigUpdate) {
+    globalConfig.update((globalConfig) => {
+        if (globalConfig) {
             sendWebsocket({
                 type: "UpdateConfig",
                 config: configUpdate,
             });
 
-            Object.entries(configUpdate).forEach(([field, value]) => {
-                // @ts-ignore
-                config[field] = value;
-            });
+            // @ts-ignore
+            editFunc(globalConfig);
         }
 
-        return config;
+        return globalConfig;
     });
+}
+
+export function editConfig<K extends keyof GlobalConfig>(field: K, config: GlobalConfig[K]) {
+    // @ts-ignore
+    updateConfig((gc) => (gc[field] = config), { [field]: config });
 }
 
 export async function removeTracker(id: string) {
@@ -102,11 +105,7 @@ export async function removeTracker(id: string) {
 }
 
 export function editTrackerConfig(id: string, config: TrackerConfig) {
-    const trackerConfig = get(globalConfig)?.trackers;
-    if (trackerConfig) {
-        trackerConfig[id] = config;
-        updateConfig({ trackers: trackerConfig });
-    }
+    updateConfig((gc) => (gc.trackers[id] = config), { trackers: { [id]: config } });
 }
 
 function handleMessage(message: WebsocketServerMessage) {

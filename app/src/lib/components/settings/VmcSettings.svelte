@@ -1,7 +1,6 @@
 <script lang="ts">
     import type { VmcConfig } from "$lib/server_bindings";
-    import { globalConfig, updateConfig, defaultConfig } from "$lib/websocket";
-    import RotateLeftIcon from "../icons/RotateLeftIcon.svelte";
+    import { globalConfig, editConfig, defaultConfig } from "$lib/websocket";
     import ResetButton from "./ResetButton.svelte";
 
     let enabled: boolean;
@@ -20,12 +19,10 @@
             return;
         }
 
-        updateConfig({
-            vmc: {
-                enabled,
-                send_port: sendPort,
-                receive_port: sendPort,
-            },
+        editConfig("vmc", {
+            enabled,
+            send_port: sendPort,
+            receive_port: sendPort,
         });
     }
 </script>

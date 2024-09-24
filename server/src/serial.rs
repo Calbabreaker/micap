@@ -94,8 +94,8 @@ impl SerialPortManager {
         false
     }
 
-    pub fn port_name(&self) -> Option<String> {
-        self.port.as_ref()?.name()
+    pub fn port_name(&self) -> Option<Box<str>> {
+        Some(Box::from(self.port.as_ref()?.name()?))
     }
 }
 

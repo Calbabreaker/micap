@@ -2,6 +2,7 @@ use futures_util::FutureExt;
 use std::{
     collections::{HashMap, HashSet},
     net::{Ipv4Addr, SocketAddr},
+    sync::Arc,
     time::{Duration, Instant},
 };
 
@@ -22,7 +23,7 @@ const UPKEEP_INTERVAL: Duration = Duration::from_millis(1000);
 pub struct UdpServer {
     // Maps a network address to a udp device
     devices_map: HashMap<SocketAddr, UdpDevice>,
-    mac_to_address_map: HashMap<String, SocketAddr>,
+    mac_to_address_map: HashMap<Arc<str>, SocketAddr>,
     socket: tokio::net::UdpSocket,
     /// Set of address that should not be allowed to connect
     /// This is to allow for servers to ignore ignored trackers that are trying to connect

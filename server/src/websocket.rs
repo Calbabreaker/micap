@@ -1,9 +1,9 @@
-use anyhow::Context;
 use futures_util::{FutureExt, SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     net::{Ipv4Addr, SocketAddr},
+    sync::Arc,
     time::{Duration, Instant},
 };
 use tokio::net::{TcpListener, TcpStream};
@@ -23,12 +23,12 @@ pub const WEBSOCKET_PORT: u16 = 8298;
 #[serde(tag = "type")]
 pub enum WebsocketServerMessage<'a> {
     TrackerUpdate {
-        trackers: &'a HashMap<String, TrackerRef>,
+        trackers: &'a HashMap<Arc<str>, TrackerRef>,
     },
     InitialState {
         config: &'a GlobalConfig,
         #[ts(optional)]
-        port_name: Option<String>,
+        port_name: Option<Box<str>>,
         default_config: GlobalConfig,
     },
     SkeletonUpdate {
@@ -39,10 +39,10 @@ pub enum WebsocketServerMessage<'a> {
     },
     SerialPortChanged {
         #[ts(optional)]
-        port_name: Option<String>,
+        port_name: Option<Box<str>>,
     },
     Error {
-        error: &'a String,
+        error: &'a str,
     },
 }
 
@@ -51,7 +51,7 @@ pub enum WebsocketServerMessage<'a> {
 #[serde(tag = "type")]
 pub enum WebsocketClientMessage {
     SerialSend { data: String },
-    RemoveTracker { id: String },
+    RemoveTracker { id: Box<String> },
     UpdateConfig { config: GlobalConfigUpdate },
 }
 
@@ -81,8 +81,7 @@ impl WebsocketServer {
             match ws_stream.next().now_or_never() {
                 Some(Some(Ok(message))) => {
                     if let Ok(text) = message.to_text() {
-                        self.handle_ws_message(text, main)
-                            .context("Failed to handle websocket message")?;
+                        self.handle_ws_message(text, main)?;
                     }
                 }
                 Some(None) | Some(Some(Err(_))) => {
@@ -175,7 +174,7 @@ impl WebsocketServer {
                 self.serial_manager.write(data.as_bytes())?;
             }
             WebsocketClientMessage::RemoveTracker { id } => {
-                if let Some(tracker) = main.trackers.get(&id) {
+                if let Some(tracker) = main.trackers.get(id.as_str()) {
                     tracker.lock().unwrap().internal.to_be_removed = true;
                 }
             }

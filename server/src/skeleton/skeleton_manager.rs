@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     skeleton::{Bone, BoneLocation, SkeletonConfig},
@@ -51,8 +51,8 @@ impl SkeletonManager {
 
     pub fn apply_tracker_config(
         &mut self,
-        configs: &HashMap<String, TrackerConfig>,
-        trackers: &HashMap<String, TrackerRef>,
+        configs: &HashMap<Arc<str>, TrackerConfig>,
+        trackers: &HashMap<Arc<str>, TrackerRef>,
     ) {
         // Sets self.trackers based on bone location
         self.trackers.clear();

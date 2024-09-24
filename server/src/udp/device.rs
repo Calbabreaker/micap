@@ -1,4 +1,8 @@
-use std::{net::SocketAddr, sync::MutexGuard, time::Instant};
+use std::{
+    net::SocketAddr,
+    sync::{Arc, MutexGuard},
+    time::Instant,
+};
 
 use crate::{
     main_server::MainServer,
@@ -14,14 +18,14 @@ pub struct UdpDevice {
     /// Maps the udp device's tracker index to the global tracker
     pub(super) global_trackers: Vec<Option<TrackerRef>>,
     pub(super) timed_out: bool,
-    pub(super) mac: String,
+    pub(super) mac: Arc<str>,
     pub(super) address: SocketAddr,
     current_ping_start_time: Option<Instant>,
     current_ping_id: u8,
 }
 
 impl UdpDevice {
-    pub fn new(address: SocketAddr, mac: String) -> Self {
+    pub fn new(address: SocketAddr, mac: Arc<str>) -> Self {
         Self {
             global_trackers: Vec::default(),
             address,
@@ -35,15 +39,14 @@ impl UdpDevice {
     }
 
     fn add_global_tracker(&mut self, local_index: u8, main: &mut MainServer) {
-        if local_index as usize >= self.global_trackers.len() {
-            self.global_trackers.resize(local_index as usize + 1, None);
+        let local_index = local_index as usize;
+        if local_index >= self.global_trackers.len() {
+            self.global_trackers.resize(local_index + 1, None);
         }
 
         // Register the tracker and add the id into the udp device array to know
-        let id = format!("{}/{}", self.mac, local_index);
-        main.add_tracker(id.clone());
-
-        self.global_trackers[local_index as usize] = main.trackers.get(&id).cloned();
+        let id: Arc<str> = format!("{}/{}", self.mac, local_index).into();
+        self.global_trackers[local_index] = main.add_tracker(&id);
     }
 
     fn get_tracker(&self, local_index: u8) -> Option<MutexGuard<'_, Tracker>> {
