@@ -14,7 +14,7 @@ use crate::{
     main_server::{GlobalConfig, GlobalConfigUpdate, MainServer},
     serial::SerialPortManager,
     skeleton::{Bone, BoneLocation},
-    tracker::TrackerRef,
+    tracker::{TrackerRef, TrackerStatus},
 };
 
 pub const WEBSOCKET_PORT: u16 = 8298;
@@ -23,7 +23,7 @@ pub const WEBSOCKET_PORT: u16 = 8298;
 #[serde(tag = "type")]
 pub enum WebsocketServerMessage<'a> {
     TrackerUpdate {
-        trackers: &'a HashMap<Arc<str>, TrackerRef>,
+        trackers: HashMap<&'a Arc<str>, &'a TrackerRef>,
     },
     InitialState {
         config: &'a GlobalConfig,
@@ -50,8 +50,8 @@ pub enum WebsocketServerMessage<'a> {
 #[derive(Deserialize, TS)]
 #[serde(tag = "type")]
 pub enum WebsocketClientMessage {
-    SerialSend { data: String },
-    RemoveTracker { id: Box<String> },
+    SerialSend { data: Box<str> },
+    RemoveTracker { id: Box<str> },
     UpdateConfig { config: GlobalConfigUpdate },
 }
 
@@ -149,9 +149,13 @@ impl WebsocketServer {
             feed_ws_message(ws_stream, WebsocketServerMessage::Error { error }).await?;
         }
 
-        let message = WebsocketServerMessage::TrackerUpdate {
-            trackers: &main.trackers,
-        };
+        let trackers = main
+            .trackers
+            .iter()
+            .filter(|(_, tracker)| tracker.lock().unwrap().info.status == TrackerStatus::Ok)
+            .collect();
+
+        let message = WebsocketServerMessage::TrackerUpdate { trackers };
         feed_ws_message(ws_stream, message).await?;
 
         let message = WebsocketServerMessage::SkeletonUpdate {
@@ -174,7 +178,7 @@ impl WebsocketServer {
                 self.serial_manager.write(data.as_bytes())?;
             }
             WebsocketClientMessage::RemoveTracker { id } => {
-                if let Some(tracker) = main.trackers.get(id.as_str()) {
+                if let Some(tracker) = main.trackers.get(&*id) {
                     tracker.lock().unwrap().internal.to_be_removed = true;
                 }
             }
