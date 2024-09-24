@@ -1,17 +1,13 @@
 use std::{
     io::{BufRead, Write},
     path::PathBuf,
-    str::FromStr,
 };
 use ts_rs::TS;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bindings_dir =
-        PathBuf::from_str(&std::env::var("OUT_DIR").expect("Out dir env not found"))?
-            .join("bindings");
+        PathBuf::from(&std::env::var("OUT_DIR").expect("Out dir env not found")).join("bindings");
 
-    micap_server::tracker::TrackerInfo::export_all_to(&bindings_dir)?;
-    micap_server::tracker::TrackerData::export_all_to(&bindings_dir)?;
     micap_server::websocket::WebsocketServerMessage::export_all_to(&bindings_dir)?;
     micap_server::websocket::WebsocketClientMessage::export_all_to(&bindings_dir)?;
 

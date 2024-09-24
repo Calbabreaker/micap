@@ -3,7 +3,7 @@
     import TrackerCard from "./TrackerCard.svelte";
 </script>
 
-<div class="flex flex-wrap gap-2 mt-4 justify-center">
+<div class="flex flex-wrap gap-2 justify-center">
     {#each Object.keys($trackers) as id}
         <TrackerCard {id} />
     {/each}

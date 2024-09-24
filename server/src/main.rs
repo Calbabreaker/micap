@@ -1,5 +1,5 @@
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), impl std::error::Error> {
     micap_server::setup_log();
     tokio::spawn(async {
         if let Err(error) = micap_server::start_server().await {
@@ -7,5 +7,4 @@ async fn main() {
         }
     })
     .await
-    .unwrap();
 }

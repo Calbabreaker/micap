@@ -86,7 +86,7 @@
         <hr class="my-4" />
         <div class="text-sm text-neutral-300">
             <p>Address: {tracker.info.address}</p>
-            <p>ID: {id}</p>
+            <p>ID: {tracker.info.address}</p>
             <TrackerInspect data={tracker.data} />
         </div>
     {/if}

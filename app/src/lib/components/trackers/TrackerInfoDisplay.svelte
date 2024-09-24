@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { TrackerInfo } from "$lib/websocket";
+    import type { TrackerInfo } from "$lib/server_bindings";
     import BatteryIcon from "../icons/BatteryIcon.svelte";
 
     export let info: TrackerInfo;
