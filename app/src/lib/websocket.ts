@@ -145,19 +145,20 @@ function handleMessage(message: WebsocketServerMessage) {
             globalConfig.set(message.config);
             serialPortName.set(message.port_name);
             defaultConfig.set(message.default_config);
+            trackers.set(message.trackers);
             break;
         case "TrackerUpdate":
-            // Notify new trackers
-            const currentTrackers = get(trackers);
-            if (Object.keys(currentTrackers).length !== 0) {
+            trackers.update((trackers) => {
                 Object.entries(message.trackers).forEach(([id, tracker]) => {
-                    if (!currentTrackers[id]) {
+                    if (!trackers[id]) {
                         infoToast(`New tracker connected from ${tracker!.info.address}`);
                     }
-                });
-            }
 
-            trackers.set(message.trackers);
+                    trackers[id] = tracker;
+                });
+
+                return trackers;
+            });
             break;
     }
 }

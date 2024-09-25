@@ -123,7 +123,8 @@ impl MainServer {
     // Returns a tracker id if that tracker should be removed
     async fn upkeep_trackers(&mut self) -> Option<Arc<str>> {
         for (id, tracker) in &self.trackers {
-            let tracker = tracker.lock().unwrap();
+            let mut tracker = tracker.lock().unwrap();
+            tracker.internal.was_updated = false;
             if tracker.internal.to_be_removed {
                 return Some(id.clone());
             }

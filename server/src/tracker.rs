@@ -4,7 +4,7 @@ use ts_rs::TS;
 
 use crate::skeleton::BoneLocation;
 
-#[derive(Default, PartialEq, Clone, Copy, Serialize, TS)]
+#[derive(Default, PartialEq, Clone, Copy, Serialize, Debug, TS)]
 #[repr(u8)]
 pub enum TrackerStatus {
     Ok = 0,
@@ -38,6 +38,7 @@ pub struct TrackerInternal {
     pub to_be_removed: bool,
     pub time_data_last_updated: Instant,
     pub velocity: glam::Vec3A,
+    pub was_updated: bool,
 }
 
 impl Default for TrackerInternal {
@@ -46,6 +47,7 @@ impl Default for TrackerInternal {
             to_be_removed: false,
             time_data_last_updated: Instant::now(),
             velocity: glam::Vec3A::default(),
+            was_updated: false,
         }
     }
 }
@@ -54,7 +56,7 @@ pub type TrackerRef = std::sync::Arc<std::sync::Mutex<Tracker>>;
 
 #[derive(Default, Serialize, TS)]
 pub struct Tracker {
-    pub info: TrackerInfo,
+    info: TrackerInfo,
     pub data: TrackerData,
     #[serde(skip)]
     pub internal: TrackerInternal,
@@ -70,6 +72,22 @@ impl Tracker {
         self.data.position += self.internal.velocity * delta;
 
         self.internal.time_data_last_updated = Instant::now();
+        self.internal.was_updated = true;
+    }
+
+    pub fn update_info(&mut self) -> &mut TrackerInfo {
+        self.internal.was_updated = true;
+        &mut self.info
+    }
+
+    pub fn set_timed_out(&mut self, timed_out: bool) {
+        if self.info.status == TrackerStatus::Ok || self.info.status == TrackerStatus::TimedOut {
+            self.update_info().status = if timed_out {
+                TrackerStatus::TimedOut
+            } else {
+                TrackerStatus::Ok
+            }
+        }
     }
 }
 

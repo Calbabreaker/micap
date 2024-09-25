@@ -14,7 +14,7 @@ use crate::{
     main_server::{GlobalConfig, GlobalConfigUpdate, MainServer},
     serial::SerialPortManager,
     skeleton::{Bone, BoneLocation},
-    tracker::{TrackerRef, TrackerStatus},
+    tracker::TrackerRef,
 };
 
 pub const WEBSOCKET_PORT: u16 = 8298;
@@ -30,6 +30,7 @@ pub enum WebsocketServerMessage<'a> {
         #[ts(optional)]
         port_name: Option<Box<str>>,
         default_config: GlobalConfig,
+        trackers: &'a HashMap<Arc<str>, TrackerRef>,
     },
     SkeletonUpdate {
         bones: &'a HashMap<BoneLocation, Bone>,
@@ -114,6 +115,7 @@ impl WebsocketServer {
                     config: &main.config,
                     port_name: self.serial_manager.port_name(),
                     default_config: GlobalConfig::default(),
+                    trackers: &main.trackers,
                 };
                 feed_ws_message(&mut ws_stream, message).await?;
 
@@ -152,7 +154,7 @@ impl WebsocketServer {
         let trackers = main
             .trackers
             .iter()
-            .filter(|(_, tracker)| tracker.lock().unwrap().info.status == TrackerStatus::Ok)
+            .filter(|(_, tracker)| tracker.lock().unwrap().internal.was_updated)
             .collect();
 
         let message = WebsocketServerMessage::TrackerUpdate { trackers };

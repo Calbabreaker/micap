@@ -17,7 +17,6 @@ use crate::{
 pub const UDP_PORT: u16 = 5828;
 pub const MULTICAST_IP: Ipv4Addr = Ipv4Addr::new(239, 255, 0, 123);
 
-const DEVICE_TIMEOUT: Duration = Duration::from_millis(3000);
 const UPKEEP_INTERVAL: Duration = Duration::from_millis(1000);
 
 pub struct UdpServer {
@@ -84,8 +83,7 @@ impl UdpServer {
         let mut to_remove = None;
 
         for device in self.devices_map.values_mut() {
-            let timed_out = device.last_packet_received_time.elapsed() > DEVICE_TIMEOUT;
-            device.set_timed_out(timed_out);
+            device.update_timed_out(device.is_timed_out());
 
             let bytes = device.check_get_ping_packet().to_bytes();
             self.socket.send_to(&bytes, device.address).await?;
@@ -117,13 +115,24 @@ impl UdpServer {
             .get_mut(&peer_addr)
             .ok_or_else(|| anyhow::anyhow!("No device with address: {peer_addr}"));
 
-        match UdpPacket::parse(&mut bytes, &mut device)? {
-            UdpPacket::PingPong(packet) => {
-                device?.handle_pong(packet);
+        let (packet, packet_number) = UdpPacket::parse(&mut bytes)?;
+
+        if let Ok(device) = device.as_mut() {
+            device.last_packet_received_time = Instant::now();
+
+            // Discard the packet if not the latest
+            if !device.check_latest_packet_number(packet_number) {
+                anyhow::bail!("Out of order #{packet_number}");
             }
+        }
+
+        match packet {
             UdpPacket::Handshake(packet) => {
                 self.socket.send_to(&packet.to_bytes(), peer_addr).await?;
                 self.handle_handshake(packet, peer_addr);
+            }
+            UdpPacket::PingPong(packet) => {
+                device?.handle_pong(packet);
             }
             UdpPacket::TrackerData(mut packet) => {
                 let device = device?;
@@ -159,7 +168,7 @@ impl UdpServer {
                 self.devices_map.insert(peer_addr, device);
                 self.mac_to_address_map
                     .insert(packet.mac_address, peer_addr);
-            } else if device.timed_out {
+            } else if device.is_timed_out() {
                 log::info!("Reconnected from {peer_addr}");
             } else {
                 log::warn!("Received handshake packet while already connected");

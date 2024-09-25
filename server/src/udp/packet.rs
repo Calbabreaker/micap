@@ -1,8 +1,7 @@
 use byteorder::{LittleEndian, ReadBytesExt};
-use std::{io::Read, sync::Arc, time::Instant};
+use std::{io::Read, sync::Arc};
 
 use crate::tracker::TrackerStatus;
-use crate::udp::device::UdpDevice;
 
 pub const PACKET_PING_PONG: u8 = 0x00;
 pub const PACKET_HANDSHAKE: u8 = 0x01;
@@ -19,23 +18,12 @@ pub enum UdpPacket<'a, R: Read> {
 }
 
 impl<'a, R: Read> UdpPacket<'a, R> {
-    pub fn parse(
-        bytes: &'a mut R,
-        device: &mut anyhow::Result<&mut UdpDevice>,
-    ) -> anyhow::Result<Self> {
+    /// Returns (Self, packet_number)
+    pub fn parse(bytes: &'a mut R) -> anyhow::Result<(Self, u32)> {
         let packet_type = bytes.read_u8()?;
         let packet_number = bytes.read_u32::<LittleEndian>()?;
 
-        if let Ok(device) = device {
-            device.last_packet_received_time = Instant::now();
-
-            // Discard the packet if not the latest
-            if !device.check_latest_packet_number(packet_number) {
-                anyhow::bail!("Out of order #{packet_number}");
-            }
-        }
-
-        Ok(match packet_type {
+        let packet = match packet_type {
             PACKET_HANDSHAKE => Self::Handshake(UdpPacketHandshake::from_bytes(bytes)?),
             PACKET_PING_PONG => Self::PingPong(UdpPacketPingPong::from_bytes(bytes)?),
             PACKET_TRACKER_DATA => Self::TrackerData(UdpPacketTrackerData::from_bytes(bytes)?),
@@ -44,7 +32,9 @@ impl<'a, R: Read> UdpPacket<'a, R> {
             }
             PACKET_BATTERY_LEVEL => Self::BatteryLevel(UdpPacketBatteryLevel::from_bytes(bytes)?),
             _ => anyhow::bail!("Invalid packet id"),
-        })
+        };
+
+        Ok((packet, packet_number))
     }
 }
 

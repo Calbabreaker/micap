@@ -60,7 +60,7 @@ async fn task(id: u8) -> anyhow::Result<()> {
         buffer.push(0x00);
 
         let quat = glam::Quat::from_axis_angle(
-            glam::Vec3::new(1., 0., 1.).normalize(),
+            glam::Vec3::new(1., 0., 0.).normalize(),
             f32::sin(count as f32 / 100.),
         );
         buffer.extend(quat.to_array().iter().flat_map(|x| x.to_le_bytes()));

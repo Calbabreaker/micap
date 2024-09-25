@@ -17,6 +17,7 @@ SensorFusion::SensorFusion(float gyro_hz, float gyro_range) {
     FusionAhrsSetSettings(&m_ahrs, &settings);
 }
 
+// TODO check if order of gyro /accel matters
 void SensorFusion::update_gyro(float gyro_xyz[3], float deltatime) {
     FusionVector new_gyro = FusionOffsetUpdate(&offset, *(FusionVector*)gyro_xyz);
     FusionAhrsUpdateNoMagnetometer(&m_ahrs, new_gyro, m_proper_accel, deltatime);
@@ -32,7 +33,7 @@ Quaternion SensorFusion::get_orientation() {
     return Quaternion(quat.element.x, quat.element.y, quat.element.z, quat.element.w);
 }
 
-// Gets the acceleration relative to surface of earth with 1g removed
+// Gets the acceleration relative to surface of earth
 Vector3 SensorFusion::get_acceleration() const {
     FusionVector earth = FusionAhrsGetEarthAcceleration(&m_ahrs);
     Vector3 acceleration(earth.axis.x, earth.axis.y, earth.axis.z);

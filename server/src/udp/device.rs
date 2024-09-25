@@ -1,12 +1,12 @@
 use std::{
     net::SocketAddr,
     sync::{Arc, MutexGuard},
-    time::Instant,
+    time::{Duration, Instant},
 };
 
 use crate::{
     main_server::MainServer,
-    tracker::{Tracker, TrackerData, TrackerRef, TrackerStatus},
+    tracker::{Tracker, TrackerData, TrackerRef},
     udp::packet::{
         UdpPacketBatteryLevel, UdpPacketPingPong, UdpPacketTrackerStatus, UdpTrackerData,
     },
@@ -17,7 +17,6 @@ pub struct UdpDevice {
     pub(super) last_packet_number: u32,
     /// Maps the udp device's tracker index to the global tracker
     pub(super) global_trackers: Vec<Option<TrackerRef>>,
-    pub(super) timed_out: bool,
     pub(super) mac: Arc<str>,
     pub(super) address: SocketAddr,
     current_ping_start_time: Option<Instant>,
@@ -25,6 +24,8 @@ pub struct UdpDevice {
 }
 
 impl UdpDevice {
+    const TIMEOUT: Duration = Duration::from_millis(2000);
+
     pub fn new(address: SocketAddr, mac: Arc<str>) -> Self {
         Self {
             global_trackers: Vec::default(),
@@ -32,7 +33,6 @@ impl UdpDevice {
             mac,
             last_packet_received_time: Instant::now(),
             last_packet_number: 0,
-            timed_out: false,
             current_ping_id: 0,
             current_ping_start_time: None,
         }
@@ -79,23 +79,17 @@ impl UdpDevice {
         }
     }
 
-    pub fn set_timed_out(&mut self, timed_out: bool) {
-        if timed_out == self.timed_out {
-            return;
-        }
+    pub fn is_timed_out(&self) -> bool {
+        self.last_packet_received_time.elapsed() > Self::TIMEOUT
+    }
 
-        self.timed_out = timed_out;
-
+    pub fn update_timed_out(&mut self, timed_out: bool) {
         for mut tracker in self.global_trackers_iter() {
-            // Only allow changing status to TimedOut if tracker is Ok and vice-versa
-            if timed_out && tracker.info.status == TrackerStatus::Ok {
-                tracker.info.status = TrackerStatus::TimedOut;
-            } else if !timed_out && tracker.info.status == TrackerStatus::TimedOut {
-                tracker.info.status = TrackerStatus::Ok;
-            };
+            tracker.set_timed_out(timed_out);
         }
     }
 
+    // Gets the ping packet with the current ping id
     pub fn check_get_ping_packet(&mut self) -> UdpPacketPingPong {
         // If ping has been acknowledge (when set to none) start a new ping id
         if self.current_ping_start_time.is_none() {
@@ -111,13 +105,11 @@ impl UdpDevice {
             return;
         }
 
-        if let Some(start_time) = self.current_ping_start_time {
+        if let Some(start_time) = self.current_ping_start_time.take() {
             for mut tracker in self.global_trackers_iter() {
                 let latency = start_time.elapsed() / 2;
-                tracker.info.latency_ms = Some(latency.as_millis() as u32);
+                tracker.update_info().latency_ms = Some(latency.as_millis() as u32);
             }
-
-            self.current_ping_start_time = None;
         }
     }
 
@@ -135,22 +127,23 @@ impl UdpDevice {
         let address = self.address;
         if let Some(mut tracker) = self.get_tracker(packet.tracker_index) {
             tracker.data = TrackerData::default();
-            tracker.info.status = packet.tracker_status;
-            tracker.info.address = Some(address);
+            tracker.update_info().status = packet.tracker_status;
+            tracker.update_info().address = Some(address);
         }
     }
 
     pub fn update_battery_level(&self, packet: UdpPacketBatteryLevel) {
         for mut tracker in self.global_trackers_iter() {
-            tracker.info.battery_level = packet.battery_level;
+            tracker.update_info().battery_level = packet.battery_level;
         }
     }
 
     pub fn all_trackers_removed(&mut self) -> bool {
+        let mut count = 0;
         let all_removed = self
             .global_trackers_iter()
+            .inspect(|_| count += 1)
             .all(|tracker| tracker.internal.to_be_removed);
-        let empty = self.global_trackers_iter().count() == 0;
-        !&empty && all_removed
+        count != 0 && all_removed
     }
 }
