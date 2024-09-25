@@ -135,7 +135,7 @@ function handleMessage(message: WebsocketServerMessage) {
 
             const status = getSerialStatusMessage(message.log);
             if (status) {
-                infoToast(status);
+                infoToast(`Serial device: ${status}`);
             }
             break;
         case "SkeletonUpdate":

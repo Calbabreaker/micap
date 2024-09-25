@@ -2,7 +2,7 @@ use std::{borrow::Cow, io::Write, time::Duration};
 
 use byteorder::ReadBytesExt;
 use serialport::SerialPort;
-use tokio::sync::mpsc::Receiver;
+use std::sync::mpsc::Receiver;
 
 #[cfg(unix)]
 type NativePort = serialport::TTYPort;
@@ -18,15 +18,17 @@ pub struct SerialPortManager {
 
 impl Default for SerialPortManager {
     fn default() -> Self {
-        let (port_tx, port_rx) = tokio::sync::mpsc::channel(1);
+        let (port_tx, port_rx) = std::sync::mpsc::sync_channel(1);
 
         // Scanning ports blocks a bit so put it in a seperate task
         tokio::spawn(async move {
-            if let Some(port) = tokio::task::block_in_place(find_usb_port) {
-                port_tx.send(port).await.ok();
-            }
+            loop {
+                if let Some(port) = tokio::task::block_in_place(find_usb_port) {
+                    port_tx.try_send(port).unwrap();
+                }
 
-            tokio::time::sleep(Duration::from_secs(2)).await;
+                tokio::time::sleep(Duration::from_secs(2)).await;
+            }
         });
 
         Self {
@@ -86,7 +88,7 @@ impl SerialPortManager {
                 log::info!("Serial port disconnected");
                 return true;
             }
-        } else if let Some(port) = self.port_rx.recv().await {
+        } else if let Ok(port) = self.port_rx.try_recv() {
             self.port = Some(port);
             return true;
         }
@@ -106,13 +108,17 @@ fn find_usb_port() -> Option<NativePort> {
         .iter()
         .find(|port| matches!(port.port_type, serialport::SerialPortType::UsbPort(_)))?;
 
-    log::info!(
-        "Found serial port: {}\n{:?}",
-        port_info.port_name,
-        port_info.port_type
-    );
-    serialport::new(&port_info.port_name, 14400)
+    let port = serialport::new(&port_info.port_name, 14400)
         .timeout(std::time::Duration::from_millis(5))
-        .open_native()
-        .ok()
+        .open_native();
+
+    if port.is_ok() {
+        log::info!(
+            "Found serial port: {}\n{:?}",
+            port_info.port_name,
+            port_info.port_type
+        );
+    }
+
+    port.ok()
 }

@@ -48,6 +48,7 @@ impl UdpServer {
     pub async fn update(&mut self, main: &mut MainServer) -> anyhow::Result<()> {
         if self.last_upkeep_time.elapsed() > UPKEEP_INTERVAL {
             self.upkeep().await?;
+            self.last_upkeep_time = Instant::now();
         }
 
         let mut buffer = [0_u8; 256];

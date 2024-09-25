@@ -47,6 +47,7 @@ body {
 .toast {
     pointer-events: all;
     @apply shadow-lg text-sm;
+    --toastWidth: 24rem;
 }
 
 .error {

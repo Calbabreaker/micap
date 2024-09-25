@@ -15,6 +15,7 @@
     export let id: string;
 
     export const commonBoneLocations = [
+        "",
         "Hip",
         "LeftUpperLeg",
         "RightUpperLeg",
@@ -74,7 +75,7 @@
         on:change={(e) => {
             editTrackerConfig(id, {
                 ...config,
-                location: e.currentTarget.value,
+                location: e.currentTarget.value || undefined,
             });
         }}
     >
