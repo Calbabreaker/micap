@@ -46,11 +46,15 @@
         //     bone.children.forEach((child) => {
         //         child.position.fromArray(boneData.tail_offset);
         //     });
-        //     const quat = new THREE.Quaternion().fromArray(boneData.orientation);
+        //     const quat = new THREE.Quaternion().fromArray(boneData.orientation)
         //     bone.rotation.setFromQuaternion(quat);
         // });
 
         Object.entries(bonesData).forEach(([location, boneData]) => {
+            if (location == "Hip") {
+                return;
+            }
+
             const part = modelRef.getObjectByName(location);
             if (part) {
                 // part.children.forEach((child) => {

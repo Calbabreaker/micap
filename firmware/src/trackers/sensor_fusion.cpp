@@ -4,7 +4,7 @@
 
 SensorFusion::SensorFusion(float gyro_hz, float gyro_range) {
     // Setup Fusion
-    FusionOffsetInitialise(&offset, gyro_hz);
+    FusionOffsetInitialise(&m_offset, gyro_hz);
     FusionAhrsInitialise(&m_ahrs);
     const FusionAhrsSettings settings = {
         .convention = FusionConventionNwu,
@@ -19,13 +19,13 @@ SensorFusion::SensorFusion(float gyro_hz, float gyro_range) {
 
 // TODO check if order of gyro /accel matters
 void SensorFusion::update_gyro(float gyro_xyz[3], float deltatime) {
-    FusionVector new_gyro = FusionOffsetUpdate(&offset, *(FusionVector*)gyro_xyz);
-    FusionAhrsUpdateNoMagnetometer(&m_ahrs, new_gyro, m_proper_accel, deltatime);
+    FusionVector new_gyro = FusionOffsetUpdate(&m_offset, *(FusionVector*)gyro_xyz);
+    FusionAhrsUpdateNoMagnetometer(&m_ahrs, new_gyro, m_accel, deltatime);
 };
 
 // Updates with direct acceleration  from the accelerometer (in g)
 void SensorFusion::update_accel(float accel_xyz[3]) {
-    m_proper_accel = *(FusionVector*)accel_xyz;
+    m_accel = *(FusionVector*)accel_xyz;
 }
 
 Quaternion SensorFusion::get_orientation() {

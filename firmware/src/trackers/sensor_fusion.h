@@ -19,8 +19,8 @@ public:
     Quaternion get_orientation();
 
 private:
-    FusionVector m_proper_accel = {.array = {0, 0, 0}};
+    FusionVector m_accel = {.array = {0, 0, 0}};
     Quaternion m_quat;
-    FusionOffset offset;
+    FusionOffset m_offset;
     FusionAhrs m_ahrs;
 };

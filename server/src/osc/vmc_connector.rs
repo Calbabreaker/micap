@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use tokio::net::UdpSocket;
 use ts_rs::TS;
 
-use crate::main_server::MainServer;
+use crate::{main_server::MainServer, skeleton::BoneLocation};
 
 #[derive(Serialize, Deserialize, TS)]
 #[serde(default)]
@@ -43,13 +43,22 @@ impl VmcConnector {
 
         let mut osc_messages = Vec::new();
 
-        osc_messages.extend(bones.iter().map(|(location, bone)| {
-            let mut args = vec![rosc::OscType::String(location.as_unity_bone())];
+        osc_messages.push(rosc::OscPacket::Message(rosc::OscMessage {
+            addr: "/VMC/Ext/OK".to_string(),
+            args: vec![rosc::OscType::Int(1)],
+        }));
+
+        osc_messages.extend(bones.iter().filter_map(|(location, bone)| {
+            if location == &BoneLocation::Hip {
+                return None;
+            }
+
+            let mut args = vec![rosc::OscType::String(location.as_unity_bone()?)];
             add_osc_transform_args(&mut args, bone.get_head_position(bones), bone.orientation);
-            rosc::OscPacket::Message(rosc::OscMessage {
+            Some(rosc::OscPacket::Message(rosc::OscMessage {
                 addr: "/VMC/Ext/Bone/Pos".to_string(),
                 args,
-            })
+            }))
         }));
 
         self.send_osc_bundle(osc_messages).await.ok();

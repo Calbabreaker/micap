@@ -37,12 +37,13 @@ pub enum BoneLocation {
 impl BoneLocation {
     /// Maps to bone names used in unity, this is also what VRM uses
     /// https://docs.unity3d.com/ScriptReference/HumanBodyBones.html
-    pub fn as_unity_bone(&self) -> String {
+    pub fn as_unity_bone(&self) -> Option<String> {
         match self {
             // Only these values are different
-            Self::Hip => "Hips".to_string(),
-            Self::Waist => "Spine".to_string(),
-            bone => format!("{:?}", bone),
+            Self::Hip => Some("Hips".to_string()),
+            Self::Waist => Some("Spine".to_string()),
+            Self::LeftHip | Self::RightHip => None,
+            bone => Some(format!("{:?}", bone)),
         }
     }
 

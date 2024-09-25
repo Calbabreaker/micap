@@ -2,7 +2,6 @@
 
 #include <bmi160_defs.h>
 
-#include "globals.h"
 #include "tracker.h"
 #include "trackers/sensor_fusion.h"
 

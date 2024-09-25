@@ -102,6 +102,10 @@ export async function removeTracker(id: string) {
         delete config?.trackers[id];
         return config;
     });
+    trackers.update((trackers) => {
+        delete trackers[id];
+        return trackers;
+    });
 }
 
 export function editTrackerConfig(id: string, config: TrackerConfig) {
