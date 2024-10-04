@@ -14,7 +14,9 @@ public:
     // Returns true if any tracker has new data
     bool update();
 
-    const std::array<Tracker*, MAX_TRACKER_COUNT>& get_trackers() const { return m_trackers; }
+    inline const std::array<Tracker*, MAX_TRACKER_COUNT>& get_trackers() const {
+        return m_trackers;
+    }
 
 private:
     std::array<Tracker*, MAX_TRACKER_COUNT> m_trackers;

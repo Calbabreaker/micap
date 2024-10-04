@@ -1,5 +1,6 @@
 #include "tracker_bmi160.h"
 #include "globals.h"
+#include "internal_led.h"
 #include "log.h"
 #include "trackers/tracker.h"
 
@@ -133,7 +134,7 @@ bool TrackerBMI160::calibrate() {
         accel_sum_xyz[2] += raw_accel.z;
 
         if (i % 2 == 0) {
-            g_internal_led.blink(20);
+            internal_led_blink(20);
         }
 
         delay(20);

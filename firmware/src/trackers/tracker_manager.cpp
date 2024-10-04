@@ -42,16 +42,15 @@ void TrackerManager::setup() {
     I2C_ClearBus();
     Wire.begin();
 
-    // Use heap-allocation for polymorphism and to prevent stack overflow
+    // Use heap allocation for polymorphism and to prevent stack overflow
     register_tracker(new TrackerBMI160(0, 0x68), true);
     register_tracker(new TrackerBMI160(1, 0x69), false);
 }
 
 bool TrackerManager::update() {
     bool has_new_data = false;
-    for (Tracker* tracker : g_tracker_manager.get_trackers()) {
-        bool acked = g_connection_manager.has_acked_tracker(tracker);
-        if (acked && tracker->status == TrackerStatus::Ok) {
+    for (Tracker* tracker : get_trackers()) {
+        if (tracker->status == TrackerStatus::Ok && tracker->acked_status == TrackerStatus::Ok) {
             tracker->update();
         }
 

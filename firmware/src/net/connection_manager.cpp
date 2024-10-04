@@ -1,6 +1,7 @@
 #include "connection_manager.h"
 #include "defines.h"
 #include "globals.h"
+#include "internal_led.h"
 #include "log.h"
 #include "trackers/tracker.h"
 
@@ -26,7 +27,7 @@ void ConnectionManager::update() {
     if (!m_connected) {
         // Send handshake every interval
         if (m_important_send_timer.elapsed(CONNECTION_RESEND_INTERVAL_MS)) {
-            g_internal_led.blink(25);
+            internal_led_blink(25);
             send_handshake();
             m_important_send_timer.reset();
         }
@@ -37,8 +38,8 @@ void ConnectionManager::update() {
             m_important_send_timer.reset();
         }
 
-        // If we haven't got a packet from the server for some time, we can assume we
-        // got disconnected
+        // If we haven't got a packet from the server for some time, we can assume we got
+        // disconnected
         if (m_packet_received_timer.elapsed(CONNECTION_TIMEOUT_MS)) {
             LOG_WARN("Timed out and disconnected from server");
             m_connected = false;
@@ -73,10 +74,9 @@ void ConnectionManager::receive_packets() {
             m_next_packet_number = 1; // Use 1 since handshake would use packet number 0
 
             // Set the tracker statuses to off so they can be resent
-            std::fill(
-                m_tracker_statuses_on_server.begin(), m_tracker_statuses_on_server.end(),
-                TrackerStatus::Off
-            );
+            for (Tracker* tracker : g_tracker_manager.get_trackers()) {
+                tracker->acked_status = TrackerStatus::Off;
+            }
         } else {
             // Ignore later handshake packets
             LOG_WARN("Received handshake while already connected");
@@ -85,8 +85,9 @@ void ConnectionManager::receive_packets() {
     }
     case PACKET_TRACKER_STATUS: {
         uint8_t id = m_buffer[1];
-        if (id < m_tracker_statuses_on_server.size()) {
-            m_tracker_statuses_on_server[id] = (TrackerStatus)m_buffer[2];
+        const auto& trackers = g_tracker_manager.get_trackers();
+        if (id < trackers.size()) {
+            trackers[id]->acked_status = (TrackerStatus)m_buffer[2];
         }
         break;
     }
@@ -102,7 +103,7 @@ void ConnectionManager::receive_packets() {
 
 void ConnectionManager::update_tracker_statuses() {
     for (Tracker* tracker : g_tracker_manager.get_trackers()) {
-        if (tracker->status != m_tracker_statuses_on_server[tracker->get_index()]) {
+        if (tracker->status != tracker->acked_status) {
             send_tracker_status(tracker);
         }
     }
@@ -132,10 +133,10 @@ void ConnectionManager::send_handshake() {
 }
 
 void ConnectionManager::send_pong(uint8_t id) {
-    g_internal_led.blink(20);
+    internal_led_blink(20);
     begin_packet(PACKET_PING_PONG);
     write_value<uint32_t>(0);
-    m_udp.write(id);
+    write_value<uint8_t>(id);
     end_packet();
 }
 void ConnectionManager::send_battery_level(float level) {
@@ -159,22 +160,17 @@ void ConnectionManager::send_tracker_data() {
         }
     }
 
-    // 0xff where the tracker index would usually go signifies the end of the
-    // packet
+    // 0xff where the tracker index would usually go signifies the end of the packet
     m_udp.write(0xff);
     end_packet();
 }
 
-void ConnectionManager::send_tracker_status(Tracker* tracker) {
+void ConnectionManager::send_tracker_status(const Tracker* tracker) {
     begin_packet(PACKET_TRACKER_STATUS);
     write_packet_number();
-    m_udp.write(tracker->get_index());
-    m_udp.write((uint8_t)tracker->status);
+    write_value<uint8_t>(tracker->get_index());
+    write_value<uint8_t>((uint8_t)tracker->status);
     end_packet();
-}
-
-bool ConnectionManager::has_acked_tracker(Tracker* tracker) {
-    return m_tracker_statuses_on_server[tracker->get_index()] == tracker->status;
 }
 
 void ConnectionManager::write_str(const char* str) {
@@ -183,11 +179,11 @@ void ConnectionManager::write_str(const char* str) {
 
 void ConnectionManager::begin_packet(uint8_t packet_type) {
     m_udp.beginPacket(m_server_ip, UDP_PORT);
-    m_udp.write(packet_type);
+    write_value<uint8_t>(packet_type);
 }
 
 void ConnectionManager::write_packet_number() {
-    m_udp.write((uint8_t*)&m_next_packet_number, sizeof(uint32_t));
+    write_value<uint32_t>(m_next_packet_number);
     m_next_packet_number += 1;
 }
 

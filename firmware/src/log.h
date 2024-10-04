@@ -1,6 +1,5 @@
 #pragma once
 
-#include "defines.h"
 #include <Arduino.h>
 
 // LOG_* is only for debugging purposes and will be removed in production builds
@@ -21,9 +20,10 @@
 
 class Timer {
 public:
-    inline bool elapsed(uint64_t activation_interval) {
+    // Returns true if the inner time has ellapsed elapsed_time
+    inline bool elapsed(uint64_t elapsed_time) {
         uint64_t now = millis();
-        return now > m_last_elapsed_time + activation_interval;
+        return now > m_last_elapsed_time + elapsed_time;
     }
 
     inline void reset() {

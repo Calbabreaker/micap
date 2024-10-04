@@ -21,16 +21,17 @@ public:
     virtual void setup() {};
     virtual void update() {};
 
-    uint8_t get_index() { return m_index; }
-    uint8_t get_address() { return m_address; }
+    uint8_t get_index() const { return m_index; }
+    uint8_t get_address() const { return m_address; }
 
 public:
     TrackerStatus status = TrackerStatus::Ok;
+    TrackerStatus acked_status = TrackerStatus::Off; // The status that the server knows
+    bool has_new_data = false;
+
     // Values to be sent to server on each update loop
     Vector3 acceleration;
     Quaternion orientation;
-
-    bool has_new_data = false;
 
 protected:
     TrackerKind m_kind;

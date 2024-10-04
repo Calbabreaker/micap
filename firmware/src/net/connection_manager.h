@@ -1,9 +1,9 @@
 #pragma once
 
 #include <WiFiUdp.h>
+#include <vector>
 
 #include "IPAddress.h"
-#include "defines.h"
 #include "net/wifi_manager.h"
 #include "trackers/tracker.h"
 
@@ -26,7 +26,7 @@ public:
     void update();
 
     void send_tracker_data();
-    void send_tracker_status(Tracker* tracker);
+    void send_tracker_status(const Tracker* tracker);
     void send_handshake();
     void send_pong(uint8_t id);
     void send_battery_level(float level);
@@ -56,8 +56,6 @@ private:
     IPAddress m_server_ip = INADDR_NONE;
     WifiManager m_wifi;
     uint8_t m_buffer[64];
-
-    std::array<TrackerStatus, MAX_TRACKER_COUNT> m_tracker_statuses_on_server;
 
     uint32_t m_next_packet_number = 0;
     Timer m_packet_received_timer;

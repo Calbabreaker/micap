@@ -4,6 +4,7 @@
 
 #include "config_manager.h"
 #include "globals.h"
+#include "internal_led.h"
 #include "log.h"
 #include "wifi_manager.h"
 
@@ -67,7 +68,7 @@ void WifiManager::use_credentials(const char* ssid, const char* password) {
 
 // Connects to the next test network in the list
 void WifiManager::try_connect_next_network() {
-    g_internal_led.blink(20);
+    internal_led_blink(20);
     m_has_manually_set_creds = false;
     if (m_test_networks.empty()) {
         start_scan();

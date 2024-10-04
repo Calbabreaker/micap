@@ -1,6 +1,7 @@
 #include <Arduino.h>
 
 #include "globals.h"
+#include "internal_led.h"
 #include "log.h"
 #include "serial_manager.h"
 
@@ -16,7 +17,7 @@ const char* next_arg(const char* start, size_t* length_left) {
 }
 
 // The commands are in the format of command name seperated by null byte for each argument
-void SerialManager::parse_incomming_command() {
+void SerialManager::parse_incomming_command(WifiManager& wifi) {
     if (!Serial.available()) {
         return;
     }
@@ -40,12 +41,12 @@ void SerialManager::parse_incomming_command() {
             password_ptr = "";
         }
 
-        g_connection_manager.get_wifi().use_credentials(ssid_ptr, password_ptr);
+        wifi.use_credentials(ssid_ptr, password_ptr);
     } else if (strcmp(m_buffer, "FactoryReset") == 0) {
         LOG_INFO("Resetting config, cut off power to stop");
 
         for (size_t i = 0; i < 8; i++) {
-            g_internal_led.blink(300);
+            internal_led_blink(300);
             delay(300);
         }
 
