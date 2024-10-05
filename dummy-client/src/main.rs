@@ -65,7 +65,8 @@ async fn task(id: u8) -> anyhow::Result<()> {
         );
         buffer.extend(quat.to_array().iter().flat_map(|x| x.to_le_bytes()));
 
-        let vec = glam::Vec3::new(0., 0., -f32::sin(count as f32 / 10.) * 3.);
+        let x = (count as f32) + (id as f32);
+        let vec = glam::Vec3::new(0., 0., -f32::sin(x / 10.) * 3.);
         buffer.extend(vec.to_array().iter().flat_map(|x| x.to_le_bytes()));
 
         buffer.push(0xff);

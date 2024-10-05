@@ -57,7 +57,7 @@ pub type TrackerRef = std::sync::Arc<std::sync::Mutex<Tracker>>;
 #[derive(Default, Serialize, TS)]
 pub struct Tracker {
     info: TrackerInfo,
-    pub data: TrackerData,
+    data: TrackerData,
     #[serde(skip)]
     pub internal: TrackerInternal,
 }
@@ -75,9 +75,21 @@ impl Tracker {
         self.internal.was_updated = true;
     }
 
+    pub fn reset_data(&mut self) {
+        self.data = TrackerData::default();
+    }
+
     pub fn update_info(&mut self) -> &mut TrackerInfo {
         self.internal.was_updated = true;
         &mut self.info
+    }
+
+    pub fn info(&self) -> &TrackerInfo {
+        &self.info
+    }
+
+    pub fn data(&self) -> &TrackerData {
+        &self.data
     }
 
     pub fn set_timed_out(&mut self, timed_out: bool) {

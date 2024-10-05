@@ -36,7 +36,7 @@
         <input type="checkbox" bind:checked={enabled} />
         <ResetButton
             bind:value={enabled}
-            defaultValue={$defaultConfig?.vmc?.enabled}
+            defaultValue={defaultConfig?.vmc?.enabled}
         />
     </div>
 
@@ -51,7 +51,7 @@
         />
         <ResetButton
             bind:value={sendPort}
-            defaultValue={$defaultConfig?.vmc?.send_port}
+            defaultValue={defaultConfig?.vmc?.send_port}
         />
     </div>
 </form>

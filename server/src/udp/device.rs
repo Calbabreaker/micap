@@ -126,7 +126,7 @@ impl UdpDevice {
 
         let address = self.address;
         if let Some(mut tracker) = self.get_tracker(packet.tracker_index) {
-            tracker.data = TrackerData::default();
+            tracker.reset_data();
             tracker.update_info().status = packet.tracker_status;
             tracker.update_info().address = Some(address);
         }

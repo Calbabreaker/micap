@@ -1,6 +1,6 @@
 <script lang="ts">
-    import PreviewCanvas from "./PreviewCanvas.svelte";
-    import SkeletonScene from "./SkeletonScene.svelte";
+    import PreviewCanvas from "../PreviewCanvas.svelte";
+    import SkeletonScene from "$lib/components/skeleton/SkeletonScene.svelte";
 
     let showLines = true;
     let showModel = true;

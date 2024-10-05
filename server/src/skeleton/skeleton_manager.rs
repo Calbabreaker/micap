@@ -1,18 +1,19 @@
 use std::{collections::HashMap, sync::Arc};
 
 use crate::{
-    skeleton::{Bone, BoneLocation, SkeletonConfig},
-    tracker::{TrackerConfig, TrackerRef},
+    skeleton::{Bone, BoneLocation, BoneOffsetKind, SkeletonConfig},
+    tracker::{TrackerConfig, TrackerRef, TrackerStatus},
 };
 
 pub struct SkeletonManager {
     pub bones: HashMap<BoneLocation, Bone>,
     trackers: HashMap<BoneLocation, TrackerRef>,
+    leg_length: f32,
 }
 
 impl Default for SkeletonManager {
     fn default() -> Self {
-        let bones = BoneLocation::SELF_TO_PARENT
+        let bones = BoneLocation::SELF_AND_PARENT
             .iter()
             .map(|(location, parent)| (*location, Bone::new(*parent)))
             .collect();
@@ -20,6 +21,7 @@ impl Default for SkeletonManager {
         Self {
             bones,
             trackers: HashMap::new(),
+            leg_length: 0.,
         }
     }
 }
@@ -47,6 +49,17 @@ impl SkeletonManager {
             Hip,
             self.get_tracker_orientation(&[Hip, Waist, Chest, UpperChest]),
         );
+
+        self.set_bone_orientation(
+            LeftUpperLeg,
+            self.get_tracker_orientation(&[LeftUpperLeg, LeftLowerLeg]),
+        );
+        self.set_bone_orientation(
+            LeftLowerLeg,
+            self.get_tracker_orientation(&[LeftLowerLeg, LeftUpperLeg]),
+        );
+
+        self.update_bone_recursive(Hip, glam::Vec3A::ZERO);
     }
 
     pub fn apply_tracker_config(
@@ -64,8 +77,11 @@ impl SkeletonManager {
     }
 
     pub fn apply_skeleton_config(&mut self, config: &SkeletonConfig) {
-        for (location, joints) in &mut self.bones {
-            joints.set_tail_offset(*location, &config.offsets);
+        use BoneOffsetKind::*;
+        self.leg_length = config.offsets[&LowerLegLength] + config.offsets[&UpperLegLength];
+
+        for (location, bone) in &mut self.bones {
+            bone.tail_offset = location.get_tail_offset(&config.offsets);
         }
     }
 
@@ -80,10 +96,29 @@ impl SkeletonManager {
         for location in locations {
             if let Some(tracker) = self.trackers.get(location) {
                 let tracker = tracker.lock().unwrap();
-                return Some(tracker.data.orientation);
+                if tracker.info().status == TrackerStatus::Ok {
+                    return Some(tracker.data().orientation);
+                }
             }
         }
 
         None
+    }
+
+    /// Update the world position of the bone and its children
+    pub fn update_bone_recursive(
+        &mut self,
+        location: BoneLocation,
+        parent_world_position: glam::Vec3A,
+    ) {
+        let bone = self.bones.get_mut(&location).unwrap();
+        bone.update_position(parent_world_position);
+        let bone_world_position = bone.tail_world_position;
+        bone.tail_world_position.y += self.leg_length;
+
+        // Recursively update the children positions
+        for child_location in location.get_children() {
+            self.update_bone_recursive(*child_location, bone_world_position);
+        }
     }
 }

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::LazyLock};
 
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -52,7 +52,7 @@ impl BoneLocation {
         use BoneOffsetKind::*;
 
         match self {
-            Self::Hip => glam::vec3a(0., offsets[&HipLength], 0.),
+            Self::Hip => glam::vec3a(0., 0., 0.),
             Self::Waist => glam::vec3a(0., offsets[&WaistLength], 0.),
             Self::LeftHip => glam::vec3a(-offsets[&HipsWidth] / 2., 0., 0.),
             Self::RightHip => glam::vec3a(offsets[&HipsWidth] / 2., 0., 0.),
@@ -62,7 +62,7 @@ impl BoneLocation {
             Self::LeftLowerLeg | Self::RightLowerLeg => {
                 glam::vec3a(0., -offsets[&LowerLegLength], 0.)
             }
-            Self::LeftFoot | Self::RightFoot => glam::vec3a(0., -offsets[&FootLength], 0.),
+            Self::LeftFoot | Self::RightFoot => glam::vec3a(0., 0., -offsets[&FootLength]),
             Self::Chest => glam::vec3a(0., offsets[&ChestLength], 0.),
             Self::UpperChest => glam::vec3a(0., offsets[&UpperChestLength], 0.),
             Self::LeftShoulder => {
@@ -78,13 +78,13 @@ impl BoneLocation {
                 glam::vec3a(0., -offsets[&LowerArmLength], 0.)
             }
             Self::LeftHand | Self::RightHand => glam::vec3a(0., -offsets[&HandLength], 0.),
-            Self::Neck => glam::vec3a(0., -offsets[&NeckLength], 0.),
+            Self::Neck => glam::vec3a(0., offsets[&NeckLength], 0.),
             Self::Head => glam::vec3a(0., 0., 0.),
         }
     }
 
-    // Maps a bone location to its parent
-    pub const SELF_TO_PARENT: &[(Self, Option<Self>)] = &[
+    /// Maps a bone location to its parent
+    pub const SELF_AND_PARENT: &[(Self, Option<Self>)] = &[
         (Self::Hip, None),
         (Self::Waist, Some(Self::Hip)),
         (Self::LeftHip, Some(Self::Hip)),
@@ -108,41 +108,79 @@ impl BoneLocation {
         (Self::Neck, Some(Self::UpperChest)),
         (Self::Head, Some(Self::Neck)),
     ];
+
+    pub fn get_children(&self) -> &[Self] {
+        &BONE_LOCATION_TO_CHILDREN[self]
+    }
 }
 
-#[derive(Serialize, TS)]
+/// Maps a Bonelocation to an array of its children
+static BONE_LOCATION_TO_CHILDREN: LazyLock<HashMap<BoneLocation, Vec<BoneLocation>>> =
+    LazyLock::new(|| {
+        let mut map = BoneLocation::SELF_AND_PARENT
+            .iter()
+            .map(|(location, _)| (*location, Vec::new()))
+            .collect::<HashMap<BoneLocation, Vec<BoneLocation>>>();
+
+        for (location, parent) in BoneLocation::SELF_AND_PARENT {
+            if let Some(parent) = parent {
+                let children = map.get_mut(parent).unwrap();
+                children.push(*location);
+            }
+        }
+        map
+    });
+
+#[derive(Default, Serialize, TS)]
 pub struct Bone {
     /// Positional offset of the joint
-    #[ts(type = "[number, number, number]")]
+    #[serde(skip)]
     pub tail_offset: glam::Vec3A,
+
     /// Orientation of joint
     #[ts(type = "[number, number, number, number]")]
     pub orientation: glam::Quat,
+
+    #[ts(type = "[number, number, number]")]
+    pub tail_world_position: glam::Vec3A,
+
+    #[serde(skip)]
+    pub tail_local_position: glam::Vec3A,
+
     pub parent: Option<BoneLocation>,
 }
 
 impl Bone {
     pub fn new(parent: Option<BoneLocation>) -> Self {
         Self {
-            tail_offset: glam::Vec3A::ZERO,
-            orientation: glam::Quat::IDENTITY,
             parent,
+            ..Default::default()
         }
-    }
-
-    pub fn set_tail_offset(
-        &mut self,
-        location: BoneLocation,
-        offsets: &HashMap<BoneOffsetKind, f32>,
-    ) {
-        self.tail_offset = location.get_tail_offset(offsets);
     }
 
     pub fn get_head_position(&self, bones: &HashMap<BoneLocation, Bone>) -> glam::Vec3A {
         if let Some(location) = self.parent {
-            bones[&location].tail_offset
+            bones[&location].tail_local_position
         } else {
             glam::Vec3A::ZERO
         }
+    }
+
+    pub fn update_position(&mut self, parent_world_position: glam::Vec3A) {
+        self.tail_local_position = self.orientation.mul_vec3a(self.tail_offset);
+        self.tail_world_position = self.tail_local_position + parent_world_position;
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn ok_children() {
+        use BoneLocation::*;
+        assert_eq!(Hip.get_children(), &[Waist, LeftHip, RightHip]);
+        assert_eq!(Waist.get_children(), &[Chest]);
+        assert_eq!(LeftFoot.get_children(), &[]);
     }
 }

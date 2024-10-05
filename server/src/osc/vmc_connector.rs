@@ -54,7 +54,8 @@ impl VmcConnector {
             }
 
             let mut args = vec![rosc::OscType::String(location.as_unity_bone()?)];
-            add_osc_transform_args(&mut args, bone.get_head_position(bones), bone.orientation);
+            // add_osc_transform_args(&mut args, bone.get_head_position(bones), bone.orientation);
+            add_osc_transform_args(&mut args, glam::Vec3A::ZERO, bone.orientation);
             Some(rosc::OscPacket::Message(rosc::OscMessage {
                 addr: "/VMC/Ext/Bone/Pos".to_string(),
                 args,

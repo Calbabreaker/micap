@@ -1,6 +1,6 @@
 <script lang="ts">
     import Card from "$lib/components/Card.svelte";
-    import SkeletonInspect from "$lib/components/trackers/SkeletonInspect.svelte";
+    import SkeletonInspect from "$lib/components/skeleton/SkeletonPreview.svelte";
     import TrackerGrid from "$lib/components/trackers/TrackerGrid.svelte";
 </script>
 

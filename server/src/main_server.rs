@@ -67,7 +67,7 @@ pub struct MainServer {
 }
 
 impl MainServer {
-    pub fn load_config(&mut self) -> anyhow::Result<()> {
+    pub async fn load_config(&mut self, modules: &mut ServerModules) -> anyhow::Result<()> {
         let path = get_config_dir()?.join("config.json");
         log::info!("Loading from {path:?}");
         let text = std::fs::read_to_string(path)?;
@@ -79,8 +79,7 @@ impl MainServer {
             }
         }
 
-        self.updates.config = Some(config);
-
+        self.apply_config(config, modules).await?;
         Ok(())
     }
 

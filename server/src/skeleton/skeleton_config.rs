@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-/// Offset type for a specific body part used to offset the bone (joints)
+/// Offset type for a specific body part used to offset the bone (joints) in meters
 /// See BoneLocation::get_offset
 #[derive(Clone, Debug, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 pub enum BoneOffsetKind {
@@ -50,10 +50,10 @@ impl Default for SkeletonConfig {
                 (WaistLength, 0.2),
                 (ChestLength, 0.1),
                 (UpperChestLength, 0.1),
-                (HipLength, 0.4),
+                (HipLength, 0.1),
                 (HipsWidth, 0.3),
-                (UpperLegLength, 0.4),
-                (LowerLegLength, 0.5),
+                (UpperLegLength, 0.2),
+                (LowerLegLength, 0.3),
                 (ShouldersWidth, 0.3),
                 (ShoulderOffset, 0.1),
                 (UpperArmLength, 0.3),
