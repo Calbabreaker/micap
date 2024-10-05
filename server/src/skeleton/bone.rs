@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::LazyLock};
 
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -110,23 +110,42 @@ impl BoneLocation {
     ];
 }
 
-#[derive(Serialize, TS)]
+pub static BONE_LOCATION_TO_CHILDREN: LazyLock<HashMap<BoneLocation, Vec<BoneLocation>>> =
+    LazyLock::new(|| {
+        let mut map = HashMap::<BoneLocation, Vec<BoneLocation>>::new();
+        for (location, parent) in BoneLocation::SELF_TO_PARENT {
+            if let Some(parent) = parent {
+                let children = map.entry(*parent).or_default();
+                children.push(*location);
+            }
+        }
+        map
+    });
+
+#[derive(Default, Serialize, TS)]
 pub struct Bone {
     /// Positional offset of the joint
-    #[ts(type = "[number, number, number]")]
+    #[serde(skip)]
     pub tail_offset: glam::Vec3A,
+
     /// Orientation of joint
     #[ts(type = "[number, number, number, number]")]
     pub orientation: glam::Quat,
+
+    #[ts(type = "[number, number, number]")]
+    pub tail_world_position: glam::Vec3A,
+
+    #[serde(skip)]
+    pub tail_local_position: glam::Vec3A,
+
     pub parent: Option<BoneLocation>,
 }
 
 impl Bone {
     pub fn new(parent: Option<BoneLocation>) -> Self {
         Self {
-            tail_offset: glam::Vec3A::ZERO,
-            orientation: glam::Quat::IDENTITY,
             parent,
+            ..Default::default()
         }
     }
 
@@ -144,5 +163,10 @@ impl Bone {
         } else {
             glam::Vec3A::ZERO
         }
+    }
+
+    pub fn update_position(&mut self, parent_world_position: glam::Vec3A) {
+        self.tail_local_position = self.orientation.mul_vec3a(self.tail_offset);
+        self.tail_world_position = self.tail_local_position + parent_world_position;
     }
 }

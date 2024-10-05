@@ -5,65 +5,72 @@
     import { bones, type BoneDict } from "$lib/websocket";
     import type { BoneLocation } from "$lib/server_bindings";
 
-    const { invalidate, scene } = useThrelte();
+    const { invalidate } = useThrelte();
 
     export let showModel = true;
     export let showLines = true;
 
     let modelRef: THREE.Group;
 
-    let boneObjects: { [key in BoneLocation]?: THREE.Bone };
+    let boneLines: { [key in BoneLocation]?: THREE.Line };
+
+    function makeBoneLines(bonesData: BoneDict) {
+        const lines: { [key in BoneLocation]?: THREE.Line } = {};
+
+        Object.entries(bonesData).forEach(([location, boneData]) => {
+            const material = new THREE.LineBasicMaterial({
+                color: 0xff0000,
+            });
+            const geometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3()
+                    .fromArray(boneData.tail_world_position)
+                    .multiplyScalar(-10),
+                new THREE.Vector3()
+                    .fromArray(boneData.tail_offset)
+                    .multiplyScalar(0),
+            ]);
+
+            lines[location as BoneLocation] = new THREE.Line(
+                geometry,
+                material,
+            );
+        });
+
+        // Parent the bones
+        Object.entries(bonesData).forEach(([location, boneData]) => {
+            const line = lines[location as BoneLocation]!;
+            line.name = location;
+            if (boneData.parent) {
+                lines[boneData.parent as BoneLocation]!.add(line);
+            }
+        });
+
+        console.log(lines.Hip);
+
+        return lines;
+    }
 
     function updateBones(bonesData?: BoneDict) {
         if (!bonesData || !modelRef) {
             return;
         }
 
-        // if (!boneObjects) {
-        //     boneObjects = {};
-        //     for (const location in bonesData) {
-        //         boneObjects[location as BoneLocation] = new THREE.Bone();
-        //     }
-
-        //     Object.entries(bonesData).forEach(([location, boneData]) => {
-        //         const bone = boneObjects[location as BoneLocation]!;
-        //         bone.name = location;
-        //         if (boneData.parent) {
-        //             boneObjects[boneData.parent as BoneLocation]!.add(bone);
-        //         }
-        //     });
-
-        //     // const skeleton = new THREE.Skeleton(Object.values(boneObjects));
-        //     const skeletonHelper = new THREE.SkeletonHelper(boneObjects.Hip!);
-        //     console.log(skeletonHelper);
-        //     // scene.add(skeletonHelper);
-        //     scene.add(skeletonHelper);
-        // }
-
-        // Object.entries(boneObjects).forEach(([location, bone]) => {
-        //     // @ts-ignore
-        //     const boneData = bonesData[location];
-        //     bone.children.forEach((child) => {
-        //         child.position.fromArray(boneData.tail_offset);
-        //     });
-        //     const quat = new THREE.Quaternion().fromArray(boneData.orientation)
-        //     bone.rotation.setFromQuaternion(quat);
-        // });
+        if (!boneLines) {
+            boneLines = makeBoneLines(bonesData);
+        }
 
         Object.entries(bonesData).forEach(([location, boneData]) => {
-            if (location == "Hip") {
-                return;
-            }
+            const quat = new THREE.Quaternion().fromArray(boneData.orientation);
 
-            const part = modelRef.getObjectByName(location);
-            if (part) {
-                // part.children.forEach((child) => {
-                //     child.position.fromArray(boneData.tail_offset);
-                // });
-                let quat = new THREE.Quaternion().fromArray(
-                    boneData.orientation,
-                );
-                part.rotation.setFromQuaternion(quat);
+            boneLines[location as BoneLocation]!.rotation.setFromQuaternion(
+                quat,
+            );
+
+            if (location != "Hip") {
+                const part = modelRef.getObjectByName(location);
+                if (part) {
+                    part.rotation.setFromQuaternion(quat);
+                }
             }
         });
 
@@ -82,4 +89,7 @@
         scale={4}
         on:create={({ ref }) => (modelRef = ref)}
     />
+{/if}
+{#if showLines && boneLines?.Hip}
+    <T is={boneLines.Hip} />
 {/if}

@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use crate::{
-    skeleton::{Bone, BoneLocation, SkeletonConfig},
+    skeleton::{Bone, BoneLocation, SkeletonConfig, BONE_LOCATION_TO_CHILDREN},
     tracker::{TrackerConfig, TrackerRef},
 };
 
@@ -47,6 +47,8 @@ impl SkeletonManager {
             Hip,
             self.get_tracker_orientation(&[Hip, Waist, Chest, UpperChest]),
         );
+
+        self.update_bone_position_recursive(Hip, glam::Vec3A::ZERO);
     }
 
     pub fn apply_tracker_config(
@@ -64,8 +66,8 @@ impl SkeletonManager {
     }
 
     pub fn apply_skeleton_config(&mut self, config: &SkeletonConfig) {
-        for (location, joints) in &mut self.bones {
-            joints.set_tail_offset(*location, &config.offsets);
+        for (location, bone) in &mut self.bones {
+            bone.set_tail_offset(*location, &config.offsets);
         }
     }
 
@@ -85,5 +87,20 @@ impl SkeletonManager {
         }
 
         None
+    }
+
+    pub fn update_bone_position_recursive(
+        &mut self,
+        location: BoneLocation,
+        parent_world_position: glam::Vec3A,
+    ) {
+        let bone = self.bones.get_mut(&location).unwrap();
+        bone.update_position(parent_world_position);
+
+        if let Some(children) = BONE_LOCATION_TO_CHILDREN.get(&location) {
+            for child_location in children {
+                self.update_bone_position_recursive(*child_location, parent_world_position);
+            }
+        }
     }
 }

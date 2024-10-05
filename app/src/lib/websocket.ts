@@ -1,4 +1,4 @@
-import { get, writable } from "svelte/store";
+import { writable } from "svelte/store";
 import { confirmPopup, errorToast, infoToast } from "./toast";
 import type {
     BoneLocation,

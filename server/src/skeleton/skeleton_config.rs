@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-/// Offset type for a specific body part used to offset the bone (joints)
+/// Offset type for a specific body part used to offset the bone (joints) in meters
 /// See BoneLocation::get_offset
 #[derive(Clone, Debug, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 pub enum BoneOffsetKind {
