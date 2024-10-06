@@ -2,7 +2,7 @@
     import PreviewCanvas from "../PreviewCanvas.svelte";
     import SkeletonScene from "$lib/components/skeleton/SkeletonScene.svelte";
 
-    let showLines = true;
+    let showLines = false;
     let showModel = true;
 </script>
 

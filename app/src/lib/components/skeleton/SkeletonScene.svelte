@@ -48,16 +48,16 @@
     $: updateBones($bones);
 </script>
 
-<T.PerspectiveCamera makeDefault position={[10, 10, -10]}>
+<T.PerspectiveCamera makeDefault position={[4, 6, -4]}>
     <OrbitControls />
 </T.PerspectiveCamera>
 {#if showModel}
     <GLTF
         url={"default.glb"}
-        scale={4}
+        scale={2}
         on:create={({ ref }) => (modelRef = ref)}
     />
 {/if}
 {#if showLines && skeletonLineSegments}
-    <T is={skeletonLineSegments} scale={4} />
+    <T is={skeletonLineSegments} scale={3} />
 {/if}

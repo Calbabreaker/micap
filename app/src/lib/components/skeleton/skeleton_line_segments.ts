@@ -7,42 +7,47 @@ import type { BoneLocation } from "$lib/server_bindings";
 export class SkeletonLineSegments extends LineSegments2 {
     constructor(bonesData: BoneDict) {
         const material = new LineMaterial({
-            linewidth: 2,
+            linewidth: 4,
             vertexColors: true,
         });
 
         const colors: number[] = [];
 
         Object.keys(bonesData).forEach((location) => {
-            let color = getBoneColor(location as BoneLocation);
+            const color = getBoneColor(location as BoneLocation);
             colors.push(...color, ...color);
         });
 
         const geometry = new LineSegmentsGeometry();
         geometry.setColors(colors);
+        geometry.setPositions(generatePoints(bonesData));
 
         super(geometry, material);
     }
 
     update(bonesData: BoneDict) {
-        const points: number[] = [];
-
-        Object.values(bonesData).forEach((boneData) => {
-            if (boneData.parent) {
-                points.push(
-                    ...bonesData[boneData.parent].tail_world_position,
-                    ...boneData.tail_world_position,
-                );
-            }
-        });
-
-        this.geometry.setPositions(points);
+        this.geometry.setPositions(generatePoints(bonesData));
     }
+}
+
+function generatePoints(bonesData: BoneDict): number[] {
+    const points: number[] = [];
+
+    Object.values(bonesData).forEach((boneData) => {
+        if (boneData.parent) {
+            points.push(
+                ...bonesData[boneData.parent].tail_world_position,
+                ...boneData.tail_world_position,
+            );
+        }
+    });
+
+    return points;
 }
 
 function getBoneColor(location: BoneLocation): [number, number, number] {
     // prettier-ignore
-    switch ( location ) {
+    switch (location) {
         case "Hip": return [1, 0, 0];
         case "LeftUpperLeg":
         case "RightUpperLeg": return [1, 1, 0]

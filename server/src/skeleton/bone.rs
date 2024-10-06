@@ -144,9 +144,6 @@ pub struct Bone {
     #[ts(type = "[number, number, number]")]
     pub tail_world_position: glam::Vec3A,
 
-    #[serde(skip)]
-    pub tail_local_position: glam::Vec3A,
-
     pub parent: Option<BoneLocation>,
 }
 
@@ -160,15 +157,10 @@ impl Bone {
 
     pub fn get_head_position(&self, bones: &HashMap<BoneLocation, Bone>) -> glam::Vec3A {
         if let Some(location) = self.parent {
-            bones[&location].tail_local_position
+            bones[&location].tail_offset
         } else {
             glam::Vec3A::ZERO
         }
-    }
-
-    pub fn update_position(&mut self, parent_world_position: glam::Vec3A) {
-        self.tail_local_position = self.orientation.mul_vec3a(self.tail_offset);
-        self.tail_world_position = self.tail_local_position + parent_world_position;
     }
 }
 

@@ -7,7 +7,7 @@
     <Canvas>
         <T.DirectionalLight args={[0xffffff, 1]} position={[1, 1, 1]} />
         <T.AmbientLight args={[0xffffff, 0.5]} />
-        <T.GridHelper args={[10, 10]} />
+        <T.GridHelper args={[25, 25]} />
         <slot />
     </Canvas>
 </div>

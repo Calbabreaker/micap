@@ -34,7 +34,7 @@
 <p>Acceleration: {formatArray(data.acceleration)}</p>
 <p class="mb-2">Position: {formatArray(data.position)}</p>
 <PreviewCanvas>
-    <T.PerspectiveCamera makeDefault position={[10, 10, 10]}>
+    <T.PerspectiveCamera makeDefault position={[3, 6, -3]}>
         <OrbitControls />
     </T.PerspectiveCamera>
     <T.Mesh quaternion={data.orientation} scale={[1.5, 1.5, 1.5]}>

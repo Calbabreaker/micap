@@ -1,8 +1,8 @@
 <script lang="ts">
     import { trackers } from "$lib/websocket";
-    import TrackerPreview from "./TrackerPreview.svelte";
     import TrackerInfoDisplay from "./TrackerInfoDisplay.svelte";
     import TrackerControl from "./TrackerControl.svelte";
+    import TrackerPreview from "./TrackerPreview.svelte";
 
     export let id: string;
 
@@ -24,7 +24,7 @@
         <hr class="my-4" />
         <div class="text-sm text-neutral-300">
             <p>Address: {tracker.info.address}</p>
-            <p>ID: {tracker.info.address}</p>
+            <p>ID: {id}</p>
             <TrackerPreview data={tracker.data} />
         </div>
     {/if}

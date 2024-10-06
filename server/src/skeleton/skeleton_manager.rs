@@ -59,7 +59,7 @@ impl SkeletonManager {
             self.get_tracker_orientation(&[LeftLowerLeg, LeftUpperLeg]),
         );
 
-        self.update_bone_recursive(Hip, glam::Vec3A::ZERO);
+        self.update_bone_recursive(Hip, glam::Vec3A::ZERO, glam::Quat::IDENTITY);
     }
 
     pub fn apply_tracker_config(
@@ -110,15 +110,18 @@ impl SkeletonManager {
         &mut self,
         location: BoneLocation,
         parent_world_position: glam::Vec3A,
+        parent_world_orientation: glam::Quat,
     ) {
         let bone = self.bones.get_mut(&location).unwrap();
-        bone.update_position(parent_world_position);
-        let bone_world_position = bone.tail_world_position;
+        let orientation = parent_world_orientation.mul_quat(bone.orientation);
+        let local_position = orientation.mul_vec3a(bone.tail_offset);
+        let world_position = local_position + parent_world_position;
+        bone.tail_world_position = world_position;
         bone.tail_world_position.y += self.leg_length;
 
         // Recursively update the children positions
         for child_location in location.get_children() {
-            self.update_bone_recursive(*child_location, bone_world_position);
+            self.update_bone_recursive(*child_location, world_position, orientation);
         }
     }
 }

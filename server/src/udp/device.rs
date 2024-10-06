@@ -6,7 +6,7 @@ use std::{
 
 use crate::{
     main_server::MainServer,
-    tracker::{Tracker, TrackerData, TrackerRef},
+    tracker::{Tracker, TrackerRef},
     udp::packet::{
         UdpPacketBatteryLevel, UdpPacketPingPong, UdpPacketTrackerStatus, UdpTrackerData,
     },
