@@ -46,3 +46,20 @@ pub async fn start_server() -> anyhow::Result<()> {
         looper.end_loop_and_wait().await;
     }
 }
+
+#[cfg(test)]
+mod test {
+    use std::time::Duration;
+
+    #[tokio::test]
+    async fn types_should_be_sync() -> Result<(), tokio::task::JoinError> {
+        // Spawn to make sure all types are Send + Sync
+        tokio::spawn(async {
+            let _ = tokio::time::timeout(Duration::from_secs(2), async {
+                crate::start_server().await.unwrap()
+            })
+            .await;
+        })
+        .await
+    }
+}
