@@ -2,6 +2,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
+    // If LANG not set to en, it shows blank window for some reason
+    std::env::set_var("LANG", "en");
+
     micap_server::setup_log();
     tauri::async_runtime::spawn(async {
         if let Err(error) = micap_server::start_server().await {

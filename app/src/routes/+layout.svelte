@@ -22,6 +22,11 @@
             clearInterval(interval);
         };
     });
+
+    function onSubmit(ok: boolean, text: string) {
+        $popupState?.onSubmit!(ok, text);
+        $popupState = undefined;
+    }
 </script>
 
 <main class="p-4">
@@ -31,10 +36,7 @@
             title={$popupState.title}
             message={$popupState.message}
             showTextInput={$popupState.showTextInput}
-            onSubmit={(ok, text) => {
-                $popupState.onSubmit(ok, text);
-                $popupState = undefined;
-            }}
+            {onSubmit}
         />
     {/if}
     <NavBar />

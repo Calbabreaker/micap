@@ -14,7 +14,7 @@
     export let id: string;
 
     export const commonBoneLocations = [
-        "",
+        "None",
         "Hip",
         "LeftUpperLeg",
         "RightUpperLeg",
@@ -46,7 +46,8 @@
     function setLocation(location: string) {
         editTrackerConfig(id, {
             ...config,
-            location: (location as BoneLocation) || undefined,
+            location:
+                location == "None" ? undefined : (location as BoneLocation),
         });
     }
 </script>

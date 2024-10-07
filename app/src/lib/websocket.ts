@@ -89,6 +89,10 @@ export function editConfig<K extends keyof GlobalConfig>(field: K, config: Globa
     updateConfig((gc) => (gc[field] = config), { [field]: config });
 }
 
+export function editTrackerConfig(id: string, config: TrackerConfig) {
+    updateConfig((gc) => (gc.trackers[id] = config), { trackers: { [id]: config } });
+}
+
 export async function removeTracker(id: string) {
     const message =
         "This will also prevent the device from connecting to the server once all the associated trackers are removed as well.";
@@ -106,10 +110,6 @@ export async function removeTracker(id: string) {
         delete trackers[id];
         return trackers;
     });
-}
-
-export function editTrackerConfig(id: string, config: TrackerConfig) {
-    updateConfig((gc) => (gc.trackers[id] = config), { trackers: { [id]: config } });
 }
 
 function handleMessage(message: WebsocketServerMessage) {

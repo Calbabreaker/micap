@@ -110,6 +110,7 @@ impl MainServer {
 
             if self.config.trackers.remove(&removed_id).is_some() {
                 self.updates.config = Some(GlobalConfigUpdate {
+                    // We're not changing anything so set to none
                     trackers: Some(HashMap::new()),
                     ..Default::default()
                 });
