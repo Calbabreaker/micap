@@ -8,8 +8,8 @@ use crate::{
     osc::vmc_connector::{VmcConfig, VmcConnector},
     skeleton::{SkeletonConfig, SkeletonManager},
     tracker::*,
-    udp::server::UdpServer,
-    websocket::WebsocketServer,
+    udp::server::{UdpServer, UDP_PORT},
+    websocket::{WebsocketServer, WEBSOCKET_PORT},
 };
 
 pub struct ServerModules {
@@ -20,13 +20,17 @@ pub struct ServerModules {
 
 impl ServerModules {
     pub async fn new() -> anyhow::Result<Self> {
+        fn get_context(server: &str, port: u16) -> String {
+            format!("Failed to start {server} server!\nNote: Port {port} needs to be open")
+        }
+
         Ok(Self {
             websocket_server: WebsocketServer::new()
                 .await
-                .context("Failed to start websocket server")?,
+                .with_context(|| get_context("Websocket", WEBSOCKET_PORT))?,
             udp_server: UdpServer::new()
                 .await
-                .context("Failed to start UDP server")?,
+                .with_context(|| get_context("UDP", UDP_PORT))?,
             vmc_connector: VmcConnector::new().await?,
         })
     }
