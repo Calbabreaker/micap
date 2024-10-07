@@ -15,16 +15,12 @@ fn main() {
 }
 
 fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    create_system_tray(app)?;
-
-    let window = app.get_webview_window("main").unwrap();
-    let w = window.clone();
-    window.on_window_event(move |event| {
-        if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-            api.prevent_close();
-            w.hide().unwrap();
-        }
-    });
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    {
+        let window = app.get_webview_window("main").unwrap();
+        handle_window_events(&window);
+        create_system_tray(app)?;
+    }
 
     // Start server
     tauri::async_runtime::spawn(async {
@@ -49,6 +45,16 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     });
 
     Ok(())
+}
+
+fn handle_window_events(window: &tauri::WebviewWindow) {
+    let w = window.clone();
+    window.on_window_event(move |event| {
+        if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+            api.prevent_close();
+            w.hide().unwrap();
+        }
+    });
 }
 
 fn create_system_tray(app: &tauri::App) -> tauri::Result<tauri::tray::TrayIcon> {
