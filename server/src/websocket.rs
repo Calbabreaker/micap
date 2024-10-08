@@ -35,6 +35,9 @@ pub enum WebsocketServerMessage<'a> {
     SkeletonUpdate {
         bones: &'a HashMap<BoneLocation, Bone>,
     },
+    ConfigUpdate {
+        config: &'a GlobalConfig,
+    },
     SerialLog {
         log: &'a str,
     },
@@ -166,6 +169,14 @@ impl WebsocketServer {
         feed_ws_message(ws_stream, message).await?;
 
         ws_stream.flush().await?;
+        Ok(())
+    }
+
+    pub async fn send_config(&mut self, config: &GlobalConfig) -> anyhow::Result<()> {
+        if let Some(ws_stream) = self.ws_stream.as_mut() {
+            feed_ws_message(ws_stream, WebsocketServerMessage::ConfigUpdate { config }).await?;
+        }
+
         Ok(())
     }
 

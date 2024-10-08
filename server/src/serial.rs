@@ -44,7 +44,7 @@ impl SerialPortManager {
         let port = self
             .port
             .as_mut()
-            .ok_or_else(|| anyhow::anyhow!("Port does not exist"))?;
+            .ok_or_else(|| anyhow::anyhow!("Serial port does not exist"))?;
         port.write_all(data)?;
         Ok(())
     }

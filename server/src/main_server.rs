@@ -172,6 +172,7 @@ impl MainServer {
             self.config.vrchat = config;
         }
 
+        modules.websocket_server.send_config(&self.config).await?;
         Ok(())
     }
 

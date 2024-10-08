@@ -4,9 +4,11 @@
     import VmcSettings from "$lib/components/settings/VmcSettings.svelte";
 </script>
 
-<Card title="Virtual Motion Capture">
-    <VmcSettings />
-</Card>
-<Card title="Skeleton offsets">
-    <SkeletonOffsetSettings />
-</Card>
+<div class="flex flex-col gap-4 items-center">
+    <Card title="Virtual Motion Capture">
+        <VmcSettings />
+    </Card>
+    <Card title="Skeleton offsets">
+        <SkeletonOffsetSettings />
+    </Card>
+</div>

@@ -68,29 +68,18 @@ export function connectWebsocket() {
     };
 }
 
-function updateConfig(editFunc: (config: GlobalConfig) => void, configUpdate: GlobalConfigUpdate) {
-    globalConfig.update((globalConfig) => {
-        if (globalConfig) {
-            sendWebsocket({
-                type: "UpdateConfig",
-                config: configUpdate,
-            });
-
-            // @ts-ignore
-            editFunc(globalConfig);
-        }
-
-        return globalConfig;
+export function editConfig<K extends keyof GlobalConfig>(field: K, config: GlobalConfig[K]) {
+    sendWebsocket({
+        type: "UpdateConfig",
+        config: { [field]: config },
     });
 }
 
-export function editConfig<K extends keyof GlobalConfig>(field: K, config: GlobalConfig[K]) {
-    // @ts-ignore
-    updateConfig((gc) => (gc[field] = config), { [field]: config });
-}
-
 export function editTrackerConfig(id: string, config: TrackerConfig) {
-    updateConfig((gc) => (gc.trackers[id] = config), { trackers: { [id]: config } });
+    sendWebsocket({
+        type: "UpdateConfig",
+        config: { trackers: { [id]: config } },
+    });
 }
 
 export async function removeTracker(id: string) {
@@ -144,6 +133,9 @@ function handleMessage(message: WebsocketServerMessage) {
             break;
         case "SkeletonUpdate":
             bones.set(message.bones as BoneDict);
+            break;
+        case "ConfigUpdate":
+            globalConfig.set(message.config);
             break;
         case "InitialState":
             globalConfig.set(message.config);
