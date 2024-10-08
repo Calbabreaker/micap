@@ -50,7 +50,6 @@ impl Default for SkeletonConfig {
                 (WaistLength, 0.2),
                 (ChestLength, 0.1),
                 (UpperChestLength, 0.1),
-                (HipLength, 0.1),
                 (HipsWidth, 0.3),
                 (UpperLegLength, 0.2),
                 (LowerLegLength, 0.3),

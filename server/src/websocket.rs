@@ -66,8 +66,8 @@ pub struct WebsocketServer {
 impl WebsocketServer {
     pub async fn new() -> anyhow::Result<Self> {
         let address = SocketAddr::from((Ipv4Addr::LOCALHOST, WEBSOCKET_PORT));
-        log::info!("Started websocket server on {address}");
         let listener = TcpListener::bind(address).await?;
+        log::info!("Started websocket server on {address}");
         Ok(Self {
             time_last_send_messages: Instant::now(),
             listener,

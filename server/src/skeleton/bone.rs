@@ -52,7 +52,7 @@ impl BoneLocation {
         use BoneOffsetKind::*;
 
         match self {
-            Self::Hip => glam::vec3a(0., 0., 0.),
+            Self::Hip => glam::vec3a(0., 0., 0.), // Hip will act like a point
             Self::Waist => glam::vec3a(0., offsets[&WaistLength], 0.),
             Self::LeftHip => glam::vec3a(-offsets[&HipsWidth] / 2., 0., 0.),
             Self::RightHip => glam::vec3a(offsets[&HipsWidth] / 2., 0., 0.),

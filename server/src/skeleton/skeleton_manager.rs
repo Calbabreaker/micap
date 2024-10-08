@@ -45,10 +45,10 @@ impl SkeletonManager {
             self.get_tracker_orientation(&[Waist, Chest, UpperChest, Hip]),
         );
 
-        self.set_bone_orientation(
-            Hip,
-            self.get_tracker_orientation(&[Hip, Waist, Chest, UpperChest]),
-        );
+        // self.set_bone_orientation(
+        //     Hip,
+        //     self.get_tracker_orientation(&[Hip, Waist, Chest, UpperChest]),
+        // );
 
         self.set_bone_orientation(
             LeftUpperLeg,

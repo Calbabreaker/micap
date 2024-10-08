@@ -18,11 +18,9 @@
         Object.entries(bonesData).forEach(([location, boneData]) => {
             const quat = new THREE.Quaternion().fromArray(boneData.orientation);
 
-            if (location != "Hip") {
-                const part = modelRef.getObjectByName(location);
-                if (part) {
-                    part.rotation.setFromQuaternion(quat);
-                }
+            const part = modelRef.getObjectByName(location);
+            if (part) {
+                part.rotation.setFromQuaternion(quat);
             }
         });
     }

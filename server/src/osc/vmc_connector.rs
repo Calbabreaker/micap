@@ -49,10 +49,6 @@ impl VmcConnector {
         }));
 
         osc_messages.extend(bones.iter().filter_map(|(location, bone)| {
-            if location == &BoneLocation::Hip {
-                return None;
-            }
-
             let mut args = vec![rosc::OscType::String(location.as_unity_bone()?)];
             // add_osc_transform_args(&mut args, bone.get_head_position(bones), bone.orientation);
             add_osc_transform_args(&mut args, glam::Vec3A::ZERO, bone.orientation);
