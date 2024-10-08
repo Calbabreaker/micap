@@ -136,14 +136,13 @@ pub struct Bone {
     /// Positional offset of the joint
     #[serde(skip)]
     pub tail_offset: glam::Vec3A,
-
     /// Orientation of joint
     #[ts(type = "[number, number, number, number]")]
     pub orientation: glam::Quat,
-
     #[ts(type = "[number, number, number]")]
     pub tail_world_position: glam::Vec3A,
-
+    #[serde(skip)]
+    pub world_orientation: glam::Quat,
     pub parent: Option<BoneLocation>,
 }
 
@@ -161,6 +160,15 @@ impl Bone {
         } else {
             glam::Vec3A::ZERO
         }
+    }
+
+    pub fn get_rotation_degrees(&self) -> glam::Vec3A {
+        let rotation = self.world_orientation.to_scaled_axis();
+        glam::Vec3A::new(
+            rotation.x.to_degrees(),
+            rotation.y.to_degrees(),
+            rotation.z.to_degrees(),
+        )
     }
 }
 

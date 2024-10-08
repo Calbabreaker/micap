@@ -5,7 +5,10 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::{
-    osc::vmc_connector::{VmcConfig, VmcConnector},
+    osc::{
+        vmc_connector::{VmcConfig, VmcConnector},
+        vrchat_connector::{VrChatConfig, VrChatConnector},
+    },
     skeleton::{SkeletonConfig, SkeletonManager},
     tracker::*,
     udp::server::{UdpServer, UDP_PORT},
@@ -15,6 +18,7 @@ use crate::{
 pub struct ServerModules {
     pub udp_server: UdpServer,
     pub vmc_connector: VmcConnector,
+    pub vrchat_connector: VrChatConnector,
     pub websocket_server: WebsocketServer,
 }
 
@@ -32,6 +36,7 @@ impl ServerModules {
                 .await
                 .with_context(|| get_context("UDP", UDP_PORT))?,
             vmc_connector: VmcConnector::new().await?,
+            vrchat_connector: VrChatConnector::new().await?,
         })
     }
 }
@@ -41,17 +46,17 @@ impl ServerModules {
 pub struct GlobalConfig {
     pub trackers: HashMap<Arc<str>, TrackerConfig>,
     pub vmc: VmcConfig,
+    pub vrchat: VrChatConfig,
     pub skeleton: SkeletonConfig,
 }
 
 #[derive(Default, Serialize, Deserialize, TS)]
+#[serde(default)]
 pub struct GlobalConfigUpdate {
     // Note: every field as optional to allow for specific config updates
-    #[ts(optional)]
     pub trackers: Option<HashMap<Arc<str>, TrackerConfig>>,
-    #[ts(optional)]
     pub vmc: Option<VmcConfig>,
-    #[ts(optional)]
+    pub vrchat: Option<VrChatConfig>,
     pub skeleton: Option<SkeletonConfig>,
 }
 
@@ -160,6 +165,11 @@ impl MainServer {
         if let Some(config) = config.vmc {
             modules.vmc_connector.apply_config(&config).await?;
             self.config.vmc = config;
+        }
+
+        if let Some(config) = config.vrchat {
+            modules.vrchat_connector.apply_config(&config).await?;
+            self.config.vrchat = config;
         }
 
         Ok(())

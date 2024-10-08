@@ -1,10 +1,7 @@
-use std::{net::Ipv4Addr, time::SystemTime};
-
 use serde::{Deserialize, Serialize};
-use tokio::net::UdpSocket;
 use ts_rs::TS;
 
-use crate::{main_server::MainServer, skeleton::BoneLocation};
+use crate::{main_server::MainServer, osc::OscConnector};
 
 #[derive(Serialize, Deserialize, TS)]
 #[serde(default)]
@@ -25,13 +22,14 @@ impl Default for VmcConfig {
 }
 
 pub struct VmcConnector {
-    socket: UdpSocket,
+    osc: OscConnector,
 }
 
 impl VmcConnector {
     pub async fn new() -> anyhow::Result<Self> {
-        let socket = UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).await?;
-        Ok(Self { socket })
+        Ok(VmcConnector {
+            osc: OscConnector::new().await?,
+        })
     }
 
     pub async fn update(&mut self, main: &MainServer) -> anyhow::Result<()> {
@@ -41,14 +39,11 @@ impl VmcConnector {
 
         let bones = &main.skeleton_manager.bones;
 
-        let mut osc_messages = Vec::new();
-
-        osc_messages.push(rosc::OscPacket::Message(rosc::OscMessage {
+        let osc_messages = std::iter::once(rosc::OscPacket::Message(rosc::OscMessage {
             addr: "/VMC/Ext/OK".to_string(),
             args: vec![rosc::OscType::Int(1)],
-        }));
-
-        osc_messages.extend(bones.iter().filter_map(|(location, bone)| {
+        }))
+        .chain(bones.iter().filter_map(|(location, bone)| {
             let mut args = vec![rosc::OscType::String(location.as_unity_bone()?)];
             // add_osc_transform_args(&mut args, bone.get_head_position(bones), bone.orientation);
             add_osc_transform_args(&mut args, glam::Vec3A::ZERO, bone.orientation);
@@ -58,30 +53,14 @@ impl VmcConnector {
             }))
         }));
 
-        self.send_osc_bundle(osc_messages).await.ok();
-        Ok(())
-    }
-
-    async fn send_osc_bundle(&mut self, messages: Vec<rosc::OscPacket>) -> anyhow::Result<()> {
-        let msg_buf = rosc::encoder::encode(&rosc::OscPacket::Bundle(rosc::OscBundle {
-            timetag: SystemTime::now().try_into()?,
-            content: messages,
-        }))?;
-        self.socket.send(&msg_buf).await?;
+        self.osc.send_bundle(osc_messages).await.ok();
         Ok(())
     }
 
     pub async fn apply_config(&mut self, config: &VmcConfig) -> anyhow::Result<()> {
-        if !config.enabled {
-            return Ok(());
+        if config.enabled {
+            self.osc.connect(config.send_port).await?;
         }
-
-        self.socket
-            .connect((Ipv4Addr::LOCALHOST, config.send_port))
-            .await?;
-        // Test send
-        self.socket.send(&[]).await?;
-        log::info!("Sending VMC packets to {}", self.socket.peer_addr()?);
         Ok(())
     }
 }

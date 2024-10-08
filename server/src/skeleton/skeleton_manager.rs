@@ -113,15 +113,16 @@ impl SkeletonManager {
         parent_world_orientation: glam::Quat,
     ) {
         let bone = self.bones.get_mut(&location).unwrap();
-        let orientation = parent_world_orientation.mul_quat(bone.orientation);
-        let local_position = orientation.mul_vec3a(bone.tail_offset);
+        let world_orientation = parent_world_orientation.mul_quat(bone.orientation);
+        let local_position = world_orientation.mul_vec3a(bone.tail_offset);
         let world_position = local_position + parent_world_position;
         bone.tail_world_position = world_position;
         bone.tail_world_position.y += self.leg_length;
+        bone.world_orientation = world_orientation;
 
         // Recursively update the children positions
         for child_location in location.get_children() {
-            self.update_bone_recursive(*child_location, world_position, orientation);
+            self.update_bone_recursive(*child_location, world_position, world_orientation);
         }
     }
 }

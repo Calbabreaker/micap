@@ -26,9 +26,7 @@ pub async fn start_server() -> anyhow::Result<()> {
     let mut main = MainServer::default();
     let mut modules = ServerModules::new().await?;
 
-    if let Err(error) = main.load_config(&mut modules).await {
-        log::warn!("Failed to load config: {error:?}");
-    }
+    main.load_config(&mut modules).await?;
 
     let mut looper = Looper::default();
 
