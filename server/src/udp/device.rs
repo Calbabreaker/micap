@@ -115,7 +115,7 @@ impl UdpDevice {
 
     pub fn update_tracker_data(&mut self, data: UdpTrackerData) {
         if let Some(mut tracker) = self.get_tracker(data.tracker_index) {
-            tracker.update_data(data.accleration, data.orientation);
+            tracker.update_data(data.acceleration, data.orientation);
         }
     }
 

@@ -14,7 +14,7 @@ pub enum TrackerStatus {
     TimedOut,
 }
 
-#[derive(Clone, Default, Serialize, TS)]
+#[derive(Clone, Debug, Default, Serialize, TS)]
 pub struct TrackerInfo {
     pub status: TrackerStatus,
     #[ts(optional)]
@@ -24,7 +24,7 @@ pub struct TrackerInfo {
     pub address: Option<SocketAddr>,
 }
 
-#[derive(Default, Serialize, TS)]
+#[derive(Default, Debug, Serialize, TS)]
 pub struct TrackerData {
     #[ts(type = "[number, number, number, number]")]
     pub orientation: glam::Quat,
@@ -34,6 +34,7 @@ pub struct TrackerData {
     pub position: glam::Vec3A,
 }
 
+#[derive(Debug)]
 pub struct TrackerInternal {
     pub to_be_removed: bool,
     pub time_data_last_updated: Instant,
@@ -55,7 +56,7 @@ impl Default for TrackerInternal {
 // We're technically not multithreading but we doing async stuff so this needs to by Sync + Send
 pub type TrackerRef = std::sync::Arc<std::sync::Mutex<Tracker>>;
 
-#[derive(Default, Serialize, TS)]
+#[derive(Debug, Default, Serialize, TS)]
 pub struct Tracker {
     info: TrackerInfo,
     data: TrackerData,

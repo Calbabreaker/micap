@@ -57,10 +57,9 @@ impl UdpPacketHandshake {
         })
     }
 
-    pub const fn to_bytes(&self) -> [u8; 6] {
-        // PACKET_HANDSHAKE + MCSVR
-        [PACKET_HANDSHAKE, b'M', b'C', b'S', b'V', b'R']
-    }
+    /// Represents a server handshake response
+    /// PACKET_HANDSHAKE + MCSVR
+    pub const SERVER_RESPONSE: &[u8] = &[PACKET_HANDSHAKE, b'M', b'C', b'S', b'V', b'R'];
 }
 
 pub struct UdpPacketPingPong {
@@ -113,7 +112,7 @@ impl UdpPacketTrackerStatus {
 pub struct UdpTrackerData {
     pub tracker_index: u8,
     pub orientation: glam::Quat,
-    pub accleration: glam::Vec3A,
+    pub acceleration: glam::Vec3A,
 }
 
 pub struct UdpPacketTrackerData<'a, R: Read> {
@@ -142,7 +141,7 @@ impl<'a, R: Read> UdpPacketTrackerData<'a, R> {
             tracker_index,
             // Swap y and z to make y up
             orientation: glam::Quat::from_xyzw(quat[0], quat[2], quat[1], quat[3]),
-            accleration: glam::Vec3A::new(vec[0], vec[2], vec[1]),
+            acceleration: glam::Vec3A::new(vec[0], vec[2], vec[1]),
         })
     }
 }

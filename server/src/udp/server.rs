@@ -51,7 +51,7 @@ impl UdpServer {
             self.last_upkeep_time = Instant::now();
         }
 
-        let mut buffer = [0_u8; 256];
+        let mut buffer = [0; 256];
         loop {
             // Try and get all the packets that were received
             match self.socket.recv_from(&mut buffer).now_or_never() {
@@ -80,7 +80,7 @@ impl UdpServer {
         }
     }
 
-    async fn upkeep(&mut self) -> anyhow::Result<()> {
+    pub(crate) async fn upkeep(&mut self) -> anyhow::Result<()> {
         let mut to_remove = None;
 
         for device in self.devices_map.values_mut() {
@@ -129,7 +129,9 @@ impl UdpServer {
 
         match packet {
             UdpPacket::Handshake(packet) => {
-                self.socket.send_to(&packet.to_bytes(), peer_addr).await?;
+                self.socket
+                    .send_to(&UdpPacketHandshake::SERVER_RESPONSE, peer_addr)
+                    .await?;
                 self.handle_handshake(packet, peer_addr);
             }
             UdpPacket::PingPong(packet) => {
