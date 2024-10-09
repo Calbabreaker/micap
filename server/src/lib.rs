@@ -1,3 +1,6 @@
+#![allow(clippy::needless_return)]
+
+mod config;
 mod looper;
 mod main_server;
 mod osc;
@@ -7,7 +10,11 @@ pub mod tracker;
 pub mod udp;
 pub mod websocket;
 
+#[cfg(test)]
+mod test;
+
 use crate::{
+    config::GlobalConfig,
     looper::Looper,
     main_server::{MainServer, ServerModules},
 };
@@ -26,7 +33,10 @@ pub async fn start_server() -> anyhow::Result<()> {
     let mut main = MainServer::default();
     let mut modules = ServerModules::new().await?;
 
-    main.load_config(&mut modules).await?;
+    match GlobalConfig::load() {
+        Ok(config_update) => main.apply_config(config_update, &mut modules).await?,
+        Err(err) => log::warn!("Failed to load config: {err}"),
+    }
 
     let mut looper = Looper::default();
 
@@ -42,22 +52,5 @@ pub async fn start_server() -> anyhow::Result<()> {
         }
 
         looper.end_loop_and_wait().await;
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use std::time::Duration;
-
-    #[tokio::test]
-    async fn types_should_be_sync() -> Result<(), tokio::task::JoinError> {
-        // Spawn to make sure all types are Send + Sync
-        tokio::spawn(async {
-            let _ = tokio::time::timeout(Duration::from_secs(2), async {
-                crate::start_server().await.unwrap()
-            })
-            .await;
-        })
-        .await
     }
 }

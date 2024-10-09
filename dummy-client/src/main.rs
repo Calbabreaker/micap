@@ -9,8 +9,9 @@ use micap_server::udp::{
 async fn main() -> anyhow::Result<()> {
     let count: u8 = std::env::args()
         .nth(1)
-        .and_then(|c| c.parse().ok())
-        .unwrap_or(1);
+        .unwrap_or("1".to_string())
+        .parse()
+        .expect("Invalid number");
 
     println!("Spawning {count} tasks");
 
@@ -19,7 +20,7 @@ async fn main() -> anyhow::Result<()> {
     for i in 0..count {
         handles.push(tokio::spawn(async move {
             loop {
-                if let Err(err) = task(i).await {
+                if let Err(err) = connect(i).await {
                     eprintln!("{err}, reconnecting");
                 }
             }
@@ -33,7 +34,7 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn task(id: u8) -> anyhow::Result<()> {
+async fn connect(id: u8) -> anyhow::Result<()> {
     let socket = tokio::net::UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).await?;
     socket.connect((Ipv4Addr::LOCALHOST, UDP_PORT)).await?;
 

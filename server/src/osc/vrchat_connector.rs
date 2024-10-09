@@ -3,7 +3,7 @@ use ts_rs::TS;
 
 use crate::{main_server::MainServer, osc::OscConnector, skeleton::BoneLocation};
 
-#[derive(Serialize, Deserialize, TS)]
+#[derive(Debug, Serialize, Deserialize, TS)]
 #[serde(default)]
 pub struct VrChatConfig {
     enabled: bool,

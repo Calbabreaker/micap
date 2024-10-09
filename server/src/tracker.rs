@@ -52,6 +52,7 @@ impl Default for TrackerInternal {
     }
 }
 
+// We're technically not multithreading but we doing async stuff so this needs to by Sync + Send
 pub type TrackerRef = std::sync::Arc<std::sync::Mutex<Tracker>>;
 
 #[derive(Default, Serialize, TS)]

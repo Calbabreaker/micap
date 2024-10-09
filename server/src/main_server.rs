@@ -1,15 +1,11 @@
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 
 use anyhow::Context;
-use serde::{Deserialize, Serialize};
-use ts_rs::TS;
 
 use crate::{
-    osc::{
-        vmc_connector::{VmcConfig, VmcConnector},
-        vrchat_connector::{VrChatConfig, VrChatConnector},
-    },
-    skeleton::{SkeletonConfig, SkeletonManager},
+    config::{GlobalConfig, GlobalConfigUpdate},
+    osc::{vmc_connector::VmcConnector, vrchat_connector::VrChatConnector},
+    skeleton::SkeletonManager,
     tracker::*,
     udp::server::{UdpServer, UDP_PORT},
     websocket::{WebsocketServer, WEBSOCKET_PORT},
@@ -41,25 +37,6 @@ impl ServerModules {
     }
 }
 
-#[derive(Default, Serialize, Deserialize, TS)]
-#[serde(default)]
-pub struct GlobalConfig {
-    pub trackers: HashMap<Arc<str>, TrackerConfig>,
-    pub vmc: VmcConfig,
-    pub vrchat: VrChatConfig,
-    pub skeleton: SkeletonConfig,
-}
-
-#[derive(Default, Serialize, Deserialize, TS)]
-#[serde(default)]
-pub struct GlobalConfigUpdate {
-    // Note: every field as optional to allow for specific config updates
-    pub trackers: Option<HashMap<Arc<str>, TrackerConfig>>,
-    pub vmc: Option<VmcConfig>,
-    pub vrchat: Option<VrChatConfig>,
-    pub skeleton: Option<SkeletonConfig>,
-}
-
 #[derive(Default)]
 pub struct ServerUpdates {
     pub error: Option<Box<str>>,
@@ -76,38 +53,13 @@ pub struct MainServer {
 }
 
 impl MainServer {
-    pub async fn load_config(&mut self, modules: &mut ServerModules) -> anyhow::Result<()> {
-        let path = get_config_dir()?.join("config.json");
-        log::info!("Loading from {path:?}");
-        let text = std::fs::read_to_string(path)?;
-        let config = serde_json::from_str::<GlobalConfigUpdate>(&text)?;
-
-        if let Some(tracker_config) = config.trackers.as_ref() {
-            for id in tracker_config.keys() {
-                self.trackers.insert(id.clone(), TrackerRef::default());
-            }
-        }
-
-        self.apply_config(config, modules).await?;
-        Ok(())
-    }
-
-    pub fn save_config(&mut self) -> anyhow::Result<()> {
-        let path = get_config_dir()?.join("config.json");
-        log::info!("Saving to {path:?}");
-        let text = serde_json::to_string_pretty(&self.config)?;
-        std::fs::write(path, text)?;
-
-        Ok(())
-    }
-
     pub async fn update(&mut self, modules: &mut ServerModules) -> anyhow::Result<()> {
         modules.udp_server.update(self).await?;
         modules.websocket_server.update(self).await?;
 
         if let Some(config_update) = self.updates.config.take() {
             self.apply_config(config_update, modules).await?;
-            self.save_config()?;
+            self.config.save()?;
         }
 
         self.skeleton_manager.update();
@@ -142,21 +94,12 @@ impl MainServer {
         None
     }
 
-    async fn apply_config(
+    pub async fn apply_config(
         &mut self,
         config: GlobalConfigUpdate,
         modules: &mut ServerModules,
     ) -> anyhow::Result<()> {
-        if let Some(mut tracker_configs) = config.trackers {
-            // Set all the tracker configs provided
-            for (id, config_update) in tracker_configs.drain() {
-                self.config.trackers.insert(id, config_update);
-            }
-
-            self.skeleton_manager
-                .apply_tracker_config(&self.config.trackers, &self.trackers);
-        }
-
+        // Check what update was set and apply specifically to each module
         if let Some(config) = config.skeleton {
             self.skeleton_manager.apply_skeleton_config(&config);
             self.config.skeleton = config;
@@ -172,6 +115,16 @@ impl MainServer {
             self.config.vrchat = config;
         }
 
+        if let Some(mut tracker_configs) = config.trackers {
+            // Set all the tracker configs provided
+            for (id, config_update) in tracker_configs.drain() {
+                self.config.trackers.insert(id, config_update);
+            }
+
+            self.skeleton_manager
+                .apply_tracker_config(&self.config.trackers, &self.trackers);
+        }
+
         modules.websocket_server.send_config(&self.config).await?;
         Ok(())
     }
@@ -185,15 +138,4 @@ impl MainServer {
 
         self.trackers.get(id).cloned()
     }
-}
-
-pub fn get_config_dir() -> anyhow::Result<PathBuf> {
-    let config_folder = dirs::config_dir()
-        .ok_or_else(|| anyhow::anyhow!("Failed to get a config directory"))?
-        .join("micap");
-
-    if !config_folder.is_dir() {
-        std::fs::create_dir_all(&config_folder)?;
-    }
-    Ok(config_folder)
 }

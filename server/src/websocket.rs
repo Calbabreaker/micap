@@ -11,7 +11,8 @@ use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 use ts_rs::TS;
 
 use crate::{
-    main_server::{GlobalConfig, GlobalConfigUpdate, MainServer},
+    config::{GlobalConfig, GlobalConfigUpdate},
+    main_server::MainServer,
     serial::SerialPortManager,
     skeleton::{Bone, BoneLocation},
     tracker::TrackerRef,

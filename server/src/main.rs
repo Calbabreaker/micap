@@ -1,5 +1,9 @@
+#![allow(clippy::needless_return)]
+
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() {
     micap_server::setup_log();
-    micap_server::start_server().await
+    if let Err(err) = micap_server::start_server().await {
+        log::error!("Server error: {err:?}")
+    }
 }
