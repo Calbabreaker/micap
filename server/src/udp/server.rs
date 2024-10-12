@@ -130,7 +130,7 @@ impl UdpServer {
         match packet {
             UdpPacket::Handshake(packet) => {
                 self.socket
-                    .send_to(&UdpPacketHandshake::SERVER_RESPONSE, peer_addr)
+                    .send_to(UdpPacketHandshake::SERVER_RESPONSE, peer_addr)
                     .await?;
                 self.handle_handshake(packet, peer_addr);
             }

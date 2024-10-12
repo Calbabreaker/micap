@@ -118,6 +118,11 @@ impl MainServer {
         if let Some(mut tracker_configs) = config.trackers {
             // Set all the tracker configs provided
             for (id, config_update) in tracker_configs.drain() {
+                // Insert tracker if not exist (usually in first load)
+                if !self.trackers.contains_key(&id) {
+                    self.trackers.insert(id.clone(), TrackerRef::default());
+                }
+
                 self.config.trackers.insert(id, config_update);
             }
 

@@ -1,5 +1,3 @@
-#![allow(clippy::needless_return)]
-
 mod config;
 mod looper;
 mod main_server;
@@ -48,7 +46,7 @@ pub async fn start_server() -> anyhow::Result<()> {
 
         if let Err(err) = result {
             log::error!("{err:?}");
-            main.updates.error = Some(Box::from(err.to_string()));
+            main.updates.error = Some(err.to_string().into());
         }
 
         looper.end_loop_and_wait().await;

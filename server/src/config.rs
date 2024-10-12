@@ -9,7 +9,7 @@ use crate::{
     tracker::TrackerConfig,
 };
 
-#[derive(Debug, Default, Serialize, Deserialize, TS)]
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TS)]
 #[serde(default)]
 pub struct GlobalConfig {
     pub trackers: HashMap<Arc<str>, TrackerConfig>,
@@ -47,11 +47,14 @@ impl GlobalConfig {
 }
 
 pub fn get_config_dir() -> anyhow::Result<PathBuf> {
-    let config_folder = dirs::config_dir()
-        .ok_or_else(|| anyhow::anyhow!("Failed to get a config directory"))?
-        .join("micap");
+    let env_dir = std::env::var("MICAP_CONFIG_DIR").ok().map(PathBuf::from);
+    let default_dir = dirs::config_dir().map(|p| p.join("micap"));
 
-    if !config_folder.is_dir() {
+    let config_folder = env_dir
+        .or(default_dir)
+        .ok_or_else(|| anyhow::anyhow!("Failed to get a config directory"))?;
+
+    if !config_folder.exists() {
         std::fs::create_dir_all(&config_folder)?;
     }
     Ok(config_folder)

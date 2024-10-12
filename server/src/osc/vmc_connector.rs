@@ -3,7 +3,7 @@ use ts_rs::TS;
 
 use crate::{main_server::MainServer, osc::OscConnector};
 
-#[derive(Debug, Serialize, Deserialize, TS)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, TS)]
 #[serde(default)]
 pub struct VmcConfig {
     enabled: bool,
