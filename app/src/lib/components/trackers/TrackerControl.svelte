@@ -13,8 +13,9 @@
     export let showInspect = false;
     export let id: string;
 
-    export const commonBoneLocations = [
+    const commonBoneLocations = [
         "None",
+        "Head",
         "Hip",
         "LeftUpperLeg",
         "RightUpperLeg",

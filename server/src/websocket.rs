@@ -4,7 +4,6 @@ use std::{
     collections::HashMap,
     net::{Ipv4Addr, SocketAddr},
     sync::Arc,
-    time::{Duration, Instant},
 };
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
@@ -64,7 +63,6 @@ pub struct WebsocketServer {
     listener: TcpListener,
     ws_stream: Option<WebSocketStream<TcpStream>>,
     serial_manager: SerialPortManager,
-    time_last_send_messages: Instant,
 }
 
 impl WebsocketServer {
@@ -73,7 +71,6 @@ impl WebsocketServer {
         let listener = TcpListener::bind(address).await?;
         log::info!("Started websocket server on {address}");
         Ok(Self {
-            time_last_send_messages: Instant::now(),
             listener,
             ws_stream: None,
             serial_manager: SerialPortManager::default(),
@@ -101,11 +98,7 @@ impl WebsocketServer {
             self.try_receive_ws_connection(main).await?;
         }
 
-        // Limit ws sending to 60 times per second
-        if self.time_last_send_messages.elapsed() > Duration::from_millis(1000 / 60) {
-            self.send_ws_messages(main).await?;
-            self.time_last_send_messages = Instant::now();
-        }
+        self.send_ws_messages(main).await?;
 
         Ok(())
     }

@@ -2,8 +2,9 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     skeleton::{Bone, BoneLocation, BoneOffsetKind, SkeletonConfig},
-    tracker::{TrackerConfig, TrackerRef},
+    tracker::{TrackerConfig, TrackerRef, TrackerStatus},
 };
+use BoneLocation::*;
 
 pub struct SkeletonManager {
     pub bones: HashMap<BoneLocation, Bone>,
@@ -28,34 +29,89 @@ impl Default for SkeletonManager {
 
 impl SkeletonManager {
     pub fn update(&mut self) {
-        use BoneLocation::*;
+        self.update_head();
+        self.update_spine();
+        self.update_leg(LeftUpperLeg, LeftLowerLeg, LeftFoot);
+        self.update_leg(RightUpperLeg, RightLowerLeg, RightFoot);
+        self.update_arm(LeftShoulder, LeftUpperArm, LeftLowerArm, LeftHand);
+        self.update_arm(RightShoulder, RightUpperArm, RightLowerArm, RightHand);
 
+        // Update the hip and consequently every bone
         self.update_bone_recursive(BoneLocation::Hip, glam::Vec3A::ZERO, glam::Quat::IDENTITY);
+    }
 
-        let head_orientation =
-            self.get_tracker_orientation(&[Head, Neck, UpperChest, Chest, Waist, Hip]);
-        self.set_bone_orientation(&[Head, Neck], head_orientation);
+    fn update_head(&mut self) {
+        if let Some(quat) =
+            self.get_tracker_orientation(&[Head, Neck, UpperChest, Chest, Waist, Hip])
+        {
+            self.set_bone_orientation(&[Head, Neck], quat);
+        }
+    }
 
-        if self.check_trackers_exist(&[UpperChest, Chest, Waist, Hip]) {
-            self.set_bone_orientation(
-                &[UpperChest],
-                self.get_tracker_orientation(&[UpperChest, Chest, Waist, Hip]),
-            );
+    fn update_spine(&mut self) {
+        if self.check_any_trackers_exist(&[UpperChest, Chest, Waist, Hip]) {
+            if let Some(quat) = self.get_tracker_orientation(&[UpperChest, Chest, Waist, Hip]) {
+                self.set_bone_orientation(&[UpperChest], quat);
+            }
 
-            self.set_bone_orientation(
-                &[Chest],
-                self.get_tracker_orientation(&[Chest, UpperChest, Waist, Hip]),
-            );
+            if let Some(quat) = self.get_tracker_orientation(&[Chest, UpperChest, Waist, Hip]) {
+                self.set_bone_orientation(&[Chest], quat);
+            }
 
-            self.set_bone_orientation(
-                &[Waist],
-                self.get_tracker_orientation(&[Waist, Chest, UpperChest, Hip]),
-            );
-        } else if let Some(orientation) = head_orientation {
+            if let Some(quat) = self.get_tracker_orientation(&[Waist, Chest, UpperChest, Hip]) {
+                self.set_bone_orientation(&[Waist], quat);
+            }
+        } else {
             // Use the head yaw instead
-            let (_, yaw, _) = orientation.to_euler(glam::EulerRot::XYZ);
-            let quat = glam::Quat::from_euler(glam::EulerRot::XYZ, 0., yaw, 0.);
-            self.set_bone_orientation(&[Waist, UpperChest, Chest], Some(quat));
+            let quat = self.bones[&Head].orientation;
+            self.set_bone_orientation(&[Waist, UpperChest, Chest], locked_with_yaw(quat));
+        }
+    }
+
+    fn update_leg(&mut self, upper_leg: BoneLocation, lower_leg: BoneLocation, foot: BoneLocation) {
+        let mut leg_quat = self
+            .get_tracker_orientation(&[upper_leg])
+            .unwrap_or(locked_with_yaw(self.bones[&Waist].orientation));
+        self.set_bone_orientation(&[upper_leg], leg_quat);
+
+        // Use the lower leg tracker or the upper leg (locked to yaw)
+        leg_quat = self
+            .get_tracker_orientation(&[lower_leg])
+            .unwrap_or(locked_with_yaw(leg_quat));
+        self.set_bone_orientation(&[lower_leg], leg_quat);
+
+        leg_quat = self.get_tracker_orientation(&[foot]).unwrap_or(leg_quat);
+        self.set_bone_orientation(&[foot], leg_quat);
+    }
+
+    fn update_arm(
+        &mut self,
+        shoulder: BoneLocation,
+        upper_arm: BoneLocation,
+        lower_arm: BoneLocation,
+        hand: BoneLocation,
+    ) {
+        let upper_chest_quat = self.bones[&UpperChest].orientation;
+        let shoulder_quat = self
+            .get_tracker_orientation(&[shoulder])
+            .unwrap_or(upper_chest_quat);
+        self.set_bone_orientation(&[shoulder], shoulder_quat);
+
+        if self.check_any_trackers_exist(&[upper_arm, lower_arm]) {
+            if let Some(quat) = self.get_tracker_orientation(&[upper_arm, lower_arm]) {
+                self.set_bone_orientation(&[upper_arm], quat);
+            }
+
+            if let Some(quat) = self.get_tracker_orientation(&[lower_arm, upper_arm]) {
+                self.set_bone_orientation(&[lower_arm], quat);
+            }
+        } else {
+            // Use upper chest rotation instead
+            self.set_bone_orientation(&[upper_arm, lower_arm], upper_chest_quat);
+        }
+
+        if let Some(quat) = self.get_tracker_orientation(&[hand]) {
+            self.set_bone_orientation(&[hand], quat);
         }
     }
 
@@ -82,22 +138,16 @@ impl SkeletonManager {
         }
     }
 
-    fn check_trackers_exist(&self, locations: &[BoneLocation]) -> bool {
+    fn check_any_trackers_exist(&self, locations: &[BoneLocation]) -> bool {
         locations
             .iter()
             .any(|location| self.trackers.contains_key(location))
     }
 
-    fn set_bone_orientation(
-        &mut self,
-        locations: &[BoneLocation],
-        orientation: Option<glam::Quat>,
-    ) {
-        if let Some(orientation) = orientation {
-            for location in locations {
-                let bone = self.bones.get_mut(location).unwrap();
-                bone.orientation = orientation;
-            }
+    fn set_bone_orientation(&mut self, locations: &[BoneLocation], orientation: glam::Quat) {
+        for location in locations {
+            let bone = self.bones.get_mut(location).unwrap();
+            bone.orientation = orientation;
         }
     }
 
@@ -106,7 +156,7 @@ impl SkeletonManager {
         locations.iter().find_map(|location| {
             let tracker = self.trackers.get(location)?;
             let tracker = tracker.lock().unwrap();
-            if tracker.internal.was_updated {
+            if tracker.info().status == TrackerStatus::Ok {
                 Some(tracker.data().orientation)
             } else {
                 None
@@ -134,4 +184,9 @@ impl SkeletonManager {
             self.update_bone_recursive(*child_location, world_position, world_orientation);
         }
     }
+}
+
+fn locked_with_yaw(quat: glam::Quat) -> glam::Quat {
+    let (_, yaw, _) = quat.to_euler(glam::EulerRot::XYZ);
+    glam::Quat::from_euler(glam::EulerRot::XYZ, 0., yaw, 0.)
 }

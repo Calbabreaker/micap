@@ -53,6 +53,6 @@ pub async fn start_server() -> anyhow::Result<()> {
             main.updates.error = Some(err.to_string().into());
         }
 
-        looper.end_loop_and_wait().await;
+        looper.loop_end_wait().await;
     }
 }

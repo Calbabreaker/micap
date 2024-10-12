@@ -12,7 +12,7 @@ impl Default for Looper {
         Self {
             update_start_time: Instant::now(),
             delta_total: Duration::ZERO,
-            print_loop_time_rate: std::env::var("PRINT_TIME_RATE")
+            print_loop_time_rate: std::env::var("PRINT_LOOP_RATE")
                 .ok()
                 .and_then(|var| var.parse().ok())
                 .unwrap_or(0),
@@ -28,11 +28,11 @@ impl Looper {
         self.update_start_time = Instant::now();
     }
 
-    pub async fn end_loop_and_wait(&mut self) {
-        let post_delta = self.update_start_time.elapsed();
+    pub async fn loop_end_wait(&mut self) {
+        let loop_delta = self.update_start_time.elapsed();
 
         if self.print_loop_time_rate > 0 {
-            self.delta_total += post_delta;
+            self.delta_total += loop_delta;
             self.loop_count += 1;
             if self.loop_count % self.print_loop_time_rate == 0 {
                 log::info!(
@@ -43,12 +43,12 @@ impl Looper {
             }
         }
 
-        if let Some(sleep_duration) = Self::TARGET_LOOP_DELTA.checked_sub(post_delta) {
+        if let Some(sleep_duration) = Self::TARGET_LOOP_DELTA.checked_sub(loop_delta) {
             tokio::time::sleep(sleep_duration).await;
         } else {
             log::warn!(
                 "Main server loop took {:?} which is longer than target {:?}",
-                post_delta,
+                loop_delta,
                 Self::TARGET_LOOP_DELTA
             );
         }

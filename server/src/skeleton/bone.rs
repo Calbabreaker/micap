@@ -79,7 +79,7 @@ impl BoneLocation {
             }
             Self::LeftHand | Self::RightHand => glam::vec3a(0., -offsets[&HandLength], 0.),
             Self::Neck => glam::vec3a(0., offsets[&NeckLength], 0.),
-            Self::Head => glam::vec3a(0., 0., 0.),
+            Self::Head => glam::vec3a(0., 0.05, 0.),
         }
     }
 
@@ -162,12 +162,12 @@ impl Bone {
         }
     }
 
-    pub fn get_rotation_degrees(&self) -> glam::Vec3A {
-        let rotation = self.world_orientation.to_scaled_axis();
+    pub fn get_euler_rotation(&self) -> glam::Vec3A {
+        let angles = self.world_orientation.to_euler(glam::EulerRot::XYZ);
         glam::Vec3A::new(
-            rotation.x.to_degrees(),
-            rotation.y.to_degrees(),
-            rotation.z.to_degrees(),
+            angles.0.to_degrees(),
+            angles.1.to_degrees(),
+            angles.2.to_degrees(),
         )
     }
 }
