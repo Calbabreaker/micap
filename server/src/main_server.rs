@@ -100,21 +100,6 @@ impl MainServer {
         modules: &mut ServerModules,
     ) -> anyhow::Result<()> {
         // Check what update was set and apply specifically to each module
-        if let Some(config) = config.skeleton {
-            self.skeleton_manager.apply_skeleton_config(&config);
-            self.config.skeleton = config;
-        }
-
-        if let Some(config) = config.vmc {
-            modules.vmc_connector.apply_config(&config).await?;
-            self.config.vmc = config;
-        }
-
-        if let Some(config) = config.vrchat {
-            modules.vrchat_connector.apply_config(&config).await?;
-            self.config.vrchat = config;
-        }
-
         if let Some(mut tracker_configs) = config.trackers {
             // Set all the tracker configs provided
             for (id, config_update) in tracker_configs.drain() {
@@ -128,6 +113,21 @@ impl MainServer {
 
             self.skeleton_manager
                 .apply_tracker_config(&self.config.trackers, &self.trackers);
+        }
+
+        if let Some(config) = config.skeleton {
+            self.skeleton_manager.apply_skeleton_config(&config);
+            self.config.skeleton = config;
+        }
+
+        if let Some(config) = config.vrchat {
+            modules.vrchat_connector.apply_config(&config).await?;
+            self.config.vrchat = config;
+        }
+
+        if let Some(config) = config.vmc {
+            modules.vmc_connector.apply_config(&config).await?;
+            self.config.vmc = config;
         }
 
         modules.websocket_server.send_config(&self.config).await?;

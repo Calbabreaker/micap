@@ -28,7 +28,8 @@ impl OscConnector {
 
     pub async fn connect(&mut self, port: u16) -> anyhow::Result<()> {
         self.socket.connect((Ipv4Addr::LOCALHOST, port)).await?;
-        // Test send
+        // Test send (2 sees to make it consistent)
+        self.socket.send(&[]).await?;
         self.socket.send(&[]).await?;
         log::info!("Sending OSC packets to {}", self.socket.peer_addr()?);
         Ok(())

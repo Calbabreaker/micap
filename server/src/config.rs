@@ -18,7 +18,7 @@ pub struct GlobalConfig {
     pub skeleton: SkeletonConfig,
 }
 
-#[derive(Default, Serialize, Deserialize, TS)]
+#[derive(Default, Debug, Serialize, Deserialize, TS)]
 #[serde(default)]
 pub struct GlobalConfigUpdate {
     // Note: every field as optional to allow for specific config updates

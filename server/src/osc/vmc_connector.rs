@@ -6,9 +6,9 @@ use crate::{main_server::MainServer, osc::OscConnector};
 #[derive(Debug, PartialEq, Serialize, Deserialize, TS)]
 #[serde(default)]
 pub struct VmcConfig {
-    enabled: bool,
-    send_port: u16,
-    receive_port: u16,
+    pub enabled: bool,
+    pub send_port: u16,
+    pub receive_port: u16,
 }
 
 impl Default for VmcConfig {
