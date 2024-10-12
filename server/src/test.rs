@@ -13,8 +13,12 @@ use crate::{
 // Run tests sequentially since server requires listenting to the port
 #[tokio::test]
 async fn tests_sequential() -> anyhow::Result<()> {
-    test_tracker_device_send().await?;
-    test_config().await?;
+    // Use spawn to check for Send + Sync
+    tokio::spawn(async {
+        test_tracker_device_send().await.unwrap();
+        test_config().await.unwrap();
+    })
+    .await?;
     Ok(())
 }
 
