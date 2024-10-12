@@ -162,7 +162,7 @@ impl Bone {
         }
     }
 
-    pub fn get_euler_rotation(&self) -> glam::Vec3A {
+    pub fn get_world_euler_rotation(&self) -> glam::Vec3A {
         let angles = self.world_orientation.to_euler(glam::EulerRot::XYZ);
         glam::Vec3A::new(
             angles.0.to_degrees(),

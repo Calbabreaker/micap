@@ -57,6 +57,7 @@ pub enum WebsocketClientMessage {
     SerialSend { data: Box<str> },
     RemoveTracker { id: Box<str> },
     UpdateConfig { config: GlobalConfigUpdate },
+    ResetSkeletonOrientation,
 }
 
 pub struct WebsocketServer {
@@ -191,6 +192,12 @@ impl WebsocketServer {
             }
             WebsocketClientMessage::UpdateConfig { config } => {
                 main.updates.config = Some(config);
+            }
+            WebsocketClientMessage::ResetSkeletonOrientation => {
+                for tracker in main.trackers.values() {
+                    let mut tracker = tracker.lock().unwrap();
+                    tracker.internal.orientation_offset = tracker.data().orientation.inverse();
+                }
             }
         }
 

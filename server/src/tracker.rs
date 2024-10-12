@@ -40,6 +40,8 @@ pub struct TrackerInternal {
     pub time_data_last_updated: Instant,
     pub velocity: glam::Vec3A,
     pub was_updated: bool,
+    /// Offset orientation from when skeleton orientation was reset
+    pub orientation_offset: glam::Quat,
 }
 
 impl Default for TrackerInternal {
@@ -49,6 +51,7 @@ impl Default for TrackerInternal {
             time_data_last_updated: Instant::now(),
             velocity: glam::Vec3A::default(),
             was_updated: false,
+            orientation_offset: glam::Quat::IDENTITY,
         }
     }
 }
@@ -66,7 +69,7 @@ pub struct Tracker {
 
 impl Tracker {
     pub fn update_data(&mut self, acceleration: glam::Vec3A, orientation: glam::Quat) {
-        self.data.orientation = orientation;
+        self.data.orientation = orientation * self.internal.orientation_offset;
         self.data.acceleration = acceleration;
 
         let delta = self.internal.time_data_last_updated.elapsed().as_secs_f32();

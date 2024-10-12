@@ -4,11 +4,11 @@
 
 @layer components {
     .btn {
-        @apply shadow rounded border border-gray-300 px-3 py-2 bg-white hover:text-sky-600 cursor-pointer text-neutral-800;
+        @apply shadow rounded border border-gray-300 px-3 py-2 bg-white hover:text-sky-600 cursor-pointer text-neutral-800 disabled:cursor-not-allowed disabled:text-neutral-400;
     }
 
     .btn-primary {
-        @apply bg-sky-600 border-sky-500 text-white hover:text-white disabled:text-white hover:bg-sky-700 text-white;
+        @apply bg-sky-600 border-sky-500 text-white hover:text-white disabled:bg-sky-900 hover:bg-sky-700 text-white;
     }
 
     .btn-small {
@@ -16,15 +16,11 @@
     }
 
     .btn-icon {
-        @apply hover:bg-neutral-300/40 p-1;
+        @apply hover:bg-neutral-300/40 p-1 disabled:text-neutral-500 disabled:cursor-not-allowed;
     }
 
     .btn-icon > svg {
         @apply w-4 h-4;
-    }
-
-    .btn-icon:disabled {
-        @apply text-neutral-500 cursor-not-allowed;
     }
 
     svg {
