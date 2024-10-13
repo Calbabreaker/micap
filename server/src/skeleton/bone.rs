@@ -35,9 +35,11 @@ pub enum BoneLocation {
 }
 
 impl BoneLocation {
+    pub const ROOT: Self = Self::Hip;
+
     /// Maps to bone names used in unity, this is also what VRM uses
     /// https://docs.unity3d.com/ScriptReference/HumanBodyBones.html
-    pub fn as_unity_bone(&self) -> Option<String> {
+    pub fn as_unity_name(&self) -> Option<String> {
         match self {
             // Only these values are different
             Self::Hip => Some("Hips".to_string()),
@@ -88,26 +90,28 @@ impl BoneLocation {
         (Self::Hip, None),
         (Self::Waist, Some(Self::Hip)),
         (Self::LeftHip, Some(Self::Hip)),
-        (Self::RightHip, Some(Self::Hip)),
         (Self::LeftUpperLeg, Some(Self::LeftHip)),
         (Self::LeftLowerLeg, Some(Self::LeftUpperLeg)),
         (Self::LeftFoot, Some(Self::LeftLowerLeg)),
+        (Self::RightHip, Some(Self::Hip)),
         (Self::RightUpperLeg, Some(Self::RightHip)),
         (Self::RightLowerLeg, Some(Self::RightUpperLeg)),
         (Self::RightFoot, Some(Self::RightLowerLeg)),
         (Self::Chest, Some(Self::Waist)),
         (Self::UpperChest, Some(Self::Chest)),
         (Self::LeftShoulder, Some(Self::UpperChest)),
-        (Self::RightShoulder, Some(Self::UpperChest)),
         (Self::LeftUpperArm, Some(Self::LeftShoulder)),
-        (Self::LeftLowerArm, Some(Self::LeftShoulder)),
+        (Self::LeftLowerArm, Some(Self::LeftUpperArm)),
         (Self::LeftHand, Some(Self::LeftLowerArm)),
+        (Self::RightShoulder, Some(Self::UpperChest)),
         (Self::RightUpperArm, Some(Self::RightShoulder)),
-        (Self::RightLowerArm, Some(Self::RightShoulder)),
+        (Self::RightLowerArm, Some(Self::RightUpperArm)),
         (Self::RightHand, Some(Self::RightLowerArm)),
         (Self::Neck, Some(Self::UpperChest)),
         (Self::Head, Some(Self::Neck)),
     ];
+
+    pub const BONE_LOCATION_COUNT: usize = Self::SELF_AND_PARENT.len();
 
     pub fn get_children(&self) -> &[Self] {
         &BONE_LOCATION_TO_CHILDREN[self]
@@ -154,22 +158,23 @@ impl Bone {
         }
     }
 
-    pub fn get_head_position(&self, bones: &HashMap<BoneLocation, Bone>) -> glam::Vec3A {
+    pub fn get_head_offset(&self, bones: &HashMap<BoneLocation, Bone>) -> glam::Vec3A {
         if let Some(location) = self.parent {
             bones[&location].tail_offset
         } else {
             glam::Vec3A::ZERO
         }
     }
+}
 
-    pub fn get_world_euler_rotation(&self) -> glam::Vec3A {
-        let angles = self.world_orientation.to_euler(glam::EulerRot::XYZ);
-        glam::Vec3A::new(
-            angles.0.to_degrees(),
-            angles.1.to_degrees(),
-            angles.2.to_degrees(),
-        )
-    }
+// Returns the euler angles orientation as a vector in degrees
+pub fn to_euler_angles_vector(orientation: glam::Quat, order: glam::EulerRot) -> glam::Vec3A {
+    let angles = orientation.to_euler(order);
+    glam::Vec3A::new(
+        angles.0.to_degrees(),
+        angles.1.to_degrees(),
+        angles.2.to_degrees(),
+    )
 }
 
 #[cfg(test)]

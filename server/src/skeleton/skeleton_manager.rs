@@ -9,7 +9,7 @@ use BoneLocation::*;
 pub struct SkeletonManager {
     pub bones: HashMap<BoneLocation, Bone>,
     trackers: HashMap<BoneLocation, TrackerRef>,
-    leg_length: f32,
+    pub root_position: glam::Vec3A,
 }
 
 impl Default for SkeletonManager {
@@ -20,9 +20,9 @@ impl Default for SkeletonManager {
             .collect();
 
         Self {
+            root_position: glam::Vec3A::ZERO,
             bones,
             trackers: HashMap::new(),
-            leg_length: 0.,
         }
     }
 }
@@ -37,7 +37,7 @@ impl SkeletonManager {
         self.update_arm(RightShoulder, RightUpperArm, RightLowerArm, RightHand);
 
         // Update the hip and consequently every bone
-        self.update_bone_recursive(BoneLocation::Hip, glam::Vec3A::ZERO, glam::Quat::IDENTITY);
+        self.update_bone_recursive(BoneLocation::Hip, self.root_position, glam::Quat::IDENTITY);
     }
 
     fn update_head(&mut self) {
@@ -58,7 +58,7 @@ impl SkeletonManager {
                 self.set_bone_orientation(&[Chest], quat);
             }
 
-            if let Some(quat) = self.get_tracker_orientation(&[Waist, Chest, UpperChest, Hip]) {
+            if let Some(quat) = self.get_tracker_orientation(&[Waist, Hip, Chest, UpperChest]) {
                 self.set_bone_orientation(&[Waist], quat);
             }
         } else {
@@ -131,7 +131,8 @@ impl SkeletonManager {
 
     pub fn apply_skeleton_config(&mut self, config: &SkeletonConfig) {
         use BoneOffsetKind::*;
-        self.leg_length = config.offsets[&LowerLegLength] + config.offsets[&UpperLegLength];
+        let leg_length = config.offsets[&LowerLegLength] + config.offsets[&UpperLegLength];
+        self.root_position.y = leg_length;
 
         for (location, bone) in &mut self.bones {
             bone.tail_offset = location.get_tail_offset(&config.offsets);
@@ -172,12 +173,13 @@ impl SkeletonManager {
         parent_world_orientation: glam::Quat,
     ) {
         let bone = self.bones.get_mut(&location).unwrap();
-        let world_orientation = parent_world_orientation * bone.orientation;
+
+        let world_orientation = bone.orientation * parent_world_orientation;
+        bone.world_orientation = world_orientation;
+
         let local_position = world_orientation * bone.tail_offset;
         let world_position = local_position + parent_world_position;
         bone.tail_world_position = world_position;
-        bone.tail_world_position.y += self.leg_length;
-        bone.world_orientation = world_orientation;
 
         // Recursively update the children positions
         for child_location in location.get_children() {

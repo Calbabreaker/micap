@@ -42,6 +42,7 @@ pub struct TrackerInternal {
     pub was_updated: bool,
     /// Offset orientation from when skeleton orientation was reset
     pub orientation_offset: glam::Quat,
+    pub raw_orientation: glam::Quat,
 }
 
 impl Default for TrackerInternal {
@@ -52,6 +53,7 @@ impl Default for TrackerInternal {
             velocity: glam::Vec3A::default(),
             was_updated: false,
             orientation_offset: glam::Quat::IDENTITY,
+            raw_orientation: glam::Quat::IDENTITY,
         }
     }
 }

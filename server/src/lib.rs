@@ -2,6 +2,7 @@ mod config;
 mod looper;
 mod main_server;
 mod osc;
+mod record;
 mod serial;
 mod skeleton;
 pub mod tracker;

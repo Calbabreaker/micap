@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use tauri::Manager;
+use tauri_plugin_dialog::DialogExt;
 
 fn main() {
     // If LANG not set to en, it shows blank window for some reason
@@ -9,6 +10,7 @@ fn main() {
 
     micap_server::setup_log();
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .setup(setup)
         .run(tauri::generate_context!())
         .expect("Error while running tauri application");
@@ -23,8 +25,9 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Start server
-    tauri::async_runtime::spawn(async {
-        if let Err(error) = micap_server::start_server().await {
+    let dialog = app.dialog().clone();
+    tauri::async_runtime::spawn(async move {
+        if let Err(error) = start_server().await {
             let note = if std::env::var("RUST_BACKTRACE") != Ok("1".to_string()) {
                 "Note: set environment variable RUST_BACKTRACE=1 to see the error backtrace"
             } else {
@@ -33,17 +36,23 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 
             let description = format!("{error:?}\n\n{note}");
             log::error!("Server error: {description}");
-            rfd::MessageDialog::new()
-                .set_level(rfd::MessageLevel::Error)
-                .set_title("Server error")
-                .set_description(&description)
-                .set_buttons(rfd::MessageButtons::Ok)
-                .show();
+            dialog
+                .message(description)
+                .title("Server error")
+                .kind(tauri_plugin_dialog::MessageDialogKind::Error)
+                .buttons(tauri_plugin_dialog::MessageDialogButtons::Ok)
+                .blocking_show();
 
             std::process::exit(1);
         }
     });
 
+    Ok(())
+}
+
+// Start two nested tasks to listen for panics
+async fn start_server() -> anyhow::Result<()> {
+    tauri::async_runtime::spawn(async { micap_server::start_server().await }).await??;
     Ok(())
 }
 

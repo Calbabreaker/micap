@@ -18,7 +18,8 @@ tauri = { version = "2", features = ["tray-icon"] }
 micap-server = { path = "../../server" }
 log = "0.4"
 tokio = { version = "1" }
-rfd = { version = "0.15", features = ["gtk3"], default-features = false }
+tauri-plugin-dialog = "2"
+anyhow = "1"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem and the built-in dev server is disabled.

@@ -2,7 +2,9 @@ use futures_util::{FutureExt, SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
+    fs::File,
     net::{Ipv4Addr, SocketAddr},
+    path::PathBuf,
     sync::Arc,
 };
 use tokio::net::{TcpListener, TcpStream};
@@ -12,6 +14,7 @@ use ts_rs::TS;
 use crate::{
     config::{GlobalConfig, GlobalConfigUpdate},
     main_server::MainServer,
+    record::BvhSaver,
     serial::SerialPortManager,
     skeleton::{Bone, BoneLocation},
     tracker::TrackerRef,
@@ -57,7 +60,9 @@ pub enum WebsocketClientMessage {
     SerialSend { data: Box<str> },
     RemoveTracker { id: Box<str> },
     UpdateConfig { config: GlobalConfigUpdate },
-    ResetSkeletonOrientation,
+    ResetTrackerOrientations,
+    StartRecord,
+    StopRecord { save_path: PathBuf },
 }
 
 pub struct WebsocketServer {
@@ -193,11 +198,17 @@ impl WebsocketServer {
             WebsocketClientMessage::UpdateConfig { config } => {
                 main.updates.config = Some(config);
             }
-            WebsocketClientMessage::ResetSkeletonOrientation => {
+            WebsocketClientMessage::ResetTrackerOrientations => {
                 for tracker in main.trackers.values() {
                     let mut tracker = tracker.lock().unwrap();
                     tracker.internal.orientation_offset = tracker.data().orientation.inverse();
                 }
+            }
+            WebsocketClientMessage::StartRecord => main.motion_recorder.start_record(),
+            WebsocketClientMessage::StopRecord { save_path } => {
+                let frames = main.motion_recorder.stop_record();
+                let file = File::create(save_path)?;
+                BvhSaver::new(file, &main.skeleton_manager).save(frames)?;
             }
         }
 

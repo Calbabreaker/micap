@@ -1,7 +1,6 @@
 <script lang="ts">
     import PreviewCanvas from "../PreviewCanvas.svelte";
     import SkeletonScene from "$lib/components/skeleton/SkeletonScene.svelte";
-    import SkeletonControls from "./SkeletonControls.svelte";
 
     let showLines = false;
     let showModel = true;
@@ -19,7 +18,6 @@
             <input type="checkbox" bind:checked={showModel} />
         </div>
     </div>
-    <SkeletonControls />
 </div>
 <PreviewCanvas>
     <SkeletonScene {showLines} {showModel} />

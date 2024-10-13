@@ -5,6 +5,7 @@ use anyhow::Context;
 use crate::{
     config::{GlobalConfig, GlobalConfigUpdate},
     osc::{vmc_connector::VmcConnector, vrchat_connector::VrChatConnector},
+    record::MotionRecorder,
     skeleton::SkeletonManager,
     tracker::*,
     udp::server::{UdpServer, UDP_PORT},
@@ -21,7 +22,7 @@ pub struct ServerModules {
 impl ServerModules {
     pub async fn new() -> anyhow::Result<Self> {
         fn get_context(server: &str, port: u16) -> String {
-            format!("Failed to start {server} server!\nNote: Port {port} needs to be open")
+            format!("Failed to start {server} server!\nNote: Port {port} needs to be open, check if another instance is already runnning")
         }
 
         Ok(Self {
@@ -48,6 +49,7 @@ pub struct MainServer {
     // Maps a tracker id to a tracker
     pub trackers: HashMap<Arc<str>, TrackerRef>,
     pub skeleton_manager: SkeletonManager,
+    pub motion_recorder: MotionRecorder,
     pub config: GlobalConfig,
     pub updates: ServerUpdates,
 }
@@ -64,6 +66,8 @@ impl MainServer {
 
         self.skeleton_manager.update();
         modules.vmc_connector.update(self).await?;
+
+        self.motion_recorder.update(&self.skeleton_manager);
 
         if let Some(removed_id) = self.upkeep_trackers().await {
             // Remove the tracker when is set to remove
