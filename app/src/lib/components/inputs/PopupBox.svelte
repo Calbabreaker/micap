@@ -53,8 +53,6 @@
         <button class="btn w-full" on:click={() => confirm(false)}>
             Cancel
         </button>
-        <button class="btn btn-primary w-full" on:click={() => confirm(true)}>
-            Ok
-        </button>
+        <button class="btn w-full" on:click={() => confirm(true)}>Ok</button>
     </div>
 </Popup>

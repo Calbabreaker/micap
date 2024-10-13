@@ -3,7 +3,7 @@
 
     function reset() {
         editConfig("skeleton", {
-            offsets: defaultConfig?.offsets,
+            offsets: defaultConfig!.skeleton.offsets,
         });
     }
 </script>

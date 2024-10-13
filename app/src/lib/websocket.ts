@@ -8,7 +8,6 @@ import type {
     WebsocketClientMessage,
     Bone,
     WebsocketServerMessage,
-    GlobalConfigUpdate,
 } from "./server_bindings";
 
 const WEBSOCKET_PORT = 8298;
@@ -18,8 +17,8 @@ export type BoneDict = { [id in BoneLocation]: Bone };
 
 export const trackers = writable<TrackerDict>({});
 export const bones = writable<BoneDict>();
-export const globalConfig = writable<GlobalConfig | undefined>();
-export let defaultConfig: GlobalConfig | undefined;
+export const globalConfig = writable<GlobalConfig>();
+export let defaultConfig: GlobalConfig;
 
 export const serialPortName = writable<string | undefined>();
 export const serialLog = writable<string[]>([]);
@@ -71,14 +70,14 @@ export function connectWebsocket() {
 export function editConfig<K extends keyof GlobalConfig>(field: K, config: GlobalConfig[K]) {
     sendWebsocket({
         type: "UpdateConfig",
-        config: { [field]: config },
+        config: { [field]: config } as any,
     });
 }
 
 export function editTrackerConfig(id: string, config: TrackerConfig) {
     sendWebsocket({
         type: "UpdateConfig",
-        config: { trackers: { [id]: config } },
+        config: { trackers: { [id]: config } } as any,
     });
 }
 

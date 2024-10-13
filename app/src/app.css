@@ -4,11 +4,11 @@
 
 @layer components {
     .btn {
-        @apply shadow rounded border border-gray-300 px-3 py-2 bg-white hover:text-sky-600 cursor-pointer text-neutral-800 disabled:cursor-not-allowed disabled:text-neutral-400;
+        @apply shadow rounded border border-sky-500 px-3 py-2 bg-sky-600 cursor-pointer text-neutral-800 disabled:cursor-not-allowed disabled:text-neutral-400 disabled:bg-sky-900 hover:bg-sky-700 text-white;
     }
 
-    .btn-primary {
-        @apply bg-sky-600 border-sky-500 text-white hover:text-white disabled:bg-sky-900 hover:bg-sky-700 text-white;
+    .btn-other {
+        @apply border-gray-300 bg-white hover:text-sky-600 text-neutral-800;
     }
 
     .btn-small {
@@ -33,6 +33,10 @@
 
     .text-input:disabled {
         @apply bg-neutral-400 cursor-not-allowed;
+    }
+
+    .inputs-form {
+        @apply grid grid-cols-[1fr_auto] gap-y-2 gap-x-4;
     }
 }
 

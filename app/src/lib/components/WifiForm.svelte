@@ -15,10 +15,7 @@
     }
 </script>
 
-<form
-    class="grid grid-cols-[1fr_auto] gap-y-2 gap-x-4"
-    on:submit|preventDefault={setWifi}
->
+<form class="inputs-form" on:submit|preventDefault={setWifi}>
     <span class="my-auto">SSID</span>
     <input
         placeholder="WiFi SSID"
@@ -35,5 +32,5 @@
         class="text-input"
     />
 
-    <button type="submit" class="btn btn-primary col-span-2"> Send </button>
+    <button type="submit" class="btn col-span-2">Send</button>
 </form>

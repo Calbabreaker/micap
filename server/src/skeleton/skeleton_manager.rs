@@ -165,7 +165,7 @@ impl SkeletonManager {
     }
 
     /// Update the world position and orientation of the bone and its children
-    pub fn update_bone_recursive(
+    fn update_bone_recursive(
         &mut self,
         location: BoneLocation,
         parent_world_position: glam::Vec3A,

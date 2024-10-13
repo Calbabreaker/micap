@@ -34,7 +34,7 @@
         {/each}
     </div>
     <button
-        class="btn btn-primary mt-4 w-full"
+        class="btn mt-4 w-full"
         on:click={() => {
             sendWebsocket({
                 type: "SerialSend",
@@ -45,7 +45,7 @@
         Restart
     </button>
     <button
-        class="btn btn-primary w-full mt-2"
+        class="btn w-full mt-2"
         on:click={async () => {
             await confirmPopup(
                 "Are you sure?",

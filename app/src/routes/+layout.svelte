@@ -8,9 +8,9 @@
     import { onMount } from "svelte";
     import "../app.css";
     import { SvelteToast } from "@zerodevx/svelte-toast";
-    import PopupBox from "$lib/components/PopupBox.svelte";
+    import PopupBox from "$lib/components/inputs/PopupBox.svelte";
     import { popupState } from "$lib/toast";
-    import Popup from "$lib/components/Popup.svelte";
+    import Popup from "$lib/components/inputs/Popup.svelte";
 
     onMount(() => {
         // Try to connect to websocket every so often
