@@ -21,10 +21,10 @@
     <span class="text-lg font-bold">Bones to send</span>
     <ResetButton bind:value={bonesToSend} defaultValue={defaultBonesToSend} />
 </div>
-<div class="grid grid-cols-2 col-span-2 gap-x-4">
+<div class="grid grid-cols-[1fr_auto_1fr_auto] col-span-2 gap-x-4">
     {#each sendableBones as location}
-        <div class="flex justify-between gap-2">
-            <span>{location}</span>
+        <span>{location}</span>
+        <div class="place-self-end">
             <input
                 type="checkbox"
                 checked={bonesToSend.includes(location)}
