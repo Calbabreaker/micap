@@ -74,7 +74,6 @@ fn create_system_tray(app: &tauri::App) -> tauri::Result<tauri::tray::TrayIcon> 
     tauri::tray::TrayIconBuilder::new()
         .icon(app.default_window_icon().unwrap().clone())
         .menu(&menu)
-        .menu_on_left_click(true)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "quit" => {
                 app.exit(0);

@@ -111,7 +111,7 @@ impl BoneLocation {
         (Self::Head, Some(Self::Neck)),
     ];
 
-    pub const BONE_LOCATION_COUNT: usize = Self::SELF_AND_PARENT.len();
+    pub const COUNT: usize = Self::SELF_AND_PARENT.len();
 
     pub fn get_children(&self) -> &[Self] {
         &BONE_LOCATION_TO_CHILDREN[self]

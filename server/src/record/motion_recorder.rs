@@ -2,7 +2,7 @@ use crate::skeleton::{BoneLocation, SkeletonManager};
 
 #[derive(Default, Clone)]
 pub struct MotionFrame {
-    pub euler_orientations: [glam::Quat; BoneLocation::BONE_LOCATION_COUNT],
+    pub euler_orientations: [glam::Quat; BoneLocation::COUNT],
     pub root_position: glam::Vec3A,
 }
 

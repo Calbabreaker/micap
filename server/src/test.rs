@@ -44,7 +44,7 @@ async fn test_tracker_device_send() -> anyhow::Result<()> {
     let packet = UdpPacketPingPong { id: 1 };
     client.socket.send(&packet.to_bytes()).await?;
 
-    tokio::time::sleep(Duration::from_millis(500)).await;
+    tokio::time::sleep(Duration::from_millis(200)).await;
     modules.udp_server.update(&mut main).await?;
 
     let tracker = &main.trackers["69:42:00:00:00:00/3"].clone();
@@ -62,10 +62,10 @@ async fn test_tracker_device_send() -> anyhow::Result<()> {
     // Check for latency set
     client.send_ping(1).await?;
 
-    tokio::time::sleep(Duration::from_millis(500)).await;
+    tokio::time::sleep(Duration::from_millis(200)).await;
     modules.udp_server.update(&mut main).await?;
 
-    assert!(tracker.lock().unwrap().info().latency_ms == Some(250));
+    assert!(tracker.lock().unwrap().info().latency_ms == Some(100));
     Ok(())
 }
 
