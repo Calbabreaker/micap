@@ -56,7 +56,7 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 
 // Start two nested tasks to listen for panics
 async fn start_server() -> anyhow::Result<()> {
-    tauri::async_runtime::spawn(async { micap_server::start_server().await.unwrap() }).await?;
+    tauri::async_runtime::spawn(async { micap_server::start_server().await }).await??;
     Ok(())
 }
 
