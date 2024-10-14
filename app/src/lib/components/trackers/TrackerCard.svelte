@@ -9,7 +9,10 @@
     $: tracker = $trackers[id]!;
 
     // Highlight border when there is movement
-    $: brightness = Math.hypot(...tracker.data.acceleration) > 2 ? 60 : 10;
+    $: brightness = Math.min(
+        Math.hypot(...tracker.data?.acceleration) * 50,
+        50,
+    );
 
     let showInspect = false;
 </script>

@@ -73,13 +73,12 @@ impl BoneLocation {
             Self::RightShoulder => {
                 glam::vec3a(offsets[&ShouldersWidth] / 2., offsets[&ShoulderOffset], 0.)
             }
-            Self::LeftUpperArm | Self::RightUpperArm => {
-                glam::vec3a(0., -offsets[&UpperArmLength], 0.)
-            }
-            Self::LeftLowerArm | Self::RightLowerArm => {
-                glam::vec3a(0., -offsets[&LowerArmLength], 0.)
-            }
-            Self::LeftHand | Self::RightHand => glam::vec3a(0., -offsets[&HandLength], 0.),
+            Self::LeftUpperArm => glam::vec3a(-offsets[&UpperArmLength], 0., 0.),
+            Self::RightUpperArm => glam::vec3a(offsets[&UpperArmLength], 0., 0.),
+            Self::LeftLowerArm => glam::vec3a(-offsets[&LowerArmLength], 0., 0.),
+            Self::RightLowerArm => glam::vec3a(offsets[&LowerArmLength], 0., 0.),
+            Self::LeftHand => glam::vec3a(-offsets[&HandLength], 0., 0.),
+            Self::RightHand => glam::vec3a(offsets[&HandLength], 0., 0.),
             Self::Neck => glam::vec3a(0., offsets[&NeckLength], 0.),
             Self::Head => glam::vec3a(0., 0.05, 0.),
         }

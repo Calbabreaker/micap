@@ -32,13 +32,12 @@ pub async fn start_server() -> anyhow::Result<()> {
     let mut main = MainServer::default();
     let mut modules = ServerModules::new().await?;
 
-    match GlobalConfig::load() {
-        Ok(config_update) => {
-            if let Err(err) = main.apply_config(config_update, &mut modules).await {
-                log::warn!("Failed to apply part of config: {err}");
-            }
-        }
-        Err(err) => log::warn!("Failed to load config: {err}"),
+    let config = GlobalConfig::load()
+        .inspect_err(|err| log::warn!("Failed to load config: {err}"))
+        .unwrap_or_default();
+
+    if let Err(err) = main.apply_config(config.into_update(), &mut modules).await {
+        log::warn!("Failed to apply part of config: {err}");
     }
 
     let mut looper = Looper::default();

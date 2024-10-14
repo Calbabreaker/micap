@@ -66,7 +66,7 @@ fn handle_window_events(app: &tauri::App) {
     state.window.on_window_event(move |event| {
         if let tauri::WindowEvent::CloseRequested { api, .. } = event {
             api.prevent_close();
-            w.state::<AppState>().set_visible(false);
+            w.state::<AppState>().set_visible(false).unwrap();
         }
     });
 }

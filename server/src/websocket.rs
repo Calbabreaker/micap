@@ -201,7 +201,8 @@ impl WebsocketServer {
             WebsocketClientMessage::ResetTrackerOrientations => {
                 for tracker in main.trackers.values() {
                     let mut tracker = tracker.lock().unwrap();
-                    tracker.internal.orientation_offset = tracker.data().orientation.inverse();
+                    tracker.internal.orientation_offset =
+                        tracker.internal.raw_orientation.inverse();
                 }
             }
             WebsocketClientMessage::StartRecord => main.motion_recorder.start_record(),

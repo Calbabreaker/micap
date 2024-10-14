@@ -53,12 +53,12 @@ impl Default for SkeletonConfig {
                 (HipsWidth, 0.3),
                 (UpperLegLength, 0.2),
                 (LowerLegLength, 0.3),
-                (ShouldersWidth, 0.3),
-                (ShoulderOffset, 0.1),
-                (UpperArmLength, 0.3),
-                (LowerArmLength, 0.3),
+                (ShouldersWidth, 0.1),
+                (ShoulderOffset, 0.05),
+                (UpperArmLength, 0.15),
+                (LowerArmLength, 0.1),
                 (FootLength, 0.1),
-                (HandLength, 0.1),
+                (HandLength, 0.05),
             ]),
         }
     }

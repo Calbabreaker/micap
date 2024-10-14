@@ -19,7 +19,6 @@ pub struct GlobalConfig {
 }
 
 #[derive(Default, Debug, Serialize, Deserialize, TS)]
-#[serde(default)]
 pub struct GlobalConfigUpdate {
     // Note: every field as optional to allow for specific config updates
     pub trackers: Option<HashMap<Arc<str>, TrackerConfig>>,
@@ -29,7 +28,7 @@ pub struct GlobalConfigUpdate {
 }
 
 impl GlobalConfig {
-    pub fn load() -> anyhow::Result<GlobalConfigUpdate> {
+    pub fn load() -> anyhow::Result<GlobalConfig> {
         let path = get_config_dir()?.join("config.json");
         log::info!("Loading from {path:?}");
         let text = std::fs::read_to_string(path)?;
@@ -41,8 +40,16 @@ impl GlobalConfig {
         log::info!("Saving to {path:?}");
         let text = serde_json::to_string_pretty(self)?;
         std::fs::write(path, text)?;
-
         Ok(())
+    }
+
+    pub fn into_update(self) -> GlobalConfigUpdate {
+        GlobalConfigUpdate {
+            trackers: Some(self.trackers),
+            vmc: Some(self.vmc),
+            vrchat: Some(self.vrchat),
+            skeleton: Some(self.skeleton),
+        }
     }
 }
 

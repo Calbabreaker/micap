@@ -18,11 +18,12 @@ uint32_t iterations = 0;
 uint64_t delta_sum = 0;
 
 void setup() {
+    pinMode(INTERNAL_LED_PIN, OUTPUT);
+    digitalWrite(INTERNAL_LED_PIN, HIGH);
     Serial.begin(14400);
     connection_manager.setup();
     g_config_manager.setup();
     g_tracker_manager.setup();
-    pinMode(INTERNAL_LED_PIN, OUTPUT);
 }
 
 void loop() {

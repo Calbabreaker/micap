@@ -24,7 +24,6 @@
         on:change={(e) => (config.send_port = Number(e.currentTarget.value))}
         class="text-input"
         type="number"
-        disabled={!config.enabled}
     />
     <ResetButton
         bind:value={config.send_port}

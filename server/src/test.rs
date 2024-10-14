@@ -84,7 +84,7 @@ async fn test_config() -> anyhow::Result<()> {
 
     let mut main = MainServer::default();
     let mut modules = ServerModules::new().await?;
-    main.apply_config(GlobalConfig::load()?, &mut modules)
+    main.apply_config(GlobalConfig::load()?.into_update(), &mut modules)
         .await?;
 
     assert_eq!(main.config, global_config);

@@ -167,7 +167,7 @@ function getSerialStatusMessage(message: string): string {
         case "WifiConnectTimeout":
             return "Failed to connect to the WiFi network, reconnecting to previously saved";
         case "Connected":
-            return "Connecting to the server";
+            return "Connected to the server";
         case "Restarting":
             return "Restarting";
         default:
