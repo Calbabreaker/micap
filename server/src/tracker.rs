@@ -70,7 +70,7 @@ pub struct Tracker {
 
 impl Tracker {
     pub fn update_data(&mut self, acceleration: glam::Vec3A, orientation: glam::Quat) {
-        self.data.orientation = orientation * self.internal.orientation_offset;
+        self.data.orientation = self.internal.orientation_offset * orientation;
         self.internal.raw_orientation = orientation;
         self.data.acceleration = acceleration;
 

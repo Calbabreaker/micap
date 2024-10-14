@@ -1,5 +1,5 @@
-pub fn locked_with_yaw(quat: glam::Quat) -> glam::Quat {
-    let (_, yaw, _) = quat.to_euler(glam::EulerRot::XYZ);
+pub fn locked_with_y(quat: glam::Quat, order: glam::EulerRot) -> glam::Quat {
+    let (_, yaw, _) = quat.to_euler(order);
     glam::Quat::from_euler(glam::EulerRot::XYZ, 0., yaw, 0.)
 }
 

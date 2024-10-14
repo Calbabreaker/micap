@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use crate::{
-    math::locked_with_yaw,
+    math::locked_with_y,
     skeleton::{Bone, BoneLocation, BoneOffsetKind, SkeletonConfig},
     tracker::{TrackerConfig, TrackerRef, TrackerStatus},
 };
@@ -64,21 +64,22 @@ impl SkeletonManager {
             }
         } else {
             // Use the head yaw instead
-            let quat = self.bones[&Head].orientation;
-            self.set_bone_orientation(&[Waist, UpperChest, Chest], locked_with_yaw(quat));
+            let quat = locked_with_y(self.bones[&Head].orientation, glam::EulerRot::XYZ);
+            self.set_bone_orientation(&[Waist, UpperChest, Chest], quat);
         }
     }
 
     fn update_leg(&mut self, upper_leg: BoneLocation, lower_leg: BoneLocation, foot: BoneLocation) {
+        let waist_quat = locked_with_y(self.bones[&Waist].orientation, glam::EulerRot::XYZ);
         let mut leg_quat = self
             .get_tracker_orientation(&[upper_leg])
-            .unwrap_or(locked_with_yaw(self.bones[&Waist].orientation));
+            .unwrap_or(waist_quat);
         self.set_bone_orientation(&[upper_leg], leg_quat);
 
         // Use the lower leg tracker or the upper leg (locked to yaw)
         leg_quat = self
             .get_tracker_orientation(&[lower_leg])
-            .unwrap_or(locked_with_yaw(leg_quat));
+            .unwrap_or(locked_with_y(leg_quat, glam::EulerRot::XYZ));
         self.set_bone_orientation(&[lower_leg], leg_quat);
 
         leg_quat = self.get_tracker_orientation(&[foot]).unwrap_or(leg_quat);
@@ -92,7 +93,8 @@ impl SkeletonManager {
         lower_arm: BoneLocation,
         hand: BoneLocation,
     ) {
-        let upper_chest_quat = locked_with_yaw(self.bones[&UpperChest].orientation);
+        let upper_chest_quat =
+            locked_with_y(self.bones[&UpperChest].orientation, glam::EulerRot::XZY);
         let mut arm_quat = self
             .get_tracker_orientation(&[shoulder])
             .unwrap_or(upper_chest_quat);
