@@ -1,8 +1,11 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use state::AppState;
 use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
+
+mod state;
 
 fn main() {
     // If LANG not set to en, it shows blank window for some reason
@@ -17,10 +20,11 @@ fn main() {
 }
 
 fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    app.manage(AppState::new(app));
+
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     {
-        let window = app.get_webview_window("main").unwrap();
-        handle_window_events(&window);
+        handle_window_events(app);
         create_system_tray(app)?;
     }
 
@@ -52,34 +56,36 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 
 // Start two nested tasks to listen for panics
 async fn start_server() -> anyhow::Result<()> {
-    tauri::async_runtime::spawn(async { micap_server::start_server().await }).await??;
+    tauri::async_runtime::spawn(async { micap_server::start_server().await.unwrap() }).await?;
     Ok(())
 }
 
-fn handle_window_events(window: &tauri::WebviewWindow) {
-    let w = window.clone();
-    window.on_window_event(move |event| {
+fn handle_window_events(app: &tauri::App) {
+    let state = app.state::<AppState>();
+    let w = state.window.clone();
+    state.window.on_window_event(move |event| {
         if let tauri::WindowEvent::CloseRequested { api, .. } = event {
             api.prevent_close();
-            w.hide().unwrap();
+            w.state::<AppState>().set_visible(false);
         }
     });
 }
 
 fn create_system_tray(app: &tauri::App) -> tauri::Result<tauri::tray::TrayIcon> {
-    let quit_i = tauri::menu::MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-    let show_i = tauri::menu::MenuItem::with_id(app, "show", "Show", true, None::<&str>)?;
-    let menu = tauri::menu::Menu::with_items(app, &[&quit_i, &show_i])?;
+    let state = app.state::<AppState>();
+    let quit_item = tauri::menu::MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+    let menu = tauri::menu::Menu::with_items(app, &[&quit_item, &state.toggle_item])?;
 
     tauri::tray::TrayIconBuilder::new()
         .icon(app.default_window_icon().unwrap().clone())
         .menu(&menu)
-        .on_menu_event(|app, event| match event.id.as_ref() {
+        .on_menu_event(move |app, event| match event.id.as_ref() {
             "quit" => {
                 app.exit(0);
             }
-            "show" => {
-                app.get_webview_window("main").unwrap().show().unwrap();
+            "toggle" => {
+                let state = app.state::<AppState>();
+                state.toggle_visible().unwrap();
             }
             _ => {
                 log::error!("Unknown menu id {:?}", event.id);
