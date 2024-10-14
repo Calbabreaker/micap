@@ -6,17 +6,14 @@
     let showModel = true;
 </script>
 
-<div class="flex gap-8 mb-4">
-    <div class="grid grid-cols-[1fr_auto] w-32">
-        <span>Show Lines</span>
-        <div>
-            <input type="checkbox" bind:checked={showLines} />
-        </div>
-
-        <span>Show Model</span>
-        <div>
-            <input type="checkbox" bind:checked={showModel} />
-        </div>
+<div class="grid grid-cols-4 mb-2">
+    <span>Show Lines</span>
+    <div>
+        <input type="checkbox" bind:checked={showLines} />
+    </div>
+    <span>Show Model</span>
+    <div class="ml-2">
+        <input type="checkbox" bind:checked={showModel} />
     </div>
 </div>
 <PreviewCanvas>
