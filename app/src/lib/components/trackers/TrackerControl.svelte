@@ -67,7 +67,7 @@
 </div>
 <select
     class="text-neutral-700 px-1 mt-2 bg-white"
-    value={config?.location ?? ""}
+    value={config?.location ?? "None"}
     on:change={(e) => {
         setLocation(e.currentTarget.value);
     }}

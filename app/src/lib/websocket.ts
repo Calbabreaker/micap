@@ -89,15 +89,6 @@ export async function removeTracker(id: string) {
         type: "RemoveTracker",
         id,
     });
-
-    globalConfig.update((config) => {
-        delete config?.trackers[id];
-        return config;
-    });
-    trackers.update((trackers) => {
-        delete trackers[id];
-        return trackers;
-    });
 }
 
 function handleMessage(message: WebsocketServerMessage) {
@@ -149,7 +140,11 @@ function handleMessage(message: WebsocketServerMessage) {
                         infoToast(`New tracker connected from ${tracker!.info.address}`);
                     }
 
-                    trackers[id] = tracker;
+                    if (tracker!.info.to_be_removed) {
+                        delete trackers[id];
+                    } else {
+                        trackers[id] = tracker;
+                    }
                 });
 
                 return trackers;

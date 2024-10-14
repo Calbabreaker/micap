@@ -2,9 +2,8 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::{
-    main_server::MainServer,
-    osc::OscConnector,
-    skeleton::{to_euler_angles_vector, BoneLocation},
+    main_server::MainServer, math::to_euler_angles_vector, osc::OscConnector,
+    skeleton::BoneLocation,
 };
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, TS)]

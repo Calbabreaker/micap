@@ -166,16 +166,6 @@ impl Bone {
     }
 }
 
-// Returns the euler angles orientation as a vector in degrees
-pub fn to_euler_angles_vector(orientation: glam::Quat, order: glam::EulerRot) -> glam::Vec3A {
-    let angles = orientation.to_euler(order);
-    glam::Vec3A::new(
-        angles.0.to_degrees(),
-        angles.1.to_degrees(),
-        angles.2.to_degrees(),
-    )
-}
-
 #[cfg(test)]
 mod test {
     use super::*;

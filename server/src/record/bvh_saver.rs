@@ -2,8 +2,9 @@ use std::io::Write;
 
 use crate::{
     looper::Looper,
+    math::to_euler_angles_vector,
     record::motion_recorder::MotionFrame,
-    skeleton::{to_euler_angles_vector, BoneLocation, SkeletonManager},
+    skeleton::{BoneLocation, SkeletonManager},
 };
 
 pub struct BvhSaver<'a, W: Write> {

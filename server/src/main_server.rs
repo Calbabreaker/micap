@@ -90,7 +90,7 @@ impl MainServer {
         for (id, tracker) in &self.trackers {
             let mut tracker = tracker.lock().unwrap();
             tracker.internal.was_updated = false;
-            if tracker.internal.to_be_removed {
+            if tracker.info().to_be_removed {
                 return Some(id.clone());
             }
         }

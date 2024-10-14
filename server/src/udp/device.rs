@@ -143,7 +143,7 @@ impl UdpDevice {
         let all_removed = self
             .global_trackers_iter()
             .inspect(|_| count += 1)
-            .all(|tracker| tracker.internal.to_be_removed);
+            .all(|tracker| tracker.info().to_be_removed);
         count != 0 && all_removed
     }
 }

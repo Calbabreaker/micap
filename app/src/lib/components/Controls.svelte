@@ -32,7 +32,7 @@
         onActivate={() => {
             sendWebsocket({ type: "ResetTrackerOrientations" });
         }}
-        initialContent="Full Reset"
+        initialContent="Reset Orientations"
         countdownContent="Reseting in"
     />
     {#if recording}

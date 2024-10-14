@@ -1,6 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use crate::{
+    math::locked_with_yaw,
     skeleton::{Bone, BoneLocation, BoneOffsetKind, SkeletonConfig},
     tracker::{TrackerConfig, TrackerRef, TrackerStatus},
 };
@@ -91,28 +92,24 @@ impl SkeletonManager {
         lower_arm: BoneLocation,
         hand: BoneLocation,
     ) {
-        let upper_chest_quat = self.bones[&UpperChest].orientation;
-        let shoulder_quat = self
+        let upper_chest_quat = locked_with_yaw(self.bones[&UpperChest].orientation);
+        let mut arm_quat = self
             .get_tracker_orientation(&[shoulder])
             .unwrap_or(upper_chest_quat);
-        self.set_bone_orientation(&[shoulder], shoulder_quat);
+        self.set_bone_orientation(&[shoulder], arm_quat);
 
-        if self.check_any_trackers_exist(&[upper_arm, lower_arm]) {
-            if let Some(quat) = self.get_tracker_orientation(&[upper_arm, lower_arm]) {
-                self.set_bone_orientation(&[upper_arm], quat);
-            }
+        arm_quat = self
+            .get_tracker_orientation(&[upper_arm])
+            .unwrap_or(arm_quat);
+        self.set_bone_orientation(&[upper_arm], arm_quat);
 
-            if let Some(quat) = self.get_tracker_orientation(&[lower_arm, upper_arm]) {
-                self.set_bone_orientation(&[lower_arm], quat);
-            }
-        } else {
-            // Use upper chest rotation instead
-            self.set_bone_orientation(&[upper_arm, lower_arm], upper_chest_quat);
-        }
+        arm_quat = self
+            .get_tracker_orientation(&[lower_arm])
+            .unwrap_or(arm_quat);
+        self.set_bone_orientation(&[lower_arm], arm_quat);
 
-        if let Some(quat) = self.get_tracker_orientation(&[hand]) {
-            self.set_bone_orientation(&[hand], quat);
-        }
+        arm_quat = self.get_tracker_orientation(&[hand]).unwrap_or(arm_quat);
+        self.set_bone_orientation(&[hand], arm_quat);
     }
 
     pub fn apply_tracker_config(
@@ -186,9 +183,4 @@ impl SkeletonManager {
             self.update_bone_recursive(*child_location, world_position, world_orientation);
         }
     }
-}
-
-fn locked_with_yaw(quat: glam::Quat) -> glam::Quat {
-    let (_, yaw, _) = quat.to_euler(glam::EulerRot::XYZ);
-    glam::Quat::from_euler(glam::EulerRot::XYZ, 0., yaw, 0.)
 }

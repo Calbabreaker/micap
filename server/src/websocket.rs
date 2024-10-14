@@ -193,7 +193,7 @@ impl WebsocketServer {
             }
             WebsocketClientMessage::RemoveTracker { id } => {
                 if let Some(tracker) = main.trackers.get(&*id) {
-                    tracker.lock().unwrap().internal.to_be_removed = true;
+                    tracker.lock().unwrap().update_info().to_be_removed = true;
                 }
             }
             WebsocketClientMessage::UpdateConfig { config } => {
@@ -201,9 +201,7 @@ impl WebsocketServer {
             }
             WebsocketClientMessage::ResetTrackerOrientations => {
                 for tracker in main.trackers.values() {
-                    let mut tracker = tracker.lock().unwrap();
-                    tracker.internal.orientation_offset =
-                        tracker.internal.raw_orientation.inverse();
+                    tracker.lock().unwrap().reset_orientation();
                 }
             }
             WebsocketClientMessage::StartRecord => main.motion_recorder.start_record(),

@@ -1,6 +1,7 @@
 mod config;
 mod looper;
 mod main_server;
+mod math;
 mod osc;
 mod record;
 mod serial;

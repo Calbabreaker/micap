@@ -16,6 +16,7 @@ pub enum TrackerStatus {
 
 #[derive(Clone, Debug, Default, Serialize, TS)]
 pub struct TrackerInfo {
+    pub to_be_removed: bool,
     pub status: TrackerStatus,
     #[ts(optional)]
     pub latency_ms: Option<u32>,
@@ -36,7 +37,6 @@ pub struct TrackerData {
 
 #[derive(Debug)]
 pub struct TrackerInternal {
-    pub to_be_removed: bool,
     pub time_data_last_updated: Instant,
     pub velocity: glam::Vec3A,
     pub was_updated: bool,
@@ -48,7 +48,6 @@ pub struct TrackerInternal {
 impl Default for TrackerInternal {
     fn default() -> Self {
         Self {
-            to_be_removed: false,
             time_data_last_updated: Instant::now(),
             velocity: glam::Vec3A::default(),
             was_updated: false,
@@ -85,6 +84,14 @@ impl Tracker {
 
     pub fn reset_data(&mut self) {
         self.data = TrackerData::default();
+    }
+
+    pub fn reset_orientation(&mut self) {
+        // self.internal.orientation_offset = (self.internal.raw_orientation
+        //     * glam::Quat::from_rotation_z(std::f32::consts::FRAC_PI_2).inverse());
+
+        // self.internal.orientation_offset = self.internal.orientation_offset.inverse();
+        self.internal.orientation_offset = self.internal.raw_orientation.inverse();
     }
 
     pub fn update_info(&mut self) -> &mut TrackerInfo {

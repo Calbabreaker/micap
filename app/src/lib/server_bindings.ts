@@ -20,7 +20,7 @@ offsets: { [key in BoneOffsetKind]?: number }, };
 export type Tracker = { info: TrackerInfo, data: TrackerData, };
 export type TrackerConfig = { name?: string, location?: BoneLocation, };
 export type TrackerData = { orientation: [number, number, number, number], acceleration: [number, number, number], position: [number, number, number], };
-export type TrackerInfo = { status: TrackerStatus, latency_ms?: number, battery_level: number, address?: string, };
+export type TrackerInfo = { to_be_removed: boolean, status: TrackerStatus, latency_ms?: number, battery_level: number, address?: string, };
 export type TrackerStatus = "Ok" | "Error" | "Off" | "TimedOut";
 export type VmcConfig = { enabled: boolean, send_port: number, receive_port: number, };
 export type VrChatConfig = { enabled: boolean, send_port: number, bones_to_send: Array<BoneLocation>, };

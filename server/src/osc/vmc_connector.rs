@@ -51,6 +51,17 @@ impl VmcConnector {
                 args,
             }))
         }));
+        // .chain(main.trackers.iter().filter_map(|(id, tracker)| {
+        //     let tracker = tracker.lock().unwrap();
+        //     let mut args = vec![rosc::OscType::String(
+        //         main.config.trackers[id].location?.as_unity_name()?,
+        //     )];
+        //     add_osc_transform_args(&mut args, glam::Vec3A::ZERO, tracker.data().orientation);
+        //     Some(rosc::OscPacket::Message(rosc::OscMessage {
+        //         addr: "/VMC/Ext/Bone/Pos".to_string(),
+        //         args,
+        //     }))
+        // }));
 
         self.osc.send_bundle(osc_messages).await.ok();
         Ok(())
