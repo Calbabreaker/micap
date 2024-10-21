@@ -85,27 +85,12 @@ impl WebsocketServer {
     }
 
     pub async fn update(&mut self, main: &mut MainServer) -> anyhow::Result<()> {
-        if let Some(ws_stream) = self.ws_stream.as_mut() {
-            // Get new data from websocket
-            match ws_stream.next().now_or_never() {
-                Some(Some(Ok(message))) => {
-                    if let Ok(text) = message.to_text() {
-                        self.handle_ws_message(text, main)?;
-                    }
-                }
-                Some(None) | Some(Some(Err(_))) => {
-                    // Socket was closed so remove the ws stream
-                    log::info!("Websocket disconnected");
-                    self.ws_stream.take();
-                }
-                // Data has not been processed yet
-                None => (),
-            }
+        if self.ws_stream.is_some() {
+            self.try_get_ws_messages(main).await?;
+            self.send_ws_messages(main).await?;
         } else {
             self.try_receive_ws_connection(main).await?;
         }
-
-        self.send_ws_messages(main).await?;
 
         Ok(())
     }
@@ -133,11 +118,29 @@ impl WebsocketServer {
         }
     }
 
+    async fn try_get_ws_messages(&mut self, main: &mut MainServer) -> anyhow::Result<()> {
+        let ws_stream = self.ws_stream.as_mut().unwrap();
+
+        // Get new data from websocket
+        match ws_stream.next().now_or_never() {
+            Some(Some(Ok(message))) => {
+                if let Ok(text) = message.to_text() {
+                    self.handle_ws_message(text, main)?;
+                }
+            }
+            Some(None) | Some(Some(Err(_))) => {
+                // Socket was closed so remove the ws stream
+                log::info!("Websocket disconnected");
+                self.ws_stream.take();
+            }
+            // Data has not been processed yet
+            None => (),
+        }
+        Ok(())
+    }
+
     async fn send_ws_messages(&mut self, main: &mut MainServer) -> anyhow::Result<()> {
-        let ws_stream = match self.ws_stream.as_mut() {
-            Some(s) => s,
-            None => return Ok(()),
-        };
+        let ws_stream = self.ws_stream.as_mut().unwrap();
 
         // Send the serial stuff
         if self.serial_manager.check_port().await {
@@ -228,6 +231,5 @@ async fn feed_ws_message<'a>(
     if let Ok(text) = serde_json::to_string(&ws_message) {
         ws_stream.feed(Message::Text(text)).await?;
     }
-
     Ok(())
 }
