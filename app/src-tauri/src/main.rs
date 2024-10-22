@@ -91,23 +91,36 @@ fn handle_window_events(app: &tauri::App) {
 
 fn create_system_tray(app: &tauri::App) -> tauri::Result<tauri::tray::TrayIcon> {
     let state = app.state::<Mutex<AppState>>();
-    let quit_item = tauri::menu::MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-    let menu =
-        tauri::menu::Menu::with_items(app, &[&quit_item, &state.lock().unwrap().toggle_item])?;
+    let menu = tauri::menu::Menu::with_items(
+        app,
+        &[
+            &tauri::menu::MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?,
+            &tauri::menu::MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?,
+            &state.lock().unwrap().toggle_item,
+        ],
+    )?;
 
     tauri::tray::TrayIconBuilder::new()
         .icon(app.default_window_icon().unwrap().clone())
         .menu(&menu)
-        .on_menu_event(move |app, event| match event.id.as_ref() {
-            "quit" => {
-                app.exit(0);
-            }
-            "toggle" => {
-                let state = app.state::<Mutex<AppState>>();
-                state.lock().unwrap().toggle_visible().unwrap();
-            }
-            _ => {
-                log::error!("Unknown menu id {:?}", event.id);
+        .on_menu_event(move |app, event| {
+            let state = app.state::<Mutex<AppState>>();
+            let state = state.lock().unwrap();
+
+            match event.id.as_ref() {
+                "quit" => {
+                    app.exit(0);
+                }
+                "toggle" => {
+                    state.toggle_visible().unwrap();
+                }
+                "settings" => {
+                    state.window.eval("location.href = '/settings'").unwrap();
+                    state.set_visible(true).unwrap();
+                }
+                _ => {
+                    log::error!("Unknown menu id {:?}", event.id);
+                }
             }
         })
         .build(app)

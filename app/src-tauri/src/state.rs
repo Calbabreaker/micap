@@ -23,7 +23,6 @@ impl AppState {
     }
 
     pub fn set_visible(&self, visible: bool) -> tauri::Result<()> {
-        dbg!(visible);
         if visible {
             self.window.show()?;
             self.toggle_item.set_text("Hide")
