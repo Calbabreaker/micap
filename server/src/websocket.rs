@@ -110,7 +110,7 @@ impl WebsocketServer {
 
                 ws_stream.flush().await?;
                 self.ws_stream = Some(ws_stream);
-                log::info!("Websocket client connected at {peer_addr}");
+                log::info!("Websocket client connected from {peer_addr}");
                 Ok(())
             }
             Some(Err(e)) => Err(e)?,

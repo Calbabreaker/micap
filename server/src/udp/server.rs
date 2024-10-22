@@ -71,11 +71,9 @@ impl UdpServer {
                         log::trace!("Received invalid packet 0x{:02x}: {err:?}", bytes[0]);
                     }
                 }
-                // No more packets
-                None => {
-                    return Ok(());
-                }
-                Some(Err(e)) => Err(e)?,
+                // No new data currently
+                None => return Ok(()),
+                Some(Err(e)) => return Err(e)?,
             }
         }
     }
@@ -86,7 +84,7 @@ impl UdpServer {
         for device in self.devices_map.values_mut() {
             device.update_timed_out(device.is_timed_out());
 
-            let bytes = device.check_get_ping_packet().to_bytes();
+            let bytes = device.check_get_ping_packet().to_response();
             self.socket.send_to(&bytes, device.address).await?;
 
             // When the user has removed every tracker from the device prevent it from connecting anymore
@@ -129,9 +127,8 @@ impl UdpServer {
 
         match packet {
             UdpPacket::Handshake(packet) => {
-                self.socket
-                    .send_to(UdpPacketHandshake::SERVER_RESPONSE, peer_addr)
-                    .await?;
+                let bytes = UdpPacketHandshake::SERVER_RESPONSE;
+                self.socket.send_to(bytes, peer_addr).await?;
                 self.handle_handshake(packet, peer_addr);
             }
             UdpPacket::PingPong(packet) => {
@@ -139,12 +136,13 @@ impl UdpServer {
             }
             UdpPacket::TrackerData(mut packet) => {
                 let device = device?;
-                while let Ok(data) = packet.next_data() {
+                while let Some(data) = packet.next_data()? {
                     device.update_tracker_data(data);
                 }
             }
             UdpPacket::TrackerStatus(packet) => {
-                self.socket.send_to(&packet.to_bytes(), peer_addr).await?;
+                let bytes = packet.to_response();
+                self.socket.send_to(&bytes, peer_addr).await?;
                 device?.update_tracker_status(main, packet);
             }
             UdpPacket::BatteryLevel(packet) => {

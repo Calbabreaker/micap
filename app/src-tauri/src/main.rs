@@ -27,7 +27,6 @@ fn update_interface_config(
     state: tauri::State<Mutex<AppState>>,
     config: micap_server::config::InterfaceConfig,
 ) {
-    log::info!("Set interface config: {:?}", &config);
     state.lock().unwrap().interface_config = config;
 }
 

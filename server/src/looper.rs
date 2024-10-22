@@ -24,7 +24,7 @@ impl Default for Looper {
 impl Looper {
     pub const TARGET_LOOP_DELTA: Duration = Duration::from_millis(1000 / 60);
 
-    pub fn start_loop(&mut self) {
+    pub fn loop_start(&mut self) {
         self.update_start_time = Instant::now();
     }
 

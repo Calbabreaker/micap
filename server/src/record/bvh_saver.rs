@@ -50,7 +50,7 @@ impl<'a, W: Write> BvhSaver<'a, W> {
             let mut frame_data = frame.root_position.to_array().to_vec();
             frame_data.extend(
                 frame
-                    .euler_orientations
+                    .orientations
                     .iter()
                     .flat_map(|quat| to_euler_angles_vector(*quat, glam::EulerRot::ZXY).to_array()),
             );

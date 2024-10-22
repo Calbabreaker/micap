@@ -45,7 +45,7 @@ pub struct UdpPacketHandshake {
 impl UdpPacketHandshake {
     fn from_bytes(bytes: &mut impl Read) -> std::io::Result<Self> {
         if !bytes_equal(bytes, b"MCDEV") {
-            Err(std::io::ErrorKind::InvalidData)?;
+            return Err(std::io::ErrorKind::InvalidData)?;
         }
 
         let mut mac_bytes = [0_u8; 6];
@@ -77,7 +77,7 @@ impl UdpPacketPingPong {
         })
     }
 
-    pub const fn to_bytes(self) -> [u8; 2] {
+    pub const fn to_response(self) -> [u8; 2] {
         [PACKET_PING_PONG, self.id]
     }
 }
@@ -95,12 +95,12 @@ impl UdpPacketTrackerStatus {
                 0 => TrackerStatus::Ok,
                 1 => TrackerStatus::Error,
                 2 => TrackerStatus::Off,
-                _ => Err(std::io::ErrorKind::InvalidData)?,
+                _ => return Err(std::io::ErrorKind::InvalidData)?,
             },
         })
     }
 
-    pub const fn to_bytes(&self) -> [u8; 3] {
+    pub const fn to_response(&self) -> [u8; 3] {
         [
             PACKET_TRACKER_STATUS,
             self.tracker_index,
@@ -124,11 +124,11 @@ impl<'a, R: Read> UdpPacketTrackerData<'a, R> {
         Ok(Self { bytes })
     }
 
-    pub fn next_data(&mut self) -> std::io::Result<UdpTrackerData> {
+    pub fn next_data(&mut self) -> std::io::Result<Option<UdpTrackerData>> {
         let tracker_index = self.bytes.read_u8()?;
         // 0xff where the tracker id would usually go signifies the end of the packet
         if tracker_index == 0xff {
-            Err(std::io::ErrorKind::InvalidData)?;
+            return Ok(None);
         }
 
         let mut quat = [0_f32; 4];
@@ -137,12 +137,12 @@ impl<'a, R: Read> UdpPacketTrackerData<'a, R> {
         let mut vec = [0_f32; 3];
         self.bytes.read_f32_into::<LittleEndian>(&mut vec)?;
 
-        Ok(UdpTrackerData {
+        Ok(Some(UdpTrackerData {
             tracker_index,
             // Swap y and z to make y up
             orientation: glam::Quat::from_xyzw(quat[0], quat[2], quat[1], quat[3]),
             acceleration: glam::Vec3A::new(vec[0], vec[2], vec[1]),
-        })
+        }))
     }
 }
 

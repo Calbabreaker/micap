@@ -153,9 +153,9 @@ void ConnectionManager::send_tracker_data() {
 
     for (Tracker* tracker : g_tracker_manager.get_trackers()) {
         if (tracker->has_new_data) {
-            m_udp.write(tracker->get_index());
-            m_udp.write(tracker->orientation.as_bytes(), sizeof(Quaternion));
-            m_udp.write(tracker->acceleration.as_bytes(), sizeof(Vector3));
+            write_value<uint8_t>(tracker->get_index());
+            write_value<Quaternion>(tracker->orientation);
+            write_value<Vector3>(tracker->acceleration);
             tracker->has_new_data = false;
         }
     }

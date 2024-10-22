@@ -42,7 +42,7 @@ async fn test_tracker_device_send() -> anyhow::Result<()> {
     client.send_battery_level(0.2).await?;
 
     let packet = UdpPacketPingPong { id: 1 };
-    client.socket.send(&packet.to_bytes()).await?;
+    client.socket.send(&packet.to_response()).await?;
 
     tokio::time::sleep(Duration::from_millis(200)).await;
     modules.udp_server.update(&mut main).await?;

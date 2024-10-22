@@ -42,7 +42,7 @@ pub async fn start_server() -> anyhow::Result<()> {
     let mut looper = Looper::default();
 
     loop {
-        looper.start_loop();
+        looper.loop_start();
 
         let result = main.update(&mut modules).await;
         main.updates = Default::default();
