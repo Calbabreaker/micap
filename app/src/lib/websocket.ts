@@ -1,4 +1,4 @@
-import { writable } from "svelte/store";
+import { get, writable } from "svelte/store";
 import { confirmPopup, errorToast, infoToast } from "./toast";
 import type {
     BoneLocation,
@@ -67,17 +67,20 @@ export function connectWebsocket() {
     };
 }
 
-export function editConfig<K extends keyof GlobalConfig>(field: K, config: GlobalConfig[K]) {
+export function updateConfig<K extends keyof GlobalConfig>(field: K, config: GlobalConfig[K]) {
     sendWebsocket({
         type: "UpdateConfig",
-        config: { [field]: config } as any,
+        config: {
+            ...get(globalConfig),
+            [field]: config,
+        },
     });
 }
 
-export function editTrackerConfig(id: string, config: TrackerConfig) {
-    sendWebsocket({
-        type: "UpdateConfig",
-        config: { trackers: { [id]: config } } as any,
+export function updateTrackerConfig(id: string, config: TrackerConfig) {
+    updateConfig("trackers", {
+        ...get(globalConfig).trackers,
+        [id]: config,
     });
 }
 

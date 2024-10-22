@@ -12,7 +12,7 @@ use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 use ts_rs::TS;
 
 use crate::{
-    config::{GlobalConfig, GlobalConfigUpdate},
+    config::GlobalConfig,
     main_server::MainServer,
     record::BvhSaver,
     serial::SerialPortManager,
@@ -59,7 +59,7 @@ pub enum WebsocketServerMessage<'a> {
 pub enum WebsocketClientMessage {
     SerialSend { data: Box<str> },
     RemoveTracker { id: Box<str> },
-    UpdateConfig { config: GlobalConfigUpdate },
+    UpdateConfig { config: GlobalConfig },
     ResetTrackerOrientations,
     ResetSkeleton,
     StartRecord,
@@ -119,7 +119,10 @@ impl WebsocketServer {
     }
 
     async fn try_get_ws_messages(&mut self, main: &mut MainServer) -> anyhow::Result<()> {
-        let ws_stream = self.ws_stream.as_mut().unwrap();
+        let ws_stream = match self.ws_stream.as_mut() {
+            Some(ws_stream) => ws_stream,
+            None => return Ok(()),
+        };
 
         // Get new data from websocket
         match ws_stream.next().now_or_never() {
@@ -140,7 +143,10 @@ impl WebsocketServer {
     }
 
     async fn send_ws_messages(&mut self, main: &mut MainServer) -> anyhow::Result<()> {
-        let ws_stream = self.ws_stream.as_mut().unwrap();
+        let ws_stream = match self.ws_stream.as_mut() {
+            Some(ws_stream) => ws_stream,
+            None => return Ok(()),
+        };
 
         // Send the serial stuff
         if self.serial_manager.check_port().await {
@@ -180,7 +186,6 @@ impl WebsocketServer {
         if let Some(ws_stream) = self.ws_stream.as_mut() {
             feed_ws_message(ws_stream, WebsocketServerMessage::ConfigUpdate { config }).await?;
         }
-
         Ok(())
     }
 

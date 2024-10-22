@@ -6,7 +6,7 @@ use crate::{
     skeleton::BoneLocation,
 };
 
-#[derive(Debug, PartialEq, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(default)]
 pub struct VrChatConfig {
     enabled: bool,
@@ -68,12 +68,10 @@ impl VrChatConnector {
         Ok(())
     }
 
-    pub async fn apply_config(&mut self, config: &VrChatConfig) -> anyhow::Result<()> {
+    pub async fn apply_config(&mut self, config: &VrChatConfig) {
         if config.enabled {
-            self.osc.connect(config.send_port).await?;
+            self.osc.connect(config.send_port).await;
         }
-
-        Ok(())
     }
 }
 

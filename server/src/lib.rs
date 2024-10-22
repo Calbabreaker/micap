@@ -1,4 +1,4 @@
-mod config;
+pub mod config;
 mod looper;
 mod main_server;
 mod math;
@@ -33,13 +33,11 @@ pub async fn start_server() -> anyhow::Result<()> {
     let mut main = MainServer::default();
     let mut modules = ServerModules::new().await?;
 
-    let config = GlobalConfig::load()
+    main.config = GlobalConfig::load()
         .inspect_err(|err| log::warn!("Failed to load config: {err}"))
         .unwrap_or_default();
 
-    if let Err(err) = main.apply_config(config.into_update(), &mut modules).await {
-        log::warn!("Failed to apply part of config: {err}");
-    }
+    main.apply_config(&mut modules).await?;
 
     let mut looper = Looper::default();
 

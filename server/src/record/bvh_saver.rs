@@ -40,11 +40,10 @@ impl<'a, W: Write> BvhSaver<'a, W> {
 
         self.write("MOTION")?;
         self.write(format!("Frames: {}", frames.len()))?;
-        writeln!(
-            self.buf,
+        self.write(format!(
             "Frame Time: {:.6}",
             Looper::TARGET_LOOP_DELTA.as_secs_f32()
-        )?;
+        ))?;
 
         for frame in frames {
             // Add the root_position and all the orientations

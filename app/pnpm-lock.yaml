@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@tauri-apps/api':
+        specifier: ^2.0.3
+        version: 2.0.3
       '@tauri-apps/plugin-dialog':
         specifier: ~2
         version: 2.0.0
@@ -362,8 +365,8 @@ packages:
       svelte: ^4.0.0 || ^5.0.0-next.0
       vite: ^5.0.0
 
-  '@tauri-apps/api@2.0.2':
-    resolution: {integrity: sha512-3wSwmG+1kr6WrgAFKK5ijkNFPp8TT3FLj3YHUb5EwMO+3FxX4uWlfSWkeeBy+Kc1RsKzugtYLuuya+98Flj+3w==}
+  '@tauri-apps/api@2.0.3':
+    resolution: {integrity: sha512-840qk6n8rbXBXMA5/aAgTYsg5JAubKO0nXw5wf7IzGnUuYKGbB4oFBIZtXOIWy+E0kNTDI3qhq5iqsoMJfwp8g==}
 
   '@tauri-apps/cli-darwin-arm64@2.0.1':
     resolution: {integrity: sha512-oWjCZoFbm57V0eLEkIbc6aUmB4iW65QF7J8JVh5sNzH4xHGP9rzlQarbkg7LOn89z7mFSZpaLJAWlaaZwoV2Ug==}
@@ -1378,7 +1381,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@tauri-apps/api@2.0.2': {}
+  '@tauri-apps/api@2.0.3': {}
 
   '@tauri-apps/cli-darwin-arm64@2.0.1':
     optional: true
@@ -1425,7 +1428,7 @@ snapshots:
 
   '@tauri-apps/plugin-dialog@2.0.0':
     dependencies:
-      '@tauri-apps/api': 2.0.2
+      '@tauri-apps/api': 2.0.3
 
   '@threejs-kit/instanced-sprite-mesh@2.4.7(@types/three@0.169.0)(three@0.169.0)':
     dependencies:

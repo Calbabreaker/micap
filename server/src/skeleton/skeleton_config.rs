@@ -33,7 +33,7 @@ pub enum BoneOffsetKind {
     HandLength,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(default)]
 pub struct SkeletonConfig {
     /// Contains the length offset in meters from a bone to its connecting one

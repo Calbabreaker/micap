@@ -10,8 +10,8 @@ export type BoneLocation = "Hip" | "LeftUpperLeg" | "RightUpperLeg" | "LeftLower
  * See BoneLocation::get_offset
  */
 export type BoneOffsetKind = "NeckLength" | "WaistLength" | "ChestLength" | "UpperChestLength" | "HipLength" | "HipsWidth" | "UpperLegLength" | "LowerLegLength" | "ShouldersWidth" | "ShoulderOffset" | "UpperArmLength" | "LowerArmLength" | "FootLength" | "HandLength";
-export type GlobalConfig = { trackers: { [key in string]?: TrackerConfig }, vmc: VmcConfig, vrchat: VrChatConfig, skeleton: SkeletonConfig, };
-export type GlobalConfigUpdate = { trackers: { [key in string]?: TrackerConfig } | null, vmc: VmcConfig | null, vrchat: VrChatConfig | null, skeleton: SkeletonConfig | null, };
+export type GlobalConfig = { trackers: { [key in string]?: TrackerConfig }, vmc: VmcConfig, vrchat: VrChatConfig, skeleton: SkeletonConfig, interface: InterfaceConfig, };
+export type InterfaceConfig = { hide_in_system_tray: boolean, };
 export type SkeletonConfig = { 
 /**
  * Contains the length offset in meters from a bone to its connecting one
@@ -24,5 +24,5 @@ export type TrackerInfo = { to_be_removed: boolean, status: TrackerStatus, laten
 export type TrackerStatus = "Ok" | "Error" | "Off" | "TimedOut";
 export type VmcConfig = { enabled: boolean, send_port: number, receive_port: number, };
 export type VrChatConfig = { enabled: boolean, send_port: number, bones_to_send: Array<BoneLocation>, };
-export type WebsocketClientMessage = { "type": "SerialSend", data: string, } | { "type": "RemoveTracker", id: string, } | { "type": "UpdateConfig", config: GlobalConfigUpdate, } | { "type": "ResetTrackerOrientations" } | { "type": "ResetSkeleton" } | { "type": "StartRecord" } | { "type": "StopRecord", save_path: string, };
+export type WebsocketClientMessage = { "type": "SerialSend", data: string, } | { "type": "RemoveTracker", id: string, } | { "type": "UpdateConfig", config: GlobalConfig, } | { "type": "ResetTrackerOrientations" } | { "type": "ResetSkeleton" } | { "type": "StartRecord" } | { "type": "StopRecord", save_path: string, };
 export type WebsocketServerMessage = { "type": "TrackerUpdate", trackers: { [key in string]?: Tracker }, } | { "type": "InitialState", config: GlobalConfig, port_name?: string, default_config: GlobalConfig, trackers: { [key in string]?: Tracker }, } | { "type": "SkeletonUpdate", bones: { [key in BoneLocation]?: Bone }, } | { "type": "ConfigUpdate", config: GlobalConfig, } | { "type": "SerialLog", log: string, } | { "type": "SerialPortChanged", port_name?: string, } | { "type": "Error", error: string, };

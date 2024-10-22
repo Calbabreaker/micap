@@ -2,7 +2,7 @@
     import type { BoneLocation } from "$lib/server_bindings";
     import { promptPopup } from "$lib/toast";
     import {
-        editTrackerConfig,
+        updateTrackerConfig,
         globalConfig,
         removeTracker,
     } from "$lib/websocket";
@@ -38,14 +38,14 @@
 
     async function enterNewName() {
         const name = await promptPopup("Enter the new name");
-        editTrackerConfig(id, {
+        updateTrackerConfig(id, {
             ...config,
             name,
         });
     }
 
     function setLocation(location: string) {
-        editTrackerConfig(id, {
+        updateTrackerConfig(id, {
             ...config,
             location:
                 location == "None" ? undefined : (location as BoneLocation),

@@ -9,22 +9,20 @@ use crate::{
     tracker::TrackerConfig,
 };
 
-#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, TS)]
+#[serde(default)]
+pub struct InterfaceConfig {
+    pub hide_in_system_tray: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize, TS)]
 #[serde(default)]
 pub struct GlobalConfig {
     pub trackers: HashMap<Arc<str>, TrackerConfig>,
     pub vmc: VmcConfig,
     pub vrchat: VrChatConfig,
     pub skeleton: SkeletonConfig,
-}
-
-#[derive(Default, Debug, Serialize, Deserialize, TS)]
-pub struct GlobalConfigUpdate {
-    // Note: every field as optional to allow for specific config updates
-    pub trackers: Option<HashMap<Arc<str>, TrackerConfig>>,
-    pub vmc: Option<VmcConfig>,
-    pub vrchat: Option<VrChatConfig>,
-    pub skeleton: Option<SkeletonConfig>,
+    pub interface: InterfaceConfig,
 }
 
 impl GlobalConfig {
@@ -41,15 +39,6 @@ impl GlobalConfig {
         let text = serde_json::to_string_pretty(self)?;
         std::fs::write(path, text)?;
         Ok(())
-    }
-
-    pub fn into_update(self) -> GlobalConfigUpdate {
-        GlobalConfigUpdate {
-            trackers: Some(self.trackers),
-            vmc: Some(self.vmc),
-            vrchat: Some(self.vrchat),
-            skeleton: Some(self.skeleton),
-        }
     }
 }
 

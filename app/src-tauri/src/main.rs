@@ -1,6 +1,8 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::sync::Mutex;
+
 use state::AppState;
 use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
@@ -13,14 +15,24 @@ fn main() {
 
     micap_server::setup_log();
     tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![update_interface_config])
         .plugin(tauri_plugin_dialog::init())
         .setup(setup)
         .run(tauri::generate_context!())
         .expect("Error while running tauri application");
 }
 
+#[tauri::command]
+fn update_interface_config(
+    state: tauri::State<Mutex<AppState>>,
+    config: micap_server::config::InterfaceConfig,
+) {
+    log::info!("Set interface config: {:?}", &config);
+    state.lock().unwrap().interface_config = config;
+}
+
 fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    app.manage(AppState::new(app));
+    app.manage(Mutex::new(AppState::new(app)));
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     {
@@ -61,20 +73,27 @@ async fn start_server() -> anyhow::Result<()> {
 }
 
 fn handle_window_events(app: &tauri::App) {
-    let state = app.state::<AppState>();
-    let w = state.window.clone();
-    state.window.on_window_event(move |event| {
+    let state = app.state::<Mutex<AppState>>();
+    let win = state.lock().unwrap().window.clone();
+    win.clone().on_window_event(move |event| {
+        let state = win.state::<Mutex<AppState>>();
+
+        if !state.lock().unwrap().interface_config.hide_in_system_tray {
+            return;
+        }
+
         if let tauri::WindowEvent::CloseRequested { api, .. } = event {
             api.prevent_close();
-            w.state::<AppState>().set_visible(false).unwrap();
+            state.lock().unwrap().set_visible(false).unwrap();
         }
     });
 }
 
 fn create_system_tray(app: &tauri::App) -> tauri::Result<tauri::tray::TrayIcon> {
-    let state = app.state::<AppState>();
+    let state = app.state::<Mutex<AppState>>();
     let quit_item = tauri::menu::MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-    let menu = tauri::menu::Menu::with_items(app, &[&quit_item, &state.toggle_item])?;
+    let menu =
+        tauri::menu::Menu::with_items(app, &[&quit_item, &state.lock().unwrap().toggle_item])?;
 
     tauri::tray::TrayIconBuilder::new()
         .icon(app.default_window_icon().unwrap().clone())
@@ -84,8 +103,8 @@ fn create_system_tray(app: &tauri::App) -> tauri::Result<tauri::tray::TrayIcon> 
                 app.exit(0);
             }
             "toggle" => {
-                let state = app.state::<AppState>();
-                state.toggle_visible().unwrap();
+                let state = app.state::<Mutex<AppState>>();
+                state.lock().unwrap().toggle_visible().unwrap();
             }
             _ => {
                 log::error!("Unknown menu id {:?}", event.id);

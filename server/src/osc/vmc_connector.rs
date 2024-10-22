@@ -3,7 +3,7 @@ use ts_rs::TS;
 
 use crate::{main_server::MainServer, osc::OscConnector};
 
-#[derive(Debug, PartialEq, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(default)]
 pub struct VmcConfig {
     pub enabled: bool,
@@ -67,11 +67,10 @@ impl VmcConnector {
         Ok(())
     }
 
-    pub async fn apply_config(&mut self, config: &VmcConfig) -> anyhow::Result<()> {
+    pub async fn apply_config(&mut self, config: &VmcConfig) {
         if config.enabled {
-            self.osc.connect(config.send_port).await?;
+            self.osc.connect(config.send_port).await;
         }
-        Ok(())
     }
 }
 

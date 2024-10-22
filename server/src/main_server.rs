@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use anyhow::Context;
 
 use crate::{
-    config::{GlobalConfig, GlobalConfigUpdate},
+    config::GlobalConfig,
     osc::{vmc_connector::VmcConnector, vrchat_connector::VrChatConnector},
     record::MotionRecorder,
     skeleton::SkeletonManager,
@@ -41,7 +41,7 @@ impl ServerModules {
 #[derive(Default)]
 pub struct ServerUpdates {
     pub error: Option<Box<str>>,
-    pub config: Option<GlobalConfigUpdate>,
+    pub config: Option<GlobalConfig>,
 }
 
 #[derive(Default)]
@@ -59,8 +59,9 @@ impl MainServer {
         modules.udp_server.update(self).await?;
         modules.websocket_server.update(self).await?;
 
-        if let Some(config_update) = self.updates.config.take() {
-            self.apply_config(config_update, modules).await?;
+        if let Some(config) = self.updates.config.take() {
+            self.config = config;
+            self.apply_config(modules).await?;
             self.config.save()?;
         }
 
@@ -74,11 +75,7 @@ impl MainServer {
             self.trackers.remove(&removed_id);
 
             if self.config.trackers.remove(&removed_id).is_some() {
-                self.updates.config = Some(GlobalConfigUpdate {
-                    // We're not changing anything so set to none
-                    trackers: Some(HashMap::new()),
-                    ..Default::default()
-                });
+                self.apply_config(modules).await?;
             }
         }
 
@@ -98,43 +95,24 @@ impl MainServer {
         None
     }
 
-    pub async fn apply_config(
-        &mut self,
-        config: GlobalConfigUpdate,
-        modules: &mut ServerModules,
-    ) -> anyhow::Result<()> {
-        // Check what update was set and apply specifically to each module
-        if let Some(mut tracker_configs) = config.trackers {
-            // Set all the tracker configs provided
-            for (id, config_update) in tracker_configs.drain() {
-                // Insert tracker if not exist (usually in first load)
-                if !self.trackers.contains_key(&id) {
-                    self.trackers.insert(id.clone(), TrackerRef::default());
-                }
+    pub async fn apply_config(&mut self, modules: &mut ServerModules) -> anyhow::Result<()> {
+        let config = &self.config;
 
-                self.config.trackers.insert(id, config_update);
+        // Set all the tracker configs provided
+        for id in config.trackers.keys() {
+            // Insert tracker if not exist (usually in first load)
+            if !self.trackers.contains_key(id) {
+                self.trackers.insert(id.clone(), TrackerRef::default());
             }
-
-            self.skeleton_manager
-                .apply_tracker_config(&self.config.trackers, &self.trackers);
         }
 
-        if let Some(config) = config.skeleton {
-            self.skeleton_manager.apply_skeleton_config(&config);
-            self.config.skeleton = config;
-        }
-
-        if let Some(config) = config.vrchat {
-            modules.vrchat_connector.apply_config(&config).await?;
-            self.config.vrchat = config;
-        }
-
-        if let Some(config) = config.vmc {
-            modules.vmc_connector.apply_config(&config).await?;
-            self.config.vmc = config;
-        }
-
-        modules.websocket_server.send_config(&self.config).await?;
+        self.skeleton_manager
+            .apply_tracker_config(&config.trackers, &self.trackers);
+        self.skeleton_manager
+            .apply_skeleton_config(&config.skeleton);
+        modules.vrchat_connector.apply_config(&config.vrchat).await;
+        modules.vmc_connector.apply_config(&config.vmc).await;
+        modules.websocket_server.send_config(config).await?;
         Ok(())
     }
 

@@ -1,8 +1,8 @@
 <script lang="ts">
-    import { defaultConfig, editConfig } from "$lib/websocket";
+    import { defaultConfig, updateConfig } from "$lib/websocket";
 
     function reset() {
-        editConfig("skeleton", {
+        updateConfig("skeleton", {
             offsets: defaultConfig!.skeleton.offsets,
         });
     }

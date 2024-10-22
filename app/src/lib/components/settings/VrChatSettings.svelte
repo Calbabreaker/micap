@@ -1,12 +1,12 @@
 <script lang="ts">
-    import { globalConfig, editConfig, defaultConfig } from "$lib/websocket";
+    import { globalConfig, updateConfig, defaultConfig } from "$lib/websocket";
     import BoneCheckboxes from "./BoneCheckboxes.svelte";
     import ConnectorSettings from "./ConnectorSettings.svelte";
 
     let config = $globalConfig.vrchat;
 </script>
 
-<form class="inputs-form" on:change={() => editConfig("vrchat", config)}>
+<form class="inputs-form" on:change={() => updateConfig("vrchat", config)}>
     <ConnectorSettings configType="vrchat" bind:config />
     <BoneCheckboxes
         bind:bonesToSend={config.bones_to_send}

@@ -1,5 +1,6 @@
 <script lang="ts">
     import Card from "$lib/components/Card.svelte";
+    import InterfaceSettings from "$lib/components/settings/InterfaceSettings.svelte";
     import SkeletonOffsetSettings from "$lib/components/settings/SkeletonOffsetSettings.svelte";
     import VmcSettings from "$lib/components/settings/VmcSettings.svelte";
     import VrChatSettings from "$lib/components/settings/VrChatSettings.svelte";
@@ -11,8 +12,11 @@
         <Card title="Virtual Motion Capture">
             <VmcSettings />
         </Card>
-        <Card title="VRChat Settings">
+        <Card title="VRChat">
             <VrChatSettings />
+        </Card>
+        <Card title="Interface">
+            <InterfaceSettings />
         </Card>
         <Card title="Skeleton offsets">
             <SkeletonOffsetSettings />
