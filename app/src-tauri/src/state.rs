@@ -11,7 +11,7 @@ impl AppState {
     pub fn new(app: &tauri::App) -> Self {
         Self {
             window: app.get_webview_window("main").unwrap(),
-            toggle_item: tauri::menu::MenuItem::with_id(app, "toggle", "Show", true, None::<&str>)
+            toggle_item: tauri::menu::MenuItem::with_id(app, "toggle", "Hide", true, None::<&str>)
                 .unwrap(),
             interface_config: InterfaceConfig::default(),
         }

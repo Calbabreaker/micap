@@ -9,6 +9,7 @@ import type {
     Bone,
     WebsocketServerMessage,
 } from "./server_bindings";
+import { invoke } from "@tauri-apps/api/core";
 
 const WEBSOCKET_PORT = 8298;
 
@@ -93,6 +94,12 @@ export async function removeTracker(id: string) {
         id,
     });
 }
+
+globalConfig.subscribe((config) => {
+    if (config) {
+        invoke("update_interface_config", { config: config.interface });
+    }
+});
 
 function handleMessage(message: WebsocketServerMessage) {
     switch (message.type) {

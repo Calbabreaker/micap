@@ -2,8 +2,6 @@
     import { globalConfig, updateConfig, defaultConfig } from "$lib/websocket";
     import type { InterfaceConfig } from "$lib/server_bindings";
     import ResetButton from "../inputs/ResetButton.svelte";
-    import { invoke } from "@tauri-apps/api/core";
-    import { onMount } from "svelte";
 
     let config: InterfaceConfig;
 
@@ -11,12 +9,7 @@
 
     function apply() {
         updateConfig("interface", config);
-        invoke("update_interface_config", { config });
     }
-
-    onMount(() => {
-        invoke("update_interface_config", { config });
-    });
 </script>
 
 <form class="inputs-form" on:change={apply}>
