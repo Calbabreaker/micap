@@ -46,8 +46,12 @@
     $: updateBones($bones);
 </script>
 
-<T.PerspectiveCamera makeDefault position={[4, 6, -4]}>
-    <OrbitControls />
+<T.PerspectiveCamera
+    makeDefault
+    position={[4, 4, -4]}
+    on:create={({ ref }) => ref.lookAt(new THREE.Vector3(0, 1.5, 0))}
+>
+    <OrbitControls target={[0, 1.5, 0]} />
 </T.PerspectiveCamera>
 {#if showModel}
     <GLTF

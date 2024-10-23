@@ -50,14 +50,12 @@ export function connectWebsocket() {
 
     websocket.onclose = () => {
         console.log("Websocket connection closed");
-        websocket = undefined;
-        websocketConnected.set(false);
-        trackers.set({});
+        disconnectWebsocket();
     };
 
     websocket.onerror = () => {
         console.log("Websocket error");
-        websocket!.close();
+        disconnectWebsocket();
     };
 
     websocket.onmessage = (event) => {
@@ -66,6 +64,13 @@ export function connectWebsocket() {
             handleMessage(message);
         }
     };
+}
+
+function disconnectWebsocket() {
+    websocket!.close();
+    websocket = undefined;
+    websocketConnected.set(false);
+    trackers.set({});
 }
 
 export function updateConfig<K extends keyof GlobalConfig>(field: K, config: GlobalConfig[K]) {
