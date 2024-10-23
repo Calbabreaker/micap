@@ -29,7 +29,7 @@
     }
 </script>
 
-<main class="p-4">
+<div class="p-4">
     <SvelteToast />
     {#if $popupState}
         <PopupBox
@@ -48,4 +48,4 @@
     >
         <slot />
     </main>
-</main>
+</div>

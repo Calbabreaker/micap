@@ -36,7 +36,7 @@
     }
 
     .inputs-form {
-        @apply grid grid-cols-[1fr_auto] gap-y-2 gap-x-4;
+        @apply grid grid-cols-[1fr_auto] gap-y-2 gap-x-4 items-center;
     }
 }
 
@@ -56,5 +56,5 @@ body {
 }
 
 input[type="checkbox"] {
-    transform: scale(1.5);
+    transform: scale(1.5) translateX(0.15rem);
 }

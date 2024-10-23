@@ -15,7 +15,6 @@ use crate::{
 pub struct UdpDevice {
     pub(super) last_packet_received_time: Instant,
     pub(super) last_packet_number: u32,
-    /// Maps the udp device's tracker index to the global tracker
     pub(super) global_trackers: Vec<Option<TrackerRef>>,
     pub(super) mac: Arc<str>,
     pub(super) address: SocketAddr,
