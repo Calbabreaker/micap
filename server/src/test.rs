@@ -1,5 +1,7 @@
 use std::time::Duration;
 
+use anyhow::Context;
+
 use crate::{
     skeleton::BoneLocation,
     tracker::{TrackerConfig, TrackerStatus},
@@ -15,14 +17,14 @@ use crate::{
 async fn tests_sequential() -> anyhow::Result<()> {
     // Use spawn to check for Send + Sync
     tokio::spawn(async {
-        test_tracker_device_send().await.unwrap();
-        test_config().await.unwrap();
+        test_udp_tracker().await.context("test_udp_tracker")?;
+        test_config().await.context("test_config")?;
+        Ok(())
     })
-    .await?;
-    Ok(())
+    .await?
 }
 
-async fn test_tracker_device_send() -> anyhow::Result<()> {
+async fn test_udp_tracker() -> anyhow::Result<()> {
     let mut main = MainServer::default();
     let mut modules = ServerModules::new().await?;
     let mut client = UdpTrackerClient::new().await?;

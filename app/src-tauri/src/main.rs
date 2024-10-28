@@ -10,9 +10,6 @@ use tauri_plugin_dialog::DialogExt;
 mod state;
 
 fn main() {
-    // If LANG not set to en, it shows blank window for some reason
-    std::env::set_var("LANG", "en");
-
     micap_server::setup_log();
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![update_interface_config])

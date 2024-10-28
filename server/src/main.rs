@@ -1,8 +1,5 @@
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     micap_server::setup_log();
-    if let Err(err) = micap_server::start_server().await {
-        log::error!("Server error: {err:?}");
-        std::process::exit(1);
-    }
+    micap_server::start_server().await
 }
