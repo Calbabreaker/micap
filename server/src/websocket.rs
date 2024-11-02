@@ -107,8 +107,8 @@ impl WebsocketServer {
                     trackers: &main.trackers,
                 };
                 feed_ws_message(&mut ws_stream, message).await?;
-
                 ws_stream.flush().await?;
+
                 self.ws_stream = Some(ws_stream);
                 log::info!("Websocket client connected from {peer_addr}");
                 Ok(())

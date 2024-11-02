@@ -1,5 +1,4 @@
 #include "tracker_bmi160.h"
-#include "globals.h"
 #include "internal_led.h"
 #include "log.h"
 #include "trackers/tracker.h"

@@ -55,6 +55,10 @@ void ConnectionManager::receive_packets() {
         return;
     }
 
+    if (m_connected && m_server_ip != m_udp.remoteIP()) {
+        return;
+    }
+
     int len = m_udp.read(m_buffer, sizeof(m_buffer));
     LOG_TRACE("Received %d bytes from %s", len, m_udp.remoteIP().toString().c_str());
     m_packet_received_timer.reset();
