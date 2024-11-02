@@ -56,7 +56,7 @@ async fn test_udp_tracker() -> anyhow::Result<()> {
         assert_eq!(tracker.info().battery_level, 0.2);
         assert_eq!(tracker.info().address, client.socket.local_addr().ok());
         assert_eq!(tracker.data().acceleration, glam::vec3a(1., 3., 2.));
-        assert_eq!(tracker.data().orientation, glam::quat(1., 3., 2., 4.));
+        assert_eq!(tracker.data().orientation, glam::quat(1., 2., 3., 4.));
     }
 
     modules.udp_server.upkeep().await?;

@@ -50,7 +50,7 @@
         />
     {/if}
     <div class="mt-4 flex gap-4">
-        <button class="btn w-full" on:click={() => confirm(false)}>
+        <button class="btn btn-other w-full" on:click={() => confirm(false)}>
             Cancel
         </button>
         <button class="btn w-full" on:click={() => confirm(true)}>Ok</button>

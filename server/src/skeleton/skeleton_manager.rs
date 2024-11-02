@@ -120,13 +120,13 @@ impl SkeletonManager {
 
     pub fn apply_tracker_config(
         &mut self,
-        configs: &HashMap<Arc<str>, TrackerConfig>,
+        tracker_configs: &HashMap<Arc<str>, TrackerConfig>,
         trackers: &HashMap<Arc<str>, TrackerRef>,
     ) {
         // Sets self.trackers based on bone location
         self.trackers.clear();
-        for (id, config) in configs {
-            if let Some(location) = config.location {
+        for (id, tracker_config) in tracker_configs {
+            if let Some(location) = tracker_config.location {
                 self.trackers.insert(location, trackers[id].clone());
             }
         }

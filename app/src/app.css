@@ -8,7 +8,7 @@
     }
 
     .btn-other {
-        @apply border-gray-300 bg-white hover:text-sky-600 text-neutral-800;
+        @apply border-gray-300 bg-white hover:text-sky-600 hover:bg-white text-neutral-800;
     }
 
     .btn-small {

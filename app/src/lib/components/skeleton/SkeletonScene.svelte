@@ -16,7 +16,13 @@
 
     function updateModel(bonesData: BoneDict) {
         Object.entries(bonesData).forEach(([location, boneData]) => {
-            const quat = new THREE.Quaternion().fromArray(boneData.orientation);
+            // Some parts of the quaternion are flipped for some reason
+            const quat = new THREE.Quaternion(
+                -boneData.orientation[0],
+                boneData.orientation[1],
+                -boneData.orientation[2],
+                boneData.orientation[3],
+            );
 
             const part = modelRef.getObjectByName(location);
             if (part) {
@@ -48,7 +54,7 @@
 
 <T.PerspectiveCamera
     makeDefault
-    position={[4, 4, -4]}
+    position={[4, 4, 4]}
     on:create={({ ref }) => ref.lookAt(new THREE.Vector3(0, 1.5, 0))}
 >
     <OrbitControls target={[0, 1.5, 0]} />
