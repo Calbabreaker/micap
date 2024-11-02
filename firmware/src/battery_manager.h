@@ -1,6 +1,6 @@
 #pragma once
 
-#include "log.h"
+#include "maths.h"
 #include <cstdint>
 
 class BatteryManager {

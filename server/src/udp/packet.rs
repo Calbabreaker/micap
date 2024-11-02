@@ -140,7 +140,7 @@ impl<'a, R: Read> UdpPacketTrackerData<'a, R> {
         Ok(Some(UdpTrackerData {
             tracker_index,
             // Swap y and z to make y up
-            orientation: glam::Quat::from_xyzw(quat[0], quat[2], quat[1], quat[3]),
+            orientation: glam::Quat::from_xyzw(quat[0], quat[1], quat[2], quat[3]),
             acceleration: glam::Vec3A::new(vec[0], vec[2], vec[1]),
         }))
     }

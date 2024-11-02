@@ -1,7 +1,5 @@
 #pragma once
 
-const double EARTH_GRAVITY = 9.8;
-
 #include "config_manager.h"
 #include "trackers/tracker_manager.h"
 

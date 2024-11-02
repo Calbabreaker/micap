@@ -98,13 +98,9 @@ void TrackerBMI160::setup() {
 }
 
 void TrackerBMI160::update() {
-    if (!read_fifo()) {
-        return;
+    if (read_fifo()) {
+        set_new_data(m_sensor_fusion.get_acceleration(), m_sensor_fusion.get_orientation());
     }
-
-    this->orientation = m_sensor_fusion.get_orientation();
-    this->acceleration = m_sensor_fusion.get_acceleration();
-    this->has_new_data = true;
 }
 
 bool TrackerBMI160::calibrate() {
@@ -242,9 +238,9 @@ void TrackerBMI160::handle_raw_gyro(int16_t raw_gyro[3]) {
 
 float TrackerBMI160::get_temperature() {
     // Constants defined in datasheet
-    const float BMI160_ZERO_OFFSET = 23;
-    const float BMI160_TEMP_RANGE = 128. / 65535;
-    const uint8_t BMI160_TEMP_REGISTER = 0x20;
+    constexpr float BMI160_ZERO_OFFSET = 23.0f;
+    constexpr float BMI160_TEMP_RANGE = 128.0f / (float)0xffff;
+    constexpr uint8_t BMI160_TEMP_REGISTER = 0x20;
 
     uint8_t buffer[2];
     int result = bmi160_get_regs(BMI160_TEMP_REGISTER, buffer, 2, &m_device);

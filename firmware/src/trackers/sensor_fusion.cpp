@@ -23,7 +23,7 @@ void SensorFusion::update_gyro(float gyro_xyz[3], float deltatime) {
     FusionAhrsUpdateNoMagnetometer(&m_ahrs, new_gyro, m_accel, deltatime);
 };
 
-// Updates with direct acceleration  from the accelerometer (in g)
+// Updates with direct acceleration from the accelerometer (in g)
 void SensorFusion::update_accel(float accel_xyz[3]) {
     m_accel = *(FusionVector*)accel_xyz;
 }

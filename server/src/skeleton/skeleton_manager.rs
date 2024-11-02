@@ -51,6 +51,10 @@ impl SkeletonManager {
 
     fn update_spine(&mut self) {
         if self.check_any_trackers_exist(&[UpperChest, Chest, Waist, Hip]) {
+            if let Some(quat) = self.get_tracker_orientation(&[Hip, UpperChest, Waist, Chest]) {
+                self.set_bone_orientation(&[Hip], locked_with_y(quat, glam::EulerRot::XYZ));
+            }
+
             if let Some(quat) = self.get_tracker_orientation(&[UpperChest, Chest, Waist, Hip]) {
                 self.set_bone_orientation(&[UpperChest], quat);
             }

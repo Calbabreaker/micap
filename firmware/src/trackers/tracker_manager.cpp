@@ -48,6 +48,12 @@ void TrackerManager::setup() {
 }
 
 bool TrackerManager::update() {
+    // Do polling every 5000 ms
+    if (m_last_status_poll_timer.elapsed(5000)) {
+        poll_tracker_status();
+        m_last_status_poll_timer.reset();
+    }
+
     bool has_new_data = false;
     for (Tracker* tracker : get_trackers()) {
         if (tracker->status == TrackerStatus::Ok && tracker->acked_status == TrackerStatus::Ok) {
@@ -61,14 +67,7 @@ bool TrackerManager::update() {
     return has_new_data;
 }
 
-// Not currently used
 void TrackerManager::poll_tracker_status() {
-    // Do polling every 5000 ms
-    if (millis() < m_last_status_poll_time + 5000) {
-        return;
-    }
-
-    LOG_TRACE("Polling i2c bus for new trackers");
     for (Tracker* tracker : m_trackers) {
         // If the tracker isn't ok, try to see if it is connected and setup again
         if (tracker->status != TrackerStatus::Ok && test_i2c_connection(tracker->get_address())) {
@@ -79,8 +78,6 @@ void TrackerManager::poll_tracker_status() {
             }
         }
     }
-
-    m_last_status_poll_time = millis();
 }
 
 TrackerManager::~TrackerManager() {

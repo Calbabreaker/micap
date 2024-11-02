@@ -24,6 +24,8 @@ public:
     uint8_t get_index() const { return m_index; }
     uint8_t get_address() const { return m_address; }
 
+    void set_new_data(const Vector3 vector, const Quaternion quat);
+
 public:
     TrackerStatus status = TrackerStatus::Ok;
     TrackerStatus acked_status = TrackerStatus::Off; // The status that the server knows

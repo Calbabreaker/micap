@@ -21,12 +21,12 @@ constexpr float BMI160_ACCEL_RANGE = 4.;
 
 // Converts raw gyro output to radians based on sensitivity from datasheet
 // LSB/°/s -> degrees/s
-const float BMI160_GYRO_CONVERSION =
-    1.f / (16.4f * (1 << BMI160_GYRO_RANGE_FLAG)); // 16.4 * 2^index
+constexpr float BMI160_GYRO_SENSITIVITY = 16.4f * (1 << BMI160_GYRO_RANGE_FLAG); // 16.4 * 2^index
+constexpr float BMI160_GYRO_CONVERSION = 1.0f / (BMI160_GYRO_SENSITIVITY);
 
 // Makes accel output scale from -4g to +4g
 // LSB/g -> g/s
-const float BMI160_ACCEL_CONVERSION = 1.f / ((float)0x8000 / BMI160_ACCEL_RANGE);
+constexpr float BMI160_ACCEL_CONVERSION = 1.f / ((float)0x8000 / BMI160_ACCEL_RANGE);
 
 class TrackerBMI160 : public Tracker {
 public:
@@ -50,8 +50,8 @@ private:
     bmi160_dev m_device;
     bmi160_fifo_frame m_fifo;
 
-    float m_accel_offsets[3];
-    float m_gyro_offsets[3];
+    float m_accel_offsets[3] = {0., 0., 0.};
+    float m_gyro_offsets[3] = {0., 0., 0.};
 
     SensorFusion m_sensor_fusion;
 };

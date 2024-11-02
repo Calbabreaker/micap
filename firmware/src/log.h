@@ -3,7 +3,7 @@
 #include <Arduino.h>
 
 // LOG_* is only for debugging purposes and will be removed in production builds
-#define ENABLE_LOG 0
+#define ENABLE_LOG 1
 #define ENABLE_FPS_LOG 0
 
 #if ENABLE_LOG == 1
@@ -17,19 +17,3 @@
     #define LOG_WARN(msg, ...)
     #define LOG_TRACE(msg, ...)
 #endif
-
-class Timer {
-public:
-    // Returns true if the inner time has ellapsed elapsed_time
-    inline bool elapsed(uint64_t elapsed_time) {
-        uint64_t now = millis();
-        return now > m_last_elapsed_time + elapsed_time;
-    }
-
-    inline void reset() {
-        m_last_elapsed_time = millis(); //
-    }
-
-private:
-    uint64_t m_last_elapsed_time = 0;
-};

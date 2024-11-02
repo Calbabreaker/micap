@@ -3,6 +3,7 @@
 #include <array>
 
 #include "defines.h"
+#include "log.h"
 #include "trackers/tracker.h"
 
 class TrackerManager {
@@ -20,5 +21,5 @@ public:
 
 private:
     std::array<Tracker*, MAX_TRACKER_COUNT> m_trackers;
-    uint64_t m_last_status_poll_time = 0;
+    Timer m_last_status_poll_timer;
 };
