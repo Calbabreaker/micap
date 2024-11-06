@@ -13,7 +13,7 @@ impl MotionFrame {
         location: BoneLocation,
         index: &mut usize,
     ) {
-        self.orientations[*index] = skeleton.bones[&location].orientation;
+        self.orientations[*index] = skeleton.bones[&location].local_orientation;
         *index += 1;
 
         for child_location in location.get_children() {

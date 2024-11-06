@@ -7,7 +7,9 @@ use ts_rs::TS;
 /// See BoneLocation::get_offset
 #[derive(Clone, Debug, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 pub enum BoneOffsetKind {
-    /// Y distance from base of neck to eyes
+    /// Y distance from base of head to top of head
+    HeadLength,
+    /// Y distance from base of neck to base of head
     NeckLength,
     /// Y distance from top of hip to base of chest
     WaistLength,
@@ -15,8 +17,6 @@ pub enum BoneOffsetKind {
     ChestLength,
     /// Y distance from upper chest to base of neck
     UpperChestLength,
-    /// Y distance from base of hip to top
-    HipLength,
     HipsWidth,
     /// Y distance from upper leg to lower leg
     UpperLegLength,
@@ -38,28 +38,78 @@ pub enum BoneOffsetKind {
 pub struct SkeletonConfig {
     /// Contains the length offset in meters from a bone to its connecting one
     pub offsets: HashMap<BoneOffsetKind, f32>,
+    pub user_height: f32,
 }
 
 impl Default for SkeletonConfig {
     fn default() -> Self {
         use BoneOffsetKind::*;
-        Self {
+        let mut this = Self {
             // Some default values for an average body probably
             offsets: HashMap::from([
-                (NeckLength, 0.1),
-                (WaistLength, 0.2),
-                (ChestLength, 0.1),
-                (UpperChestLength, 0.1),
-                (HipsWidth, 0.3),
-                (UpperLegLength, 0.2),
-                (LowerLegLength, 0.3),
-                (ShouldersWidth, 0.1),
-                (ShoulderOffset, 0.05),
-                (UpperArmLength, 0.15),
-                (LowerArmLength, 0.1),
-                (FootLength, 0.1),
-                (HandLength, 0.05),
+                (HeadLength, 0.24),
+                (NeckLength, 0.10),
+                (WaistLength, 0.20),
+                (ChestLength, 0.18),
+                (UpperChestLength, 0.12),
+                (HipsWidth, 0.36),
+                (UpperLegLength, 0.45),
+                (LowerLegLength, 0.44),
+                (ShouldersWidth, 0.40),
+                (ShoulderOffset, 0.08),
+                (UpperArmLength, 0.30),
+                (LowerArmLength, 0.26),
+                (FootLength, 0.26),
+                (HandLength, 0.18),
             ]),
+            user_height: 0.0,
+        };
+        this.user_height = this.get_total_height();
+        this
+    }
+}
+
+impl SkeletonConfig {
+    fn get_offset_sum(&self, offset_kinds: &[BoneOffsetKind]) -> f32 {
+        offset_kinds.iter().map(|kind| self.offsets[kind]).sum()
+    }
+
+    pub fn get_leg_length(&self) -> f32 {
+        use BoneOffsetKind::*;
+        self.get_offset_sum(&[UpperLegLength, LowerLegLength])
+    }
+
+    pub fn get_total_height(&self) -> f32 {
+        use BoneOffsetKind::*;
+        self.get_offset_sum(&[
+            LowerLegLength,
+            UpperLegLength,
+            ChestLength,
+            UpperChestLength,
+            NeckLength,
+            HeadLength,
+        ])
+    }
+
+    pub fn update_height(&mut self) {
+        let scale = self.user_height / self.get_total_height();
+        for offset in self.offsets.values_mut() {
+            *offset *= scale;
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::skeleton::SkeletonConfig;
+
+    #[test]
+    fn height_update_correct() {
+        let mut skel_conf = SkeletonConfig {
+            user_height: 1.2,
+            ..Default::default()
+        };
+        skel_conf.update_height();
+        assert!(skel_conf.get_total_height() > skel_conf.user_height);
     }
 }

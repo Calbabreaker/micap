@@ -131,17 +131,20 @@ impl<'a, R: Read> UdpPacketTrackerData<'a, R> {
             return Ok(None);
         }
 
-        let mut quat = [0_f32; 4];
-        self.bytes.read_f32_into::<LittleEndian>(&mut quat)?;
+        let mut array = [0_f32; 4];
+        self.bytes.read_f32_into::<LittleEndian>(&mut array)?;
+        let orientation = glam::Quat::from_array(array);
 
         let mut vec = [0_f32; 3];
         self.bytes.read_f32_into::<LittleEndian>(&mut vec)?;
+        let acceleration = glam::Vec3A::new(vec[0], vec[2], vec[1]);
 
         Ok(Some(UdpTrackerData {
             tracker_index,
-            // Swap y and z to make y up
-            orientation: glam::Quat::from_xyzw(quat[0], quat[1], quat[2], quat[3]),
-            acceleration: glam::Vec3A::new(vec[0], vec[2], vec[1]),
+            orientation: orientation
+                // Rotates to match how it is mounted
+                * glam::Quat::from_axis_angle(glam::Vec3::Z, f32::to_radians(270.)),
+            acceleration,
         }))
     }
 }

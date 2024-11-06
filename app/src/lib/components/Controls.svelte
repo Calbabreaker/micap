@@ -44,12 +44,4 @@
             countdownContent="Recording in"
         />
     {/if}
-    <button
-        class="btn"
-        on:click={() => {
-            sendWebsocket({ type: "ResetSkeleton" });
-        }}
-    >
-        Reset Skeleton
-    </button>
 </div>

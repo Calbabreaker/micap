@@ -77,7 +77,7 @@ async fn test_config() -> anyhow::Result<()> {
 
     let tracker_config = TrackerConfig {
         name: Some("hello".to_string()),
-        location: Some(BoneLocation::Hip),
+        location: Some(BoneLocation::CenterHip),
     };
 
     let mut global_config = GlobalConfig::default();

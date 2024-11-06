@@ -45,23 +45,14 @@ impl VmcConnector {
         }))
         .chain(bones.iter().filter_map(|(location, bone)| {
             let mut args = vec![rosc::OscType::String(location.as_unity_name()?)];
-            add_osc_transform_args(&mut args, bone.get_head_offset(bones), bone.orientation);
+            let quat = bone.local_orientation;
+            let orientation = glam::Quat::from_xyzw(-quat.x, quat.y, quat.z, -quat.w);
+            add_osc_transform_args(&mut args, bone.get_head_offset(bones), orientation);
             Some(rosc::OscPacket::Message(rosc::OscMessage {
                 addr: "/VMC/Ext/Bone/Pos".to_string(),
                 args,
             }))
         }));
-        // .chain(main.trackers.iter().filter_map(|(id, tracker)| {
-        //     let tracker = tracker.lock().unwrap();
-        //     let mut args = vec![rosc::OscType::String(
-        //         main.config.trackers[id].location?.as_unity_name()?,
-        //     )];
-        //     add_osc_transform_args(&mut args, glam::Vec3A::ZERO, tracker.data().orientation);
-        //     Some(rosc::OscPacket::Message(rosc::OscMessage {
-        //         addr: "/VMC/Ext/Bone/Pos".to_string(),
-        //         args,
-        //     }))
-        // }));
 
         self.osc.send_bundle(osc_messages).await.ok();
         Ok(())

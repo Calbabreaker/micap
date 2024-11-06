@@ -8,7 +8,7 @@ use crate::skeleton::BoneOffsetKind;
 #[derive(Debug, Hash, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 pub enum BoneLocation {
     /// Also acts as the root joint
-    Hip,
+    CenterHip,
     LeftUpperLeg,
     RightUpperLeg,
     LeftLowerLeg,
@@ -35,14 +35,14 @@ pub enum BoneLocation {
 }
 
 impl BoneLocation {
-    pub const ROOT: Self = Self::Hip;
+    pub const ROOT: Self = Self::CenterHip;
 
     /// Maps to bone names used in unity, this is also what VRM uses
     /// https://docs.unity3d.com/ScriptReference/HumanBodyBones.html
     pub fn as_unity_name(&self) -> Option<String> {
         match self {
             // Only these values are different
-            Self::Hip => Some("Hips".to_string()),
+            Self::CenterHip => Some("Hips".to_string()),
             Self::Waist => Some("Spine".to_string()),
             Self::LeftHip | Self::RightHip => None,
             bone => Some(format!("{:?}", bone)),
@@ -54,7 +54,7 @@ impl BoneLocation {
         use BoneOffsetKind::*;
 
         match self {
-            Self::Hip => glam::vec3a(0., 0., 0.), // Hip will act like a point
+            Self::CenterHip => glam::vec3a(0., 0., 0.), // Hip will act like a point
             Self::Waist => glam::vec3a(0., offsets[&WaistLength], 0.),
             Self::LeftHip => glam::vec3a(-offsets[&HipsWidth] / 2., 0., 0.),
             Self::RightHip => glam::vec3a(offsets[&HipsWidth] / 2., 0., 0.),
@@ -80,19 +80,19 @@ impl BoneLocation {
             Self::LeftHand => glam::vec3a(-offsets[&HandLength], 0., 0.),
             Self::RightHand => glam::vec3a(offsets[&HandLength], 0., 0.),
             Self::Neck => glam::vec3a(0., offsets[&NeckLength], 0.),
-            Self::Head => glam::vec3a(0., 0.05, 0.),
+            Self::Head => glam::vec3a(0., offsets[&HeadLength], 0.),
         }
     }
 
     /// Maps a bone location to its parent
     pub const SELF_AND_PARENT: &[(Self, Option<Self>)] = &[
-        (Self::Hip, None),
-        (Self::Waist, Some(Self::Hip)),
-        (Self::LeftHip, Some(Self::Hip)),
+        (Self::CenterHip, None),
+        (Self::Waist, Some(Self::CenterHip)),
+        (Self::LeftHip, Some(Self::CenterHip)),
         (Self::LeftUpperLeg, Some(Self::LeftHip)),
         (Self::LeftLowerLeg, Some(Self::LeftUpperLeg)),
         (Self::LeftFoot, Some(Self::LeftLowerLeg)),
-        (Self::RightHip, Some(Self::Hip)),
+        (Self::RightHip, Some(Self::CenterHip)),
         (Self::RightUpperLeg, Some(Self::RightHip)),
         (Self::RightLowerLeg, Some(Self::RightUpperLeg)),
         (Self::RightFoot, Some(Self::RightLowerLeg)),
@@ -141,7 +141,7 @@ pub struct Bone {
     pub tail_offset: glam::Vec3A,
     /// Orientation of joint
     #[ts(type = "[number, number, number, number]")]
-    pub orientation: glam::Quat,
+    pub local_orientation: glam::Quat,
     #[ts(type = "[number, number, number]")]
     pub tail_world_position: glam::Vec3A,
     #[serde(skip)]
@@ -173,7 +173,7 @@ mod test {
     #[test]
     fn ok_children() {
         use BoneLocation::*;
-        assert_eq!(Hip.get_children(), &[Waist, LeftHip, RightHip]);
+        assert_eq!(CenterHip.get_children(), &[Waist, LeftHip, RightHip]);
         assert_eq!(Waist.get_children(), &[Chest]);
         assert_eq!(LeftFoot.get_children(), &[]);
     }

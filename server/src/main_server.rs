@@ -96,7 +96,8 @@ impl MainServer {
     }
 
     pub async fn apply_config(&mut self, modules: &mut ServerModules) -> anyhow::Result<()> {
-        let config = &self.config;
+        let config = &mut self.config;
+        config.skeleton.update_height();
 
         // Set all the tracker configs provided
         for id in config.trackers.keys() {

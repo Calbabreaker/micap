@@ -32,15 +32,6 @@ public:
     Quaternion() = default;
     Quaternion(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {};
 
-    Quaternion operator*(const Quaternion q) const {
-        return Quaternion(
-            w * q.x + x * q.w + y * q.z - z * q.y, //
-            w * q.y + y * q.w + z * q.x - x * q.z, //
-            w * q.z + z * q.w + x * q.y - y * q.x, //
-            w * q.w - x * q.x - y * q.y - z * q.z  //
-        );
-    }
-
     bool nearly_equals(const Quaternion q) {
         return abs(x - q.x) < EPSILON && abs(y - q.y) < EPSILON && abs(z - q.z) < EPSILON &&
                abs(w - q.w) < EPSILON;

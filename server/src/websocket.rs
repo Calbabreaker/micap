@@ -61,7 +61,6 @@ pub enum WebsocketClientMessage {
     RemoveTracker { id: Box<str> },
     UpdateConfig { config: GlobalConfig },
     ResetTrackerOrientations,
-    ResetSkeleton,
     StartRecord,
     StopRecord { save_path: PathBuf },
 }
@@ -213,11 +212,6 @@ impl WebsocketServer {
                 }
             }
             WebsocketClientMessage::StartRecord => main.motion_recorder.start_record(),
-            WebsocketClientMessage::ResetSkeleton => {
-                for bone in main.skeleton_manager.bones.values_mut() {
-                    bone.orientation = glam::Quat::IDENTITY;
-                }
-            }
             WebsocketClientMessage::StopRecord { save_path } => {
                 let frames = main.motion_recorder.stop_record();
                 let file = File::create(save_path)?;

@@ -13,9 +13,11 @@ export class SkeletonLineSegments extends LineSegments2 {
 
         const colors: number[] = [];
 
-        Object.keys(bonesData).forEach((location) => {
-            const color = getBoneColor(location as BoneLocation);
-            colors.push(...color, ...color);
+        Object.entries(bonesData).forEach(([location, boneData]) => {
+            if (boneData.parent) {
+                const color = getBoneColor(location as BoneLocation);
+                colors.push(...color, ...color);
+            }
         });
 
         const geometry = new LineSegmentsGeometry();
@@ -48,9 +50,9 @@ function generatePoints(bonesData: BoneDict): number[] {
 function getBoneColor(location: BoneLocation): [number, number, number] {
     // prettier-ignore
     switch (location) {
-        case "Hip": return [1, 0, 0];
-        case "LeftUpperLeg":
-        case "RightUpperLeg": return [1, 1, 0]
+        case "CenterHip": return [1, 0, 0];
+        case "LeftUpperLeg": return [1, 1, 0];
+        case "RightUpperLeg": return [1, 1, 0];
         case "LeftLowerLeg": 
         case "RightLowerLeg": return [0, 1, 0];
         case "LeftFoot": 

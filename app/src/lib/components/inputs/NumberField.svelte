@@ -3,6 +3,7 @@
 
     export let value: number;
     export let defaultValue: number;
+    export let type = "number";
 </script>
 
 <div class="flex items-center gap-2">
@@ -11,7 +12,7 @@
         {value}
         on:change={(e) => (value = Number(e.currentTarget.value))}
         class="text-input"
-        type="number"
+        {type}
     />
     <ResetButton bind:value {defaultValue} />
 </div>

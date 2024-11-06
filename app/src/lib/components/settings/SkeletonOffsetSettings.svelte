@@ -1,11 +1,15 @@
 <script lang="ts">
-    import { defaultConfig, updateConfig } from "$lib/websocket";
+    import { defaultConfig, globalConfig, updateConfig } from "$lib/websocket";
+    import NumberField from "../inputs/NumberField.svelte";
 
-    function reset() {
-        updateConfig("skeleton", {
-            offsets: defaultConfig!.skeleton.offsets,
-        });
-    }
+    let config = $globalConfig.skeleton;
 </script>
 
-<button class="btn" on:click={reset}>Reset</button>
+<form class="inputs-form" on:change={() => updateConfig("skeleton", config)}>
+    <span>Height (meters)</span>
+    <NumberField
+        bind:value={config.user_height}
+        defaultValue={defaultConfig.skeleton.user_height}
+        type="text"
+    />
+</form>

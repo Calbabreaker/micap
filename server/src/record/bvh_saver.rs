@@ -130,7 +130,7 @@ mod test {
         let mut skeleton = SkeletonManager::default();
         skeleton.apply_skeleton_config(&SkeletonConfig::default());
         let bone = skeleton.bones.get_mut(&BoneLocation::RightHip).unwrap();
-        bone.orientation = glam::Quat::from_euler(glam::EulerRot::ZXY, 0.5, 0.8, 0.8);
+        bone.local_orientation = glam::Quat::from_euler(glam::EulerRot::ZXY, 0.5, 0.8, 0.8);
 
         let mut recorder = MotionRecorder::default();
         recorder.start_record();

@@ -65,8 +65,8 @@ impl SerialPortManager {
             self.buffer.push(byte);
 
             if byte == b'\n' {
-                // Can only be a borrowed string
                 let str = match String::from_utf8_lossy(&self.buffer) {
+                    // Only allow valid utf8 (becomes owned if not valid)
                     Cow::Owned(_) => return None,
                     Cow::Borrowed(b) => b,
                 };

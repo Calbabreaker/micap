@@ -111,6 +111,11 @@ bool TrackerBMI160::calibrate() {
     int32_t accel_sum_xyz[3] = {0, 0, 0};
 
     for (size_t i = 0; i < BMI160_CALIBRATION_SAMPLES; i++) {
+        if (i % 2 == 0) {
+            // Calibrating flashing indictor
+            internal_led_blink(20);
+        }
+
         struct bmi160_sensor_data raw_gyro;
         struct bmi160_sensor_data raw_accel;
 
@@ -127,10 +132,6 @@ bool TrackerBMI160::calibrate() {
         accel_sum_xyz[0] += raw_accel.x;
         accel_sum_xyz[1] += raw_accel.y;
         accel_sum_xyz[2] += raw_accel.z;
-
-        if (i % 2 == 0) {
-            internal_led_blink(20);
-        }
 
         delay(20);
     }

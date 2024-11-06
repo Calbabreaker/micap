@@ -16,7 +16,7 @@
     const commonBoneLocations = [
         "None",
         "Head",
-        "Hip",
+        "CenterHip",
         "LeftUpperLeg",
         "RightUpperLeg",
         "LeftLowerLeg",
