@@ -42,7 +42,7 @@ pub struct TrackerInternal {
     pub was_updated: bool,
     /// Offset orientation from when skeleton orientation was reset
     pub orientation_offset: glam::Quat,
-    pub raw_orientation: glam::Quat,
+    pub mounted_orientation: glam::Quat,
     pub mount_offset: glam::Quat,
 }
 
@@ -53,7 +53,7 @@ impl Default for TrackerInternal {
             velocity: glam::Vec3A::default(),
             was_updated: false,
             orientation_offset: glam::Quat::IDENTITY,
-            raw_orientation: glam::Quat::IDENTITY,
+            mounted_orientation: glam::Quat::IDENTITY,
             mount_offset: glam::Quat::IDENTITY,
         }
     }
@@ -71,11 +71,11 @@ pub struct Tracker {
 }
 
 impl Tracker {
-    pub fn update_data(&mut self, acceleration: glam::Vec3A, orientation: glam::Quat) {
-        self.internal.raw_orientation = orientation;
-        let raw_orientation = self.internal.raw_orientation * self.internal.mount_offset;
-        self.data.orientation = self.internal.orientation_offset * raw_orientation;
-        self.data.acceleration = acceleration;
+    pub fn update_data(&mut self, raw_acceleration: glam::Vec3A, raw_orientation: glam::Quat) {
+        let mounted_orientation = raw_orientation * self.internal.mount_offset;
+        self.internal.mounted_orientation = mounted_orientation;
+        self.data.orientation = self.internal.orientation_offset * mounted_orientation;
+        self.data.acceleration = raw_acceleration;
 
         let delta = self.internal.time_data_last_updated.elapsed().as_secs_f32();
         self.internal.velocity += self.data.acceleration * delta;
@@ -90,8 +90,23 @@ impl Tracker {
     }
 
     pub fn reset_orientation(&mut self) {
-        let raw_orientation = self.internal.raw_orientation * self.internal.mount_offset;
-        self.internal.orientation_offset = raw_orientation.inverse();
+        self.internal.orientation_offset = self.internal.mounted_orientation.inverse();
+    }
+
+    pub fn set_mount_offset(&mut self, location: BoneLocation) {
+        use BoneLocation::*;
+        let rotation = match location {
+            LeftUpperArm | LeftLowerArm | LeftHand => {
+                glam::Quat::from_axis_angle(glam::Vec3::X, f32::to_radians(-90.))
+            }
+            RightUpperArm | RightLowerArm | RightHand => {
+                glam::Quat::from_axis_angle(glam::Vec3::X, f32::to_radians(90.))
+                    * glam::Quat::from_axis_angle(glam::Vec3::Z, f32::to_radians(180.))
+            }
+            _ => glam::Quat::from_axis_angle(glam::Vec3::Z, f32::to_radians(270.)),
+        };
+
+        self.internal.mount_offset = rotation;
     }
 
     pub fn update_info(&mut self) -> &mut TrackerInfo {

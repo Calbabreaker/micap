@@ -110,6 +110,9 @@ mod test {
             ..Default::default()
         };
         skel_conf.update_height();
-        assert!(skel_conf.get_total_height() > skel_conf.user_height);
+        assert!(
+            skel_conf.get_total_height() > skel_conf.user_height - 0.001
+                && skel_conf.get_total_height() < skel_conf.user_height + 0.001
+        );
     }
 }

@@ -55,7 +55,6 @@ impl VrChatConnector {
         let osc_messages = bones_to_send.iter().enumerate().flat_map(|(i, location)| {
             let bone = &bones[location];
             let position = bone.tail_world_position;
-            // let orientation = flip_z_axis(bone.world_orientation);
             let rotation = to_euler_angles_vector(bone.world_orientation, glam::EulerRot::ZXY);
             [
                 make_pos_message(format!("/tracking/trackers/{i}/position"), position),
