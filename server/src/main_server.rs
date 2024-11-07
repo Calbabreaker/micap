@@ -110,8 +110,13 @@ impl MainServer {
 
             use BoneLocation::*;
             let rotation = match tracker_config.location.unwrap_or(CenterHip) {
-                RightUpperArm | LeftUpperArm | RightLowerArm | LeftLowerArm | RightHand
-                | LeftHand => glam::Quat::from_axis_angle(glam::Vec3::X, f32::to_radians(-90.)),
+                LeftUpperArm | LeftLowerArm | LeftHand => {
+                    glam::Quat::from_axis_angle(glam::Vec3::X, f32::to_radians(-90.))
+                }
+                RightUpperArm | RightLowerArm | RightHand => {
+                    glam::Quat::from_axis_angle(glam::Vec3::X, f32::to_radians(90.))
+                        * glam::Quat::from_axis_angle(glam::Vec3::Z, f32::to_radians(180.))
+                }
                 _ => glam::Quat::from_axis_angle(glam::Vec3::Z, f32::to_radians(270.)),
             };
 
