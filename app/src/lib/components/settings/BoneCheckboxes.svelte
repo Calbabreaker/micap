@@ -3,7 +3,7 @@
     import ResetButton from "../inputs/ResetButton.svelte";
 
     const sendableBones: BoneLocation[] = [
-        "Hip",
+        "CenterHip",
         "Chest",
         "LeftFoot",
         "RightFoot",

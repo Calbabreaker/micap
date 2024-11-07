@@ -1,11 +1,8 @@
 <script lang="ts">
     import { globalConfig, updateConfig, defaultConfig } from "$lib/websocket";
-    import type { InterfaceConfig } from "$lib/server_bindings";
     import ResetButton from "../inputs/ResetButton.svelte";
 
-    let config: InterfaceConfig;
-
-    $: if ($globalConfig) config = $globalConfig.interface;
+    let config = $globalConfig.interface;
 
     function apply() {
         updateConfig("interface", config);
