@@ -79,8 +79,9 @@ impl SkeletonManager {
         foot: BoneLocation,
     ) {
         let hip_quat = self.bones[&CenterHip].world_orientation;
+        self.set_bone_orientation(&[side_hip], hip_quat);
         let mut leg_quat = self.get_tracker_orientation_or_default(&[upper_leg], hip_quat);
-        self.set_bone_orientation(&[side_hip, upper_leg], leg_quat);
+        self.set_bone_orientation(&[upper_leg], leg_quat);
 
         // Use the lower leg tracker or the upper leg (locked to yaw)
         leg_quat = self.get_tracker_orientation_or_default(&[lower_leg], leg_quat);

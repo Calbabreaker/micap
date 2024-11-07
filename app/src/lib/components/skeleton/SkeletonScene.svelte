@@ -17,11 +17,8 @@
     function updateModel(bonesData: BoneDict) {
         Object.entries(bonesData).forEach(([location, boneData]) => {
             // The model is flipped for some reason so rotate it 180 degrees and flip the quaternion
-            const quat = new THREE.Quaternion(
-                -boneData.local_orientation[0],
-                boneData.local_orientation[1],
-                -boneData.local_orientation[2],
-                boneData.local_orientation[3],
+            const quat = new THREE.Quaternion().fromArray(
+                boneData.local_orientation,
             );
 
             const part = modelRef.getObjectByName(location);
@@ -63,10 +60,7 @@
     <GLTF
         url={"default.glb"}
         scale={2}
-        on:create={({ ref }) => {
-            modelRef = ref;
-            modelRef.rotation.y = Math.PI;
-        }}
+        on:create={({ ref }) => (modelRef = ref)}
     />
 {/if}
 {#if showLines && skeletonLineSegments}

@@ -43,6 +43,7 @@ pub struct TrackerInternal {
     /// Offset orientation from when skeleton orientation was reset
     pub orientation_offset: glam::Quat,
     pub raw_orientation: glam::Quat,
+    pub mount_offset: glam::Quat,
 }
 
 impl Default for TrackerInternal {
@@ -53,6 +54,7 @@ impl Default for TrackerInternal {
             was_updated: false,
             orientation_offset: glam::Quat::IDENTITY,
             raw_orientation: glam::Quat::IDENTITY,
+            mount_offset: glam::Quat::IDENTITY,
         }
     }
 }
@@ -70,8 +72,9 @@ pub struct Tracker {
 
 impl Tracker {
     pub fn update_data(&mut self, acceleration: glam::Vec3A, orientation: glam::Quat) {
-        self.data.orientation = self.internal.orientation_offset * orientation;
         self.internal.raw_orientation = orientation;
+        let raw_orientation = self.internal.raw_orientation * self.internal.mount_offset;
+        self.data.orientation = self.internal.orientation_offset * raw_orientation;
         self.data.acceleration = acceleration;
 
         let delta = self.internal.time_data_last_updated.elapsed().as_secs_f32();
@@ -87,11 +90,8 @@ impl Tracker {
     }
 
     pub fn reset_orientation(&mut self) {
-        // self.internal.orientation_offset = (self.internal.raw_orientation
-        //     * glam::Quat::from_rotation_z(std::f32::consts::FRAC_PI_2).inverse());
-
-        // self.internal.orientation_offset = self.internal.orientation_offset.inverse();
-        self.internal.orientation_offset = self.internal.raw_orientation.inverse();
+        let raw_orientation = self.internal.raw_orientation * self.internal.mount_offset;
+        self.internal.orientation_offset = raw_orientation.inverse();
     }
 
     pub fn update_info(&mut self) -> &mut TrackerInfo {

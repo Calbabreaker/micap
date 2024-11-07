@@ -47,7 +47,7 @@ async fn connect(id: u8) -> anyhow::Result<()> {
     loop {
         let x = (count as f32) + (id as f32);
         let orientation = glam::Quat::from_axis_angle(
-            glam::Vec3::new(1., 0., 0.).normalize(),
+            glam::Vec3::new(0., 0., 1.).normalize(),
             f32::sin(count as f32 / 50.) * 2.,
         );
         let acceleration = glam::Vec3A::new(0., 0., -f32::sin(x / 10.) * 3.);

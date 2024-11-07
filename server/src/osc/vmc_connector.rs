@@ -46,7 +46,7 @@ impl VmcConnector {
         .chain(bones.iter().filter_map(|(location, bone)| {
             let mut args = vec![rosc::OscType::String(location.as_unity_name()?)];
             let quat = bone.local_orientation;
-            let orientation = glam::Quat::from_xyzw(-quat.x, quat.y, quat.z, -quat.w);
+            let orientation = glam::Quat::from_xyzw(quat.x, quat.y, -quat.z, -quat.w);
             add_osc_transform_args(&mut args, bone.get_head_offset(bones), orientation);
             Some(rosc::OscPacket::Message(rosc::OscMessage {
                 addr: "/VMC/Ext/Bone/Pos".to_string(),

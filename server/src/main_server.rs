@@ -6,7 +6,7 @@ use crate::{
     config::GlobalConfig,
     osc::{vmc_connector::VmcConnector, vrchat_connector::VrChatConnector},
     record::MotionRecorder,
-    skeleton::SkeletonManager,
+    skeleton::{BoneLocation, SkeletonManager},
     tracker::*,
     udp::server::{UdpServer, UDP_PORT},
     websocket::{WebsocketServer, WEBSOCKET_PORT},
@@ -87,6 +87,7 @@ impl MainServer {
         for (id, tracker) in &self.trackers {
             let mut tracker = tracker.lock().unwrap();
             tracker.internal.was_updated = false;
+
             if tracker.info().to_be_removed {
                 return Some(id.clone());
             }
@@ -96,15 +97,25 @@ impl MainServer {
     }
 
     pub async fn apply_config(&mut self, modules: &mut ServerModules) -> anyhow::Result<()> {
-        let config = &mut self.config;
-        config.skeleton.update_height();
+        self.config.skeleton.update_height();
+
+        let config = &self.config;
 
         // Set all the tracker configs provided
-        for id in config.trackers.keys() {
+        for (id, tracker_config) in config.trackers.iter() {
             // Insert tracker if not exist (usually in first load)
             if !self.trackers.contains_key(id) {
                 self.trackers.insert(id.clone(), TrackerRef::default());
             }
+
+            use BoneLocation::*;
+            let rotation = match tracker_config.location.unwrap_or(CenterHip) {
+                RightUpperArm | LeftUpperArm | RightLowerArm | LeftLowerArm | RightHand
+                | LeftHand => glam::Quat::from_axis_angle(glam::Vec3::X, f32::to_radians(-90.)),
+                _ => glam::Quat::from_axis_angle(glam::Vec3::Z, f32::to_radians(270.)),
+            };
+
+            self.trackers[id].lock().unwrap().internal.mount_offset = rotation
         }
 
         self.skeleton_manager

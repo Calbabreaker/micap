@@ -133,7 +133,7 @@ impl<'a, R: Read> UdpPacketTrackerData<'a, R> {
 
         let mut array = [0_f32; 4];
         self.bytes.read_f32_into::<LittleEndian>(&mut array)?;
-        let orientation = glam::Quat::from_array(array);
+        let orientation = glam::Quat::from_xyzw(-array[0], array[1], array[2], -array[3]);
 
         let mut vec = [0_f32; 3];
         self.bytes.read_f32_into::<LittleEndian>(&mut vec)?;
@@ -141,9 +141,7 @@ impl<'a, R: Read> UdpPacketTrackerData<'a, R> {
 
         Ok(Some(UdpTrackerData {
             tracker_index,
-            orientation: orientation
-                // Rotates to match how it is mounted
-                * glam::Quat::from_axis_angle(glam::Vec3::Z, f32::to_radians(270.)),
+            orientation,
             acceleration,
         }))
     }
