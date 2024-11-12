@@ -2,7 +2,7 @@ use std::io::Write;
 
 use crate::{
     looper::Looper,
-    math::to_euler_angles_vector,
+    math::to_euler_angles,
     record::motion_recorder::MotionFrame,
     skeleton::{BoneLocation, SkeletonManager},
 };
@@ -48,19 +48,23 @@ impl<'a, W: Write> BvhSaver<'a, W> {
         for frame in frames {
             // Add the root_position and all the orientations
             let mut frame_data = frame.root_position.to_array().to_vec();
-            frame_data.extend(
-                frame
-                    .orientations
-                    .iter()
-                    .flat_map(|quat| to_euler_angles_vector(*quat, glam::EulerRot::ZXY).to_array()),
-            );
+            let orientations = frame.orientations.iter();
+            let angles = orientations
+                .flat_map(|quat| to_euler_angles(*quat, glam::EulerRot::ZXY).to_array());
+            frame_data.extend(angles);
 
             assert_eq!(frame_data.len(), BoneLocation::COUNT * 3 + 3);
 
             // Convert floats to a long string with only the first decimial digit
             let data_string = frame_data
                 .iter()
-                .map(|value| format!("{:.1}", value))
+                .map(|value| {
+                    let string = format!("{:.1}", value);
+                    match string.as_str() {
+                        "0.0" | "-0.0" => "0".to_string(),
+                        _ => string,
+                    }
+                })
                 .collect::<Vec<String>>()
                 .join(" ");
             writeln!(self.buf, "{}", data_string)?;

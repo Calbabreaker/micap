@@ -6,7 +6,7 @@ use crate::{
     config::GlobalConfig,
     osc::{vmc_connector::VmcConnector, vrchat_connector::VrChatConnector},
     record::MotionRecorder,
-    skeleton::{BoneLocation, SkeletonManager},
+    skeleton::SkeletonManager,
     tracker::*,
     udp::server::{UdpServer, UDP_PORT},
     websocket::{WebsocketServer, WEBSOCKET_PORT},

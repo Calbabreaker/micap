@@ -5,12 +5,13 @@
         updateTrackerConfig,
         globalConfig,
         removeTracker,
+        trackers,
     } from "$lib/websocket";
     import MangnifyingGlassIcon from "../icons/MangnifyingGlassIcon.svelte";
     import PencilIcon from "../icons/PencilIcon.svelte";
     import TrashIcon from "../icons/TrashIcon.svelte";
+    import TrackerPreview from "./TrackerPreview.svelte";
 
-    export let showInspect = false;
     export let id: string;
 
     const commonBoneLocations = [
@@ -34,7 +35,10 @@
         "RightHand",
     ];
 
+    let showInspect = false;
+
     $: config = $globalConfig?.trackers[id];
+    $: tracker = $trackers[id]!;
 
     async function enterNewName() {
         const name = await promptPopup("Enter the new name");
@@ -76,3 +80,11 @@
         <option value={location}>{location}</option>
     {/each}
 </select>
+{#if showInspect}
+    <hr class="my-4" />
+    <div class="text-sm text-neutral-300">
+        <p>Address: {tracker.info.address}</p>
+        <p>ID: {id}</p>
+        <TrackerPreview data={tracker.data} />
+    </div>
+{/if}

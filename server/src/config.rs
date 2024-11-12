@@ -28,16 +28,16 @@ pub struct GlobalConfig {
 impl GlobalConfig {
     pub fn load() -> anyhow::Result<GlobalConfig> {
         let path = get_config_dir()?.join("config.json");
+        let file = std::fs::File::open(&path)?;
         log::info!("Loading from {path:?}");
-        let text = std::fs::read_to_string(path)?;
-        Ok(serde_json::from_str(&text)?)
+        Ok(serde_json::from_reader(file)?)
     }
 
     pub fn save(&mut self) -> anyhow::Result<()> {
         let path = get_config_dir()?.join("config.json");
+        let file = std::fs::File::create(&path)?;
         log::info!("Saving to {path:?}");
-        let text = serde_json::to_string_pretty(self)?;
-        std::fs::write(path, text)?;
+        serde_json::to_writer_pretty(file, self)?;
         Ok(())
     }
 }

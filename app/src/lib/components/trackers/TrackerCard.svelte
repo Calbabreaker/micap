@@ -2,7 +2,6 @@
     import { trackers } from "$lib/websocket";
     import TrackerInfoDisplay from "./TrackerInfoDisplay.svelte";
     import TrackerControl from "./TrackerControl.svelte";
-    import TrackerPreview from "./TrackerPreview.svelte";
 
     export let id: string;
 
@@ -13,8 +12,6 @@
         Math.hypot(...tracker.data?.acceleration) * 50,
         50,
     );
-
-    let showInspect = false;
 </script>
 
 <div
@@ -22,13 +19,5 @@
     class="bg-neutral-600 p-4 rounded shadow w-fit border"
 >
     <TrackerInfoDisplay info={tracker.info} />
-    <TrackerControl bind:showInspect {id} />
-    {#if showInspect}
-        <hr class="my-4" />
-        <div class="text-sm text-neutral-300">
-            <p>Address: {tracker.info.address}</p>
-            <p>ID: {id}</p>
-            <TrackerPreview data={tracker.data} />
-        </div>
-    {/if}
+    <TrackerControl {id} />
 </div>

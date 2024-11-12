@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::{
-    main_server::MainServer, math::to_euler_angles_vector, osc::OscConnector,
+    main_server::MainServer, math::to_euler_angles, osc::OscConnector,
     skeleton::BoneLocation,
 };
 
@@ -55,7 +55,7 @@ impl VrChatConnector {
         let osc_messages = bones_to_send.iter().enumerate().flat_map(|(i, location)| {
             let bone = &bones[location];
             let position = bone.tail_world_position;
-            let rotation = to_euler_angles_vector(bone.world_orientation, glam::EulerRot::ZXY);
+            let rotation = to_euler_angles(bone.world_orientation, glam::EulerRot::ZXY);
             [
                 make_pos_message(format!("/tracking/trackers/{i}/position"), position),
                 make_pos_message(format!("/tracking/trackers/{i}/rotation"), rotation),
