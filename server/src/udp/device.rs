@@ -1,3 +1,4 @@
+use core::str;
 use std::{
     net::SocketAddr,
     sync::{Arc, MutexGuard},
@@ -49,19 +50,17 @@ impl UdpDevice {
     }
 
     fn get_tracker(&self, local_index: u8) -> Option<MutexGuard<'_, Tracker>> {
-        Some(
-            self.global_trackers
-                .get(local_index as usize)?
-                .as_ref()?
-                .lock()
-                .unwrap(),
-        )
+        self.global_trackers
+            .get(local_index as usize)?
+            .as_ref()?
+            .lock()
+            .ok()
     }
 
     fn global_trackers_iter(&self) -> impl Iterator<Item = MutexGuard<'_, Tracker>> {
         self.global_trackers
             .iter()
-            .filter_map(|tracker| Some(tracker.as_ref()?.lock().unwrap()))
+            .filter_map(|tracker| tracker.as_ref()?.lock().ok())
     }
 
     pub fn check_latest_packet_number(&mut self, packet_number: u32) -> bool {
