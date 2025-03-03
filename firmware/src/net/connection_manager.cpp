@@ -137,12 +137,13 @@ void ConnectionManager::send_handshake() {
 }
 
 void ConnectionManager::send_pong(uint8_t id) {
-    internal_led_blink(20);
     begin_packet(PACKET_PING_PONG);
     write_value<uint32_t>(0);
     write_value<uint8_t>(id);
     end_packet();
+    internal_led_blink(20);
 }
+
 void ConnectionManager::send_battery_level(float level) {
     begin_packet(PACKET_BATTERY_LEVEL);
     write_packet_number();
